@@ -906,13 +906,11 @@
                         .then(response => {
                             if (response.data.code === 200) {
                                 const acc = response.data.data || {};
-                                const balanceCents = Number(acc.balance || 0);
-                                const frozenCents = Number(acc.frozenAmount || 0);
-                                const availableCents = Math.max(0, balanceCents - frozenCents);
+                                // 接口返回的金额单位是元，直接使用
                                 this.depositInfo = {
-                                    totalAmount: Math.round(balanceCents) / 100,
-                                    frozenAmount: Math.round(frozenCents) / 100,
-                                    availableAmount: Math.round(availableCents) / 100
+                                    totalAmount: Number(acc.totalAmount || 0),
+                                    frozenAmount: Number(acc.frozenAmount || 0),
+                                    availableAmount: Number(acc.availableAmount || 0)
                                 };
                                 this.hasDeposit = this.depositInfo.availableAmount > 0;
                             }

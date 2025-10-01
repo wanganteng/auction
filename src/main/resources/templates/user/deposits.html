@@ -497,7 +497,7 @@
                             <div class="transaction-time">{{ formatTime(transaction.createTime) }}</div>
                         </div>
                         <div class="transaction-amount" :class="getAmountClassByType(transaction.transactionType)">
-                            {{ getAmountPrefix(transaction.transactionType) }}¥{{ (Number(transaction.amount || 0) / 100).toFixed(2) }}
+                            {{ getAmountPrefix(transaction.transactionType) }}¥{{ Number(transaction.amount || 0).toFixed(2) }}
                         </div>
                         <div class="status-badge" :class="getStatusClass(transaction.status)">
                             {{ getStatusText(transaction.status) }}
@@ -673,10 +673,9 @@
                         .then(response => {
                             if (response.data.code === 200) {
                                 const data = response.data.data;
-                                const balanceCents = Number(data.balance || 0);
-                                const frozenCents = Number(data.frozenAmount || 0);
-                                this.accountBalance = (balanceCents / 100);
-                                this.frozenAmount = (frozenCents / 100);
+                                // 接口返回的金额单位是元，直接使用
+                                this.accountBalance = Number(data.availableAmount || 0);
+                                this.frozenAmount = Number(data.frozenAmount || 0);
                             }
                         })
                         .catch(error => {
