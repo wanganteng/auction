@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.auction.mapper.UserDepositRefundMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.auction.entity.UserDepositRefund">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="account_id" property="accountId" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="refund_no" property="refundNo" jdbcType="VARCHAR"/>
+        <result column="refund_amount" property="refundAmount" jdbcType="DECIMAL"/>
+        <result column="available_amount" property="availableAmount" jdbcType="DECIMAL"/>
+        <result column="reason" property="reason" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="TINYINT"/>
+        <result column="auditor_id" property="auditorId" jdbcType="BIGINT"/>
+        <result column="audit_time" property="auditTime" jdbcType="TIMESTAMP"/>
+        <result column="audit_comment" property="auditComment" jdbcType="VARCHAR"/>
+        <result column="refund_time" property="refundTime" jdbcType="TIMESTAMP"/>
+        <result column="refund_transaction_id" property="refundTransactionId" jdbcType="BIGINT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, account_id, user_id, refund_no, refund_amount, available_amount, reason,
+        status, auditor_id, audit_time, audit_comment, refund_time, refund_transaction_id,
+        create_time, update_time, deleted
+    </sql>
+
+    <!-- 插入退款申请 -->
+    <insert id="insert" parameterType="com.auction.entity.UserDepositRefund" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_deposit_refund (
+            account_id, user_id, refund_no, refund_amount, available_amount, reason,
+            status, auditor_id, audit_time, audit_comment, refund_time, refund_transaction_id,
+            create_time, update_time, deleted
+        ) VALUES (
+            #{accountId}, #{userId}, #{refundNo}, #{refundAmount}, #{availableAmount}, #{reason},
+            #{status}, #{auditorId}, #{auditTime}, #{auditComment}, #{refundTime}, #{refundTransactionId},
+            #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <!-- 更新退款申请 -->
+    <update id="update" parameterType="com.auction.entity.UserDepositRefund">
+        UPDATE user_deposit_refund
+        <set>
+            <if test="accountId != null">account_id = #{accountId},</if>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="refundNo != null">refund_no = #{refundNo},</if>
+            <if test="refundAmount != null">refund_amount = #{refundAmount},</if>
+            <if test="availableAmount != null">available_amount = #{availableAmount},</if>
+            <if test="reason != null">reason = #{reason},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="auditorId != null">auditor_id = #{auditorId},</if>
+            <if test="auditTime != null">audit_time = #{auditTime},</if>
+            <if test="auditComment != null">audit_comment = #{auditComment},</if>
+            <if test="refundTime != null">refund_time = #{refundTime},</if>
+            <if test="refundTransactionId != null">refund_transaction_id = #{refundTransactionId},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <!-- 根据ID查询退款申请 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_deposit_refund
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 根据退款申请单号查询 -->
+    <select id="selectByRefundNo" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_deposit_refund
+        WHERE refund_no = #{refundNo} AND deleted = 0
+    </select>
+
+    <!-- 查询退款申请列表 -->
+    <select id="selectList" parameterType="com.auction.entity.UserDepositRefund" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_deposit_refund
+        <where>
+            deleted = 0
+            <if test="accountId != null">
+                AND account_id = #{accountId}
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="auditorId != null">
+                AND auditor_id = #{auditorId}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据账户ID查询退款申请 -->
+    <select id="selectByAccountId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_deposit_refund
+        WHERE account_id = #{accountId} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据用户ID查询退款申请 -->
+    <select id="selectByUserId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_deposit_refund
+        WHERE user_id = #{userId} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据状态查询退款申请 -->
+    <select id="selectByStatus" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_deposit_refund
+        WHERE status = #{status} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据ID删除退款申请 -->
+    <update id="deleteById" parameterType="java.lang.Long">
+        UPDATE user_deposit_refund
+        SET deleted = 1, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>

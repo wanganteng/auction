@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.auction.mapper.AuctionBidMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.auction.entity.AuctionBid">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="session_id" property="sessionId" jdbcType="BIGINT"/>
+        <result column="item_id" property="itemId" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="bid_amount" property="bidAmount" jdbcType="BIGINT"/>
+        <result column="bid_amount_yuan" property="bidAmountYuan" jdbcType="DECIMAL"/>
+        <result column="bid_time" property="bidTime" jdbcType="TIMESTAMP"/>
+        <result column="source" property="source" jdbcType="TINYINT"/>
+        <result column="is_auto" property="isAuto" jdbcType="TINYINT"/>
+        <result column="status" property="status" jdbcType="TINYINT"/>
+        <result column="client_ip" property="clientIp" jdbcType="VARCHAR"/>
+        <result column="user_agent" property="userAgent" jdbcType="VARCHAR"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, session_id, item_id, user_id, bid_amount, bid_amount_yuan, bid_time,
+        source, is_auto, status, client_ip, user_agent, create_time, update_time, deleted
+    </sql>
+
+    <!-- 插入出价记录 -->
+    <insert id="insert" parameterType="com.auction.entity.AuctionBid" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO auction_bid (
+            session_id, item_id, user_id, bid_amount, bid_amount_yuan, bid_time,
+            source, is_auto, status, client_ip, user_agent, create_time, update_time, deleted
+        ) VALUES (
+            #{sessionId}, #{itemId}, #{userId}, #{bidAmount}, #{bidAmountYuan}, #{bidTime},
+            #{source}, #{isAuto}, #{status}, #{clientIp}, #{userAgent}, #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <!-- 更新出价记录 -->
+    <update id="update" parameterType="com.auction.entity.AuctionBid">
+        UPDATE auction_bid
+        <set>
+            <if test="sessionId != null">session_id = #{sessionId},</if>
+            <if test="itemId != null">item_id = #{itemId},</if>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="bidAmount != null">bid_amount = #{bidAmount},</if>
+            <if test="bidAmountYuan != null">bid_amount_yuan = #{bidAmountYuan},</if>
+            <if test="bidTime != null">bid_time = #{bidTime},</if>
+            <if test="source != null">source = #{source},</if>
+            <if test="isAuto != null">is_auto = #{isAuto},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="clientIp != null">client_ip = #{clientIp},</if>
+            <if test="userAgent != null">user_agent = #{userAgent},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <!-- 根据ID查询出价记录 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_bid
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 查询出价记录列表 -->
+    <select id="selectList" parameterType="com.auction.entity.AuctionBid" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_bid
+        <where>
+            deleted = 0
+            <if test="sessionId != null">
+                AND session_id = #{sessionId}
+            </if>
+            <if test="itemId != null">
+                AND item_id = #{itemId}
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY bid_time DESC
+    </select>
+
+    <!-- 查询拍品最高出价 -->
+    <select id="selectHighestBid" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_bid
+        WHERE item_id = #{itemId} AND deleted = 0 AND status = 0
+        ORDER BY bid_amount DESC
+        LIMIT 1
+    </select>
+
+    <!-- 根据拍卖会ID查询出价记录 -->
+    <select id="selectByAuctionId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_bid
+        WHERE session_id = #{auctionId} AND deleted = 0
+        ORDER BY bid_time DESC
+    </select>
+
+    <!-- 根据拍卖会ID统计出价数量 -->
+    <select id="countByAuctionId" parameterType="java.lang.Long" resultType="int">
+        SELECT COUNT(*)
+        FROM auction_bid
+        WHERE session_id = #{auctionId} AND deleted = 0
+    </select>
+
+</mapper>

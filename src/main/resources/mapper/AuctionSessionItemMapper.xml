@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.auction.mapper.AuctionSessionItemMapper">
+
+    <delete id="deleteBySessionId" parameterType="java.lang.Long">
+        DELETE FROM auction_session_item WHERE session_id = #{sessionId}
+    </delete>
+
+    <insert id="batchInsert">
+        INSERT INTO auction_session_item (session_id, item_id, create_time)
+        VALUES
+        <foreach collection="itemIds" item="itemId" separator=",">
+            (#{sessionId}, #{itemId}, NOW())
+        </foreach>
+    </insert>
+
+    <!-- 查询与未开始/进行中的会场冲突的 itemIds -->
+    <select id="findConflictingItemIds" parameterType="java.util.List" resultType="java.lang.Long">
+        SELECT DISTINCT asi.item_id
+        FROM auction_session_item asi
+        JOIN auction_session s ON s.id = asi.session_id AND s.deleted = 0
+        WHERE asi.item_id IN
+        <foreach collection="itemIds" item="id" open="(" close=")" separator=",">
+            #{id}
+        </foreach>
+        AND s.status IN (1, 2)
+    </select>
+
+</mapper>
+
+

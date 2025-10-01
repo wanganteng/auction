@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.auction.mapper.AuctionSessionMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.auction.entity.AuctionSession">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="session_name" property="sessionName" jdbcType="VARCHAR"/>
+        <result column="description" property="description" jdbcType="LONGVARCHAR"/>
+        <result column="session_type" property="sessionType" jdbcType="TINYINT"/>
+        <result column="status" property="status" jdbcType="TINYINT"/>
+        <result column="start_time" property="startTime" jdbcType="TIMESTAMP"/>
+        <result column="end_time" property="endTime" jdbcType="TIMESTAMP"/>
+        <result column="creator_id" property="creatorId" jdbcType="BIGINT"/>
+        <result column="total_items" property="totalItems" jdbcType="INTEGER"/>
+        <result column="sold_items" property="soldItems" jdbcType="INTEGER"/>
+        <result column="view_count" property="viewCount" jdbcType="INTEGER"/>
+        <result column="deposit_ratio" property="depositRatio" jdbcType="DECIMAL"/>
+        <result column="commission_ratio" property="commissionRatio" jdbcType="DECIMAL"/>
+        <result column="is_authentic" property="isAuthentic" jdbcType="TINYINT"/>
+        <result column="is_free_shipping" property="isFreeShipping" jdbcType="TINYINT"/>
+        <result column="is_returnable" property="isReturnable" jdbcType="TINYINT"/>
+        <result column="cover_image" property="coverImage" jdbcType="VARCHAR"/>
+        <result column="images" property="images" jdbcType="LONGVARCHAR"/>
+        <result column="rules" property="rules" jdbcType="LONGVARCHAR"/>
+        <result column="is_visible" property="isVisible" jdbcType="TINYINT"/>
+        <result column="anti_sniping_enabled" property="antiSnipingEnabled" jdbcType="TINYINT"/>
+        <result column="extend_threshold_sec" property="extendThresholdSec" jdbcType="INTEGER"/>
+        <result column="extend_seconds" property="extendSeconds" jdbcType="INTEGER"/>
+        <result column="extend_max_times" property="extendMaxTimes" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, session_name, description, session_type, status, start_time, end_time, creator_id,
+        total_items, sold_items, view_count, deposit_ratio, commission_ratio,
+        is_authentic, is_free_shipping, is_returnable, cover_image, images, rules, is_visible,
+        anti_sniping_enabled, extend_threshold_sec, extend_seconds, extend_max_times,
+        create_time, update_time, deleted
+    </sql>
+
+    <!-- 插入拍卖会 -->
+    <insert id="insert" parameterType="com.auction.entity.AuctionSession" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO auction_session (
+            session_name, description, session_type, status, start_time, end_time, creator_id,
+            total_items, sold_items, view_count, deposit_ratio, commission_ratio,
+            is_authentic, is_free_shipping, is_returnable, cover_image, images, rules, is_visible,
+            anti_sniping_enabled, extend_threshold_sec, extend_seconds, extend_max_times,
+            create_time, update_time, deleted
+        ) VALUES (
+            #{sessionName}, #{description}, #{sessionType}, #{status}, #{startTime}, #{endTime}, #{creatorId},
+            #{totalItems}, #{soldItems}, #{viewCount}, #{depositRatio}, #{commissionRatio},
+            #{isAuthentic}, #{isFreeShipping}, #{isReturnable}, #{coverImage}, #{images}, #{rules}, #{isVisible},
+            #{antiSnipingEnabled}, #{extendThresholdSec}, #{extendSeconds}, #{extendMaxTimes},
+            #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <!-- 更新拍卖会 -->
+    <update id="update" parameterType="com.auction.entity.AuctionSession">
+        UPDATE auction_session
+        <set>
+            <if test="sessionName != null">session_name = #{sessionName},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="sessionType != null">session_type = #{sessionType},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="creatorId != null">creator_id = #{creatorId},</if>
+            <if test="totalItems != null">total_items = #{totalItems},</if>
+            <if test="soldItems != null">sold_items = #{soldItems},</if>
+            <if test="viewCount != null">view_count = #{viewCount},</if>
+            <if test="depositRatio != null">deposit_ratio = #{depositRatio},</if>
+            <if test="commissionRatio != null">commission_ratio = #{commissionRatio},</if>
+            <if test="isAuthentic != null">is_authentic = #{isAuthentic},</if>
+            <if test="isFreeShipping != null">is_free_shipping = #{isFreeShipping},</if>
+            <if test="isReturnable != null">is_returnable = #{isReturnable},</if>
+            <if test="coverImage != null">cover_image = #{coverImage},</if>
+            <if test="images != null">images = #{images},</if>
+            <if test="rules != null">rules = #{rules},</if>
+            <if test="isVisible != null">is_visible = #{isVisible},</if>
+            <if test="antiSnipingEnabled != null">anti_sniping_enabled = #{antiSnipingEnabled},</if>
+            <if test="extendThresholdSec != null">extend_threshold_sec = #{extendThresholdSec},</if>
+            <if test="extendSeconds != null">extend_seconds = #{extendSeconds},</if>
+            <if test="extendMaxTimes != null">extend_max_times = #{extendMaxTimes},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <!-- 根据ID查询拍卖会 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_session
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 查询拍卖会列表 -->
+    <select id="selectList" parameterType="com.auction.entity.AuctionSession" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_session
+        <where>
+            deleted = 0
+            <if test="sessionName != null and sessionName != ''">
+                AND session_name LIKE CONCAT('%', #{sessionName}, '%')
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="creatorId != null">
+                AND creator_id = #{creatorId}
+            </if>
+            <if test="isVisible != null">
+                AND is_visible = #{isVisible}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据ID删除拍卖会 -->
+    <update id="deleteById" parameterType="java.lang.Long">
+        UPDATE auction_session
+        SET deleted = 1, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 查询所有拍卖会 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_session
+        WHERE deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据ID更新拍卖会 -->
+    <update id="updateById" parameterType="com.auction.entity.AuctionSession">
+        UPDATE auction_session
+        <set>
+            <if test="sessionName != null">session_name = #{sessionName},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="sessionType != null">session_type = #{sessionType},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="creatorId != null">creator_id = #{creatorId},</if>
+            <if test="totalItems != null">total_items = #{totalItems},</if>
+            <if test="soldItems != null">sold_items = #{soldItems},</if>
+            <if test="viewCount != null">view_count = #{viewCount},</if>
+            <if test="depositRatio != null">deposit_ratio = #{depositRatio},</if>
+            <if test="commissionRatio != null">commission_ratio = #{commissionRatio},</if>
+            <if test="isAuthentic != null">is_authentic = #{isAuthentic},</if>
+            <if test="isFreeShipping != null">is_free_shipping = #{isFreeShipping},</if>
+            <if test="isReturnable != null">is_returnable = #{isReturnable},</if>
+            <if test="coverImage != null">cover_image = #{coverImage},</if>
+            <if test="images != null">images = #{images},</if>
+            <if test="rules != null">rules = #{rules},</if>
+            <if test="isVisible != null">is_visible = #{isVisible},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <!-- 根据拍品ID查询关联的拍卖会 -->
+    <select id="selectSessionsByItemId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT s.*
+        FROM auction_session s
+        INNER JOIN auction_session_item asi ON s.id = asi.session_id
+        WHERE asi.item_id = #{itemId}
+        AND s.deleted = 0
+        ORDER BY s.create_time DESC
+    </select>
+
+</mapper>

@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.auction.mapper.AuctionLogisticsMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.auction.entity.AuctionLogistics">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="order_id" property="orderId" jdbcType="BIGINT"/>
+        <result column="logistics_company" property="logisticsCompany" jdbcType="VARCHAR"/>
+        <result column="tracking_number" property="trackingNumber" jdbcType="VARCHAR"/>
+        <result column="logistics_status" property="logisticsStatus" jdbcType="TINYINT"/>
+        <result column="sender_name" property="senderName" jdbcType="VARCHAR"/>
+        <result column="sender_phone" property="senderPhone" jdbcType="VARCHAR"/>
+        <result column="receiver_name" property="receiverName" jdbcType="VARCHAR"/>
+        <result column="receiver_phone" property="receiverPhone" jdbcType="VARCHAR"/>
+        <result column="receiver_address" property="receiverAddress" jdbcType="VARCHAR"/>
+        <result column="remark" property="remark" jdbcType="VARCHAR"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, order_id, logistics_company, tracking_number, logistics_status,
+        sender_name, sender_phone, receiver_name, receiver_phone, receiver_address,
+        remark, create_time, update_time
+    </sql>
+
+    <!-- 插入物流信息 -->
+    <insert id="insert" parameterType="com.auction.entity.AuctionLogistics" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO auction_logistics (
+            order_id, logistics_company, tracking_number, logistics_status,
+            sender_name, sender_phone, receiver_name, receiver_phone, receiver_address,
+            remark, create_time, update_time
+        ) VALUES (
+            #{orderId}, #{logisticsCompany}, #{trackingNumber}, #{logisticsStatus},
+            #{senderName}, #{senderPhone}, #{receiverName}, #{receiverPhone}, #{receiverAddress},
+            #{remark}, #{createTime}, #{updateTime}
+        )
+    </insert>
+
+    <!-- 更新物流信息 -->
+    <update id="update" parameterType="com.auction.entity.AuctionLogistics">
+        UPDATE auction_logistics
+        <set>
+            <if test="orderId != null">order_id = #{orderId},</if>
+            <if test="logisticsCompany != null">logistics_company = #{logisticsCompany},</if>
+            <if test="trackingNumber != null">tracking_number = #{trackingNumber},</if>
+            <if test="logisticsStatus != null">logistics_status = #{logisticsStatus},</if>
+            <if test="senderName != null">sender_name = #{senderName},</if>
+            <if test="senderPhone != null">sender_phone = #{senderPhone},</if>
+            <if test="receiverName != null">receiver_name = #{receiverName},</if>
+            <if test="receiverPhone != null">receiver_phone = #{receiverPhone},</if>
+            <if test="receiverAddress != null">receiver_address = #{receiverAddress},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID查询物流信息 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_logistics
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据订单ID查询物流信息 -->
+    <select id="selectByOrderId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_logistics
+        WHERE order_id = #{orderId}
+    </select>
+
+    <!-- 根据运单号查询物流信息 -->
+    <select id="selectByTrackingNumber" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_logistics
+        WHERE tracking_number = #{trackingNumber}
+    </select>
+
+    <!-- 查询物流信息列表 -->
+    <select id="selectList" parameterType="com.auction.entity.AuctionLogistics" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_logistics
+        <where>
+            <if test="orderId != null">
+                AND order_id = #{orderId}
+            </if>
+            <if test="logisticsCompany != null and logisticsCompany != ''">
+                AND logistics_company LIKE CONCAT('%', #{logisticsCompany}, '%')
+            </if>
+            <if test="trackingNumber != null and trackingNumber != ''">
+                AND tracking_number LIKE CONCAT('%', #{trackingNumber}, '%')
+            </if>
+            <if test="logisticsStatus != null">
+                AND logistics_status = #{logisticsStatus}
+            </if>
+            <if test="receiverName != null and receiverName != ''">
+                AND receiver_name LIKE CONCAT('%', #{receiverName}, '%')
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据ID删除物流信息 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM auction_logistics WHERE id = #{id}
+    </delete>
+
+    <!-- 查询所有物流信息 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_logistics
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据状态查询物流信息 -->
+    <select id="selectByStatus" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_logistics
+        WHERE logistics_status = #{status}
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据ID更新物流信息 -->
+    <update id="updateById" parameterType="com.auction.entity.AuctionLogistics">
+        UPDATE auction_logistics
+        <set>
+            <if test="orderId != null">order_id = #{orderId},</if>
+            <if test="logisticsCompany != null">logistics_company = #{logisticsCompany},</if>
+            <if test="trackingNumber != null">tracking_number = #{trackingNumber},</if>
+            <if test="logisticsStatus != null">logistics_status = #{logisticsStatus},</if>
+            <if test="senderName != null">sender_name = #{senderName},</if>
+            <if test="senderPhone != null">sender_phone = #{senderPhone},</if>
+            <if test="receiverName != null">receiver_name = #{receiverName},</if>
+            <if test="receiverPhone != null">receiver_phone = #{receiverPhone},</if>
+            <if test="receiverAddress != null">receiver_address = #{receiverAddress},</if>
+            <if test="senderAddress != null">sender_address = #{senderAddress},</if>
+            <if test="shipTime != null">ship_time = #{shipTime},</if>
+            <if test="receiveTime != null">receive_time = #{receiveTime},</if>
+            <if test="logisticsDetail != null">logistics_detail = #{logisticsDetail},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+</mapper>

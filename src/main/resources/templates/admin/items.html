@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拍品管理 - 拍卖系统</title>
+    
+    <!-- Element UI CSS -->
+    <link rel="stylesheet" href="/css/element-plus.css">
+    <!-- 自定义样式 -->
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 300;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        
+        .toolbar {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .content {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .item-card {
+            border: 1px solid #e4e7ed;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+        
+        .item-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        
+        .item-image {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-right: 20px;
+        }
+        
+        .item-info {
+            flex: 1;
+        }
+        
+        .item-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #303133;
+            margin-bottom: 8px;
+        }
+        
+        .item-desc {
+            color: #606266;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+        
+        .item-meta {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            color: #909399;
+        }
+        
+        .item-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .status-tag {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-draft { background: #f4f4f5; color: #909399; }
+        .status-pending { background: #fff7e6; color: #e6a23c; }
+        .status-approved { background: #f0f9ff; color: #409eff; }
+        .status-rejected { background: #fef0f0; color: #f56c6c; }
+        .status-auctioning { background: #f0f9ff; color: #409eff; }
+        .status-sold { background: #f0f9ff; color: #67c23a; }
+        .status-unsold { background: #f4f4f5; color: #909399; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 头部 -->
+        <div class="header">
+            <h1>拍品管理</h1>
+        </div>
+        
+        <!-- 主容器 -->
+        <div class="container">
+            <!-- 工具栏 -->
+            <div class="toolbar">
+                <el-row :gutter="20">
+                    <el-col :span="6">
+                        <el-input
+                            v-model="searchForm.itemName"
+                            placeholder="搜索拍品名称"
+                            clearable
+                            @keyup.enter="searchItems">
+                            <template #prefix>
+                                <el-icon><Search /></el-icon>
+                            </template>
+                        </el-input>
+                    </el-col>
+                    <el-col :span="4">
+                        <el-select v-model="searchForm.status" placeholder="状态筛选" clearable>
+                            <el-option label="草稿" value="0"></el-option>
+                            <el-option label="待审核" value="1"></el-option>
+                            <el-option label="已通过" value="2"></el-option>
+                            <el-option label="已拒绝" value="3"></el-option>
+                            <el-option label="拍卖中" value="4"></el-option>
+                            <el-option label="已成交" value="5"></el-option>
+                            <el-option label="流拍" value="6"></el-option>
+                        </el-select>
+                    </el-col>
+                    <el-col :span="4">
+                        <el-select v-model="searchForm.category" placeholder="分类筛选" clearable>
+                            <el-option label="书画" value="1"></el-option>
+                            <el-option label="陶瓷" value="2"></el-option>
+                            <el-option label="玉器" value="3"></el-option>
+                            <el-option label="珠宝" value="4"></el-option>
+                            <el-option label="家具" value="5"></el-option>
+                            <el-option label="杂项" value="6"></el-option>
+                        </el-select>
+                    </el-col>
+                    <el-col :span="6">
+                        <el-button type="primary" @click="searchItems">
+                            <el-icon><Search /></el-icon>
+                            搜索
+                        </el-button>
+                        <el-button @click="resetSearch">
+                            <el-icon><Refresh /></el-icon>
+                            重置
+                        </el-button>
+                        <el-button type="success" @click="showAddDialog">
+                            <el-icon><Plus /></el-icon>
+                            添加拍品
+                        </el-button>
+                    </el-col>
+                </el-row>
+            </div>
+            
+            <!-- 内容区域 -->
+            <div class="content">
+                <el-table :data="items" v-loading="loading" style="width: 100%">
+                    <el-table-column prop="id" label="ID" width="80"></el-table-column>
+                    <el-table-column label="图片" width="120">
+                        <template #default="scope">
+                            <el-image
+                                :src="scope.row.imageUrl || '/images/default-item.jpg'"
+                                :preview-src-list="[scope.row.imageUrl || '/images/default-item.jpg']"
+                                style="width: 80px; height: 80px; border-radius: 4px;"
+                                fit="cover">
+                            </el-image>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="itemName" label="拍品名称" min-width="200">
+                        <template #default="scope">
+                            <div class="item-title">{{ scope.row.itemName }}</div>
+                            <div class="item-desc">{{ scope.row.description }}</div>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="category" label="分类" width="100">
+                        <template #default="scope">
+                            {{ getCategoryName(scope.row.category) }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="startingPrice" label="起拍价" width="120">
+                        <template #default="scope">
+                            ¥{{ (scope.row.startingPrice / 100).toFixed(2) }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="currentPrice" label="当前价" width="120">
+                        <template #default="scope">
+                            ¥{{ (scope.row.currentPrice / 100).toFixed(2) }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="status" label="状态" width="100">
+                        <template #default="scope">
+                            <el-tag :type="getStatusType(scope.row.status)" class="status-tag">
+                                {{ getStatusText(scope.row.status) }}
+                            </el-tag>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="createTime" label="创建时间" width="180">
+                        <template #default="scope">
+                            {{ formatDateTime(scope.row.createTime) }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="200" fixed="right">
+                        <template #default="scope">
+                            <el-button size="small" @click="viewItem(scope.row)">查看</el-button>
+                            <el-button size="small" type="primary" @click="editItem(scope.row)">编辑</el-button>
+                            <el-button 
+                                size="small" 
+                                type="success" 
+                                v-if="scope.row.status == 1"
+                                @click="approveItem(scope.row)">
+                                通过
+                            </el-button>
+                            <el-button 
+                                size="small" 
+                                type="danger" 
+                                v-if="scope.row.status == 1"
+                                @click="rejectItem(scope.row)">
+                                拒绝
+                            </el-button>
+                            <el-button 
+                                size="small" 
+                                type="danger" 
+                                @click="deleteItem(scope.row)">
+                                删除
+                            </el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+                
+                <!-- 分页 -->
+                <div style="padding: 20px; text-align: center;">
+                    <el-pagination
+                        v-model:current-page="page"
+                        v-model:page-size="pageSize"
+                        :page-sizes="[10, 20, 50, 100]"
+                        :total="total"
+                        layout="total, sizes, prev, pager, next, jumper"
+                        @size-change="handleSizeChange"
+                        @current-change="handleCurrentChange">
+                    </el-pagination>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 添加/编辑拍品对话框 -->
+        <el-dialog 
+            :title="dialogTitle" 
+            v-model="dialogVisible" 
+            width="800px"
+            :close-on-click-modal="false">
+            <el-form :model="itemForm" :rules="itemRules" ref="itemFormRef" label-width="100px">
+                <el-row :gutter="20">
+                    <el-col :span="12">
+                        <el-form-item label="拍品名称" prop="itemName">
+                            <el-input v-model="itemForm.itemName" placeholder="请输入拍品名称"></el-input>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="12">
+                        <el-form-item label="分类" prop="category">
+                            <el-select v-model="itemForm.category" placeholder="请选择分类" style="width: 100%">
+                                <el-option label="书画" value="1"></el-option>
+                                <el-option label="陶瓷" value="2"></el-option>
+                                <el-option label="玉器" value="3"></el-option>
+                                <el-option label="珠宝" value="4"></el-option>
+                                <el-option label="家具" value="5"></el-option>
+                                <el-option label="杂项" value="6"></el-option>
+                            </el-select>
+                        </el-form-item>
+                    </el-col>
+                </el-row>
+                
+                <el-form-item label="拍品描述" prop="description">
+                    <el-input 
+                        v-model="itemForm.description" 
+                        type="textarea" 
+                        :rows="4" 
+                        placeholder="请输入拍品描述">
+                    </el-input>
+                </el-form-item>
+                
+                <el-row :gutter="20">
+                    <el-col :span="8">
+                        <el-form-item label="起拍价" prop="startingPrice">
+                            <el-input-number 
+                                v-model="itemForm.startingPrice" 
+                                :min="0" 
+                                :precision="2" 
+                                placeholder="起拍价" 
+                                style="width: 100%">
+                            </el-input-number>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="估价" prop="estimatedPrice">
+                            <el-input-number 
+                                v-model="itemForm.estimatedPrice" 
+                                :min="0" 
+                                :precision="2" 
+                                placeholder="估价" 
+                                style="width: 100%">
+                            </el-input-number>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-form-item label="保留价" prop="reservePrice">
+                            <el-input-number 
+                                v-model="itemForm.reservePrice" 
+                                :min="0" 
+                                :precision="2" 
+                                placeholder="保留价" 
+                                style="width: 100%">
+                            </el-input-number>
+                        </el-form-item>
+                    </el-col>
+                </el-row>
+                
+                <el-form-item label="拍品图片">
+                    <el-upload
+                        class="upload-demo"
+                        :action="uploadUrl"
+                        :headers="uploadHeaders"
+                        :file-list="fileList"
+                        :on-success="handleUploadSuccess"
+                        :on-remove="handleRemove"
+                        :before-upload="beforeUpload"
+                        list-type="picture-card"
+                        :limit="5">
+                        <el-icon><Plus /></el-icon>
+                    </el-upload>
+                </el-form-item>
+            </el-form>
+            
+            <template #footer>
+                <el-button @click="dialogVisible = false">取消</el-button>
+                <el-button type="primary" @click="submitItem" :loading="submitting">
+                    {{ isEdit ? '更新' : '创建' }}
+                </el-button>
+            </template>
+        </el-dialog>
+    </div>
+
+    <!-- Element UI JS -->
+    <script src="/js/vue.js"></script>
+    <script src="/js/element-plus.js"></script>
+    <script src="/js/axios.js"></script>
+    
+    <script>
+        const { createApp } = Vue;
+        const { ElMessage, ElMessageBox } = ElementPlus;
+
+        createApp({
+            data() {
+                return {
+                    // 数据
+                    items: [],
+                    loading: false,
+                    page: 1,
+                    pageSize: 10,
+                    total: 0,
+                    
+                    // 搜索表单
+                    searchForm: {
+                        itemName: '',
+                        status: '',
+                        category: ''
+                    },
+                    
+                    // 对话框
+                    dialogVisible: false,
+                    dialogTitle: '添加拍品',
+                    isEdit: false,
+                    submitting: false,
+                    
+                    // 拍品表单
+                    itemForm: {
+                        id: null,
+                        itemName: '',
+                        category: '',
+                        description: '',
+                        startingPrice: 0,
+                        estimatedPrice: 0,
+                        reservePrice: 0,
+                        imageUrl: ''
+                    },
+                    
+                    // 表单验证规则
+                    itemRules: {
+                        itemName: [
+                            { required: true, message: '请输入拍品名称', trigger: 'blur' }
+                        ],
+                        category: [
+                            { required: true, message: '请选择分类', trigger: 'change' }
+                        ],
+                        description: [
+                            { required: true, message: '请输入拍品描述', trigger: 'blur' }
+                        ],
+                        startingPrice: [
+                            { required: true, message: '请输入起拍价', trigger: 'blur' }
+                        ]
+                    },
+                    
+                    // 文件上传
+                    fileList: [],
+                    uploadUrl: '/api/file/upload',
+                    uploadHeaders: {}
+                }
+            },
+            
+            mounted() {
+                this.setupAxiosInterceptors();
+                this.loadItems();
+            },
+            
+            methods: {
+                // 设置axios拦截器
+                setupAxiosInterceptors() {
+                    axios.interceptors.request.use(config => {
+                        const token = localStorage.getItem('adminToken');
+                        if (token) {
+                            config.headers.Authorization = `Bearer ${token}`;
+                        }
+                        return config;
+                    });
+                    
+                    axios.interceptors.response.use(
+                        response => response,
+                        error => {
+                            if (error.response && error.response.status === 401) {
+                                localStorage.removeItem('adminToken');
+                                ElMessage.error('登录已过期，请重新登录');
+                                window.location.href = '/auction/login';
+                            }
+                            return Promise.reject(error);
+                        }
+                    );
+                },
+                
+                // 加载拍品列表
+                async loadItems() {
+                    this.loading = true;
+                    try {
+                        const params = {
+                            page: this.page,
+                            pageSize: this.pageSize,
+                            ...this.searchForm
+                        };
+                        
+                        const response = await axios.get('/api/admin/items', { params });
+                        this.items = response.data.data.records || [];
+                        this.total = response.data.data.total || 0;
+                    } catch (error) {
+                        console.error('加载拍品列表失败:', error);
+                        ElMessage.error('加载拍品列表失败');
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                
+                // 搜索拍品
+                searchItems() {
+                    this.page = 1;
+                    this.loadItems();
+                },
+                
+                // 重置搜索
+                resetSearch() {
+                    this.searchForm = {
+                        itemName: '',
+                        status: '',
+                        category: ''
+                    };
+                    this.page = 1;
+                    this.loadItems();
+                },
+                
+                // 显示添加对话框
+                showAddDialog() {
+                    this.dialogTitle = '添加拍品';
+                    this.isEdit = false;
+                    this.dialogVisible = true;
+                    this.resetForm();
+                },
+                
+                // 查看拍品
+                viewItem(item) {
+                    ElMessageBox.alert(`
+                        <div style="text-align: left;">
+                            <p><strong>拍品名称：</strong>${item.itemName}</p>
+                            <p><strong>分类：</strong>${this.getCategoryName(item.category)}</p>
+                            <p><strong>描述：</strong>${item.description}</p>
+                            <p><strong>起拍价：</strong>¥${(item.startingPrice / 100).toFixed(2)}</p>
+                            <p><strong>当前价：</strong>¥${(item.currentPrice / 100).toFixed(2)}</p>
+                            <p><strong>状态：</strong>${this.getStatusText(item.status)}</p>
+                        </div>
+                    `, '拍品详情', {
+                        dangerouslyUseHTMLString: true,
+                        confirmButtonText: '确定'
+                    });
+                },
+                
+                // 编辑拍品
+                editItem(item) {
+                    this.dialogTitle = '编辑拍品';
+                    this.isEdit = true;
+                    this.dialogVisible = true;
+                    
+                    this.itemForm = {
+                        id: item.id,
+                        itemName: item.itemName,
+                        category: item.category.toString(),
+                        description: item.description,
+                        startingPrice: item.startingPrice / 100,
+                        estimatedPrice: (item.estimatedPrice || 0) / 100,
+                        reservePrice: (item.reservePrice || 0) / 100,
+                        imageUrl: item.imageUrl || ''
+                    };
+                    
+                    this.fileList = item.imageUrl ? [{
+                        name: 'image.jpg',
+                        url: item.imageUrl
+                    }] : [];
+                },
+                
+                // 提交拍品
+                async submitItem() {
+                    try {
+                        await this.$refs.itemFormRef.validate();
+                        
+                        this.submitting = true;
+                        
+                        const formData = {
+                            ...this.itemForm,
+                            startingPrice: Math.round(this.itemForm.startingPrice * 100),
+                            estimatedPrice: Math.round((this.itemForm.estimatedPrice || 0) * 100),
+                            reservePrice: Math.round((this.itemForm.reservePrice || 0) * 100)
+                        };
+                        
+                        if (this.isEdit) {
+                            await axios.put(`/api/admin/items/${formData.id}`, formData);
+                            ElMessage.success('拍品更新成功');
+                        } else {
+                            await axios.post('/api/admin/items', formData);
+                            ElMessage.success('拍品创建成功');
+                        }
+                        
+                        this.dialogVisible = false;
+                        this.loadItems();
+                        
+                    } catch (error) {
+                        console.error('提交拍品失败:', error);
+                        ElMessage.error('提交拍品失败');
+                    } finally {
+                        this.submitting = false;
+                    }
+                },
+                
+                // 重置表单
+                resetForm() {
+                    this.itemForm = {
+                        id: null,
+                        itemName: '',
+                        category: '',
+                        description: '',
+                        startingPrice: 0,
+                        estimatedPrice: 0,
+                        reservePrice: 0,
+                        imageUrl: ''
+                    };
+                    this.fileList = [];
+                    this.$refs.itemFormRef?.resetFields();
+                },
+                
+                // 通过拍品
+                async approveItem(item) {
+                    try {
+                        await ElMessageBox.confirm('确定要通过这个拍品吗？', '确认操作');
+                        
+                        await axios.put(`/api/admin/items/${item.id}/approve`);
+                        ElMessage.success('拍品已通过');
+                        this.loadItems();
+                        
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            console.error('通过拍品失败:', error);
+                            ElMessage.error('操作失败');
+                        }
+                    }
+                },
+                
+                // 拒绝拍品
+                async rejectItem(item) {
+                    try {
+                        await ElMessageBox.prompt('请输入拒绝原因', '拒绝拍品', {
+                            confirmButtonText: '确定',
+                            cancelButtonText: '取消',
+                            inputPattern: /.+/,
+                            inputErrorMessage: '请输入拒绝原因'
+                        });
+                        
+                        await axios.put(`/api/admin/items/${item.id}/reject`, {
+                            reason: '拒绝原因'
+                        });
+                        ElMessage.success('拍品已拒绝');
+                        this.loadItems();
+                        
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            console.error('拒绝拍品失败:', error);
+                            ElMessage.error('操作失败');
+                        }
+                    }
+                },
+                
+                // 删除拍品
+                async deleteItem(item) {
+                    try {
+                        await ElMessageBox.confirm('确定要删除这个拍品吗？删除后不可恢复！', '确认删除', {
+                            type: 'warning'
+                        });
+                        
+                        await axios.delete(`/api/admin/items/${item.id}`);
+                        ElMessage.success('拍品已删除');
+                        this.loadItems();
+                        
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            console.error('删除拍品失败:', error);
+                            ElMessage.error('删除失败');
+                        }
+                    }
+                },
+                
+                // 文件上传成功
+                handleUploadSuccess(response, file) {
+                    if (response.code === 200) {
+                        this.itemForm.imageUrl = response.data.url;
+                        ElMessage.success('图片上传成功');
+                    } else {
+                        ElMessage.error('图片上传失败');
+                    }
+                },
+                
+                // 文件移除
+                handleRemove() {
+                    this.itemForm.imageUrl = '';
+                },
+                
+                // 上传前检查
+                beforeUpload(file) {
+                    const isImage = file.type.startsWith('image/');
+                    const isLt2M = file.size / 1024 / 1024 < 2;
+                    
+                    if (!isImage) {
+                        ElMessage.error('只能上传图片文件!');
+                    }
+                    if (!isLt2M) {
+                        ElMessage.error('图片大小不能超过 2MB!');
+                    }
+                    return isImage && isLt2M;
+                },
+                
+                // 分页处理
+                handleSizeChange(val) {
+                    this.pageSize = val;
+                    this.loadItems();
+                },
+                
+                handleCurrentChange(val) {
+                    this.page = val;
+                    this.loadItems();
+                },
+                
+                // 工具方法
+                getCategoryName(category) {
+                    const categories = {
+                        1: '书画', 2: '陶瓷', 3: '玉器', 
+                        4: '珠宝', 5: '家具', 6: '杂项'
+                    };
+                    return categories[category] || '未知';
+                },
+                
+                getStatusText(status) {
+                    const statusMap = {
+                        0: '草稿', 1: '待审核', 2: '已通过', 
+                        3: '已拒绝', 4: '拍卖中', 5: '已成交', 6: '流拍'
+                    };
+                    return statusMap[status] || '未知';
+                },
+                
+                getStatusType(status) {
+                    const typeMap = {
+                        0: 'info', 1: 'warning', 2: 'success',
+                        3: 'danger', 4: 'primary', 5: 'success', 6: 'info'
+                    };
+                    return typeMap[status] || 'info';
+                },
+                
+                formatDateTime(dateTime) {
+                    if (!dateTime) return '';
+                    return new Date(dateTime).toLocaleString('zh-CN');
+                }
+            }
+        }).use(ElementPlus).mount('#app');
+    </script>
+</body>
+</html>

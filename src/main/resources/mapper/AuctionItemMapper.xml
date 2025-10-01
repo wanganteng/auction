@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.auction.mapper.AuctionItemMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.auction.entity.AuctionItem">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="item_name" property="itemName" jdbcType="VARCHAR"/>
+        <result column="description" property="description" jdbcType="LONGVARCHAR"/>
+        <result column="category_id" property="categoryId" jdbcType="BIGINT"/>
+        <result column="starting_price" property="startingPrice" jdbcType="DECIMAL"/>
+        <result column="reserve_price" property="reservePrice" jdbcType="DECIMAL"/>
+        <result column="current_price" property="currentPrice" jdbcType="DECIMAL"/>
+        <result column="deposit_ratio" property="depositRatio" jdbcType="DECIMAL"/>
+        <result column="commission_ratio" property="commissionRatio" jdbcType="DECIMAL"/>
+        <result column="is_authentic" property="isAuthentic" jdbcType="TINYINT"/>
+        <result column="is_free_shipping" property="isFreeShipping" jdbcType="TINYINT"/>
+        <result column="is_returnable" property="isReturnable" jdbcType="TINYINT"/>
+        <result column="status" property="status" jdbcType="TINYINT"/>
+        <result column="uploader_id" property="uploaderId" jdbcType="BIGINT"/>
+        <result column="images" property="images" jdbcType="LONGVARCHAR"/>
+        <result column="detail_images" property="detailImages" jdbcType="LONGVARCHAR"/>
+        <result column="weight" property="weight" jdbcType="DECIMAL"/>
+        <result column="dimensions" property="dimensions" jdbcType="VARCHAR"/>
+        <result column="material" property="material" jdbcType="VARCHAR"/>
+        <result column="era" property="era" jdbcType="VARCHAR"/>
+        <result column="source" property="source" jdbcType="VARCHAR"/>
+        <result column="certificate" property="certificate" jdbcType="VARCHAR"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="TINYINT"/>
+        <result column="auction_status" property="auctionStatus" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, item_name, description, category_id, starting_price, reserve_price, current_price, estimated_price, item_code,
+        deposit_ratio, commission_ratio, is_authentic, is_free_shipping, is_returnable,
+        status, uploader_id,
+        images, detail_images, weight, dimensions, material, era, source, certificate,
+        create_time, update_time, deleted
+    </sql>
+
+    <!-- 插入拍品 -->
+    <insert id="insert" parameterType="com.auction.entity.AuctionItem" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO auction_item (
+            item_name, description, category_id, starting_price, reserve_price, current_price, estimated_price, item_code,
+            deposit_ratio, commission_ratio, is_authentic, is_free_shipping, is_returnable,
+            status, uploader_id,
+            images, detail_images, weight, dimensions, material, era, source, certificate,
+            create_time, update_time, deleted
+        ) VALUES (
+            #{itemName}, #{description}, #{categoryId}, #{startingPrice}, #{reservePrice}, #{currentPrice}, #{estimatedPrice}, #{itemCode},
+            #{depositRatio}, #{commissionRatio}, #{isAuthentic}, #{isFreeShipping}, #{isReturnable},
+            #{status}, #{uploaderId},
+            #{images}, #{detailImages}, #{weight}, #{dimensions}, #{material}, #{era}, #{source}, #{certificate},
+            #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <!-- 更新拍品 -->
+    <update id="update" parameterType="com.auction.entity.AuctionItem">
+        UPDATE auction_item
+        <set>
+            <if test="itemName != null">item_name = #{itemName},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="startingPrice != null">starting_price = #{startingPrice},</if>
+            <if test="reservePrice != null">reserve_price = #{reservePrice},</if>
+            <if test="currentPrice != null">current_price = #{currentPrice},</if>
+            <if test="estimatedPrice != null">estimated_price = #{estimatedPrice},</if>
+            <if test="itemCode != null">item_code = #{itemCode},</if>
+            <if test="depositRatio != null">deposit_ratio = #{depositRatio},</if>
+            <if test="commissionRatio != null">commission_ratio = #{commissionRatio},</if>
+            <if test="isAuthentic != null">is_authentic = #{isAuthentic},</if>
+            <if test="isFreeShipping != null">is_free_shipping = #{isFreeShipping},</if>
+            <if test="isReturnable != null">is_returnable = #{isReturnable},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="uploaderId != null">uploader_id = #{uploaderId},</if>
+            <if test="images != null">images = #{images},</if>
+            <if test="detailImages != null">detail_images = #{detailImages},</if>
+            <if test="weight != null">weight = #{weight},</if>
+            <if test="dimensions != null">dimensions = #{dimensions},</if>
+            <if test="material != null">material = #{material},</if>
+            <if test="era != null">era = #{era},</if>
+            <if test="source != null">source = #{source},</if>
+            <if test="certificate != null">certificate = #{certificate},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <!-- 查询可分配到拍卖会的拍品：上架且未被未开始/进行中的拍卖会占用 -->
+    <select id="selectAvailableForAssignment" resultMap="BaseResultMap">
+        SELECT ai.*, 
+          (
+            CASE 
+              WHEN EXISTS (
+                SELECT 1 FROM auction_session_item asi
+                JOIN auction_session s ON s.id = asi.session_id AND s.deleted = 0
+                WHERE asi.item_id = ai.id AND s.status = 2
+              ) THEN 1
+              WHEN EXISTS (
+                SELECT 1 FROM auction_result ar WHERE ar.item_id = ai.id AND ar.result_status = 1
+              ) THEN 2
+              WHEN EXISTS (
+                SELECT 1 FROM auction_result ar WHERE ar.item_id = ai.id AND ar.result_status = 0
+              ) THEN 3
+              ELSE 0
+            END
+          ) AS auction_status
+        FROM auction_item ai
+        WHERE ai.deleted = 0
+          AND ai.status = 1
+          AND NOT EXISTS (
+            SELECT 1
+            FROM auction_session_item asi
+            JOIN auction_session s ON s.id = asi.session_id AND s.deleted = 0
+            WHERE asi.item_id = ai.id
+              AND s.status IN (1, 2)
+          )
+    </select>
+
+  <!-- 根据拍卖会ID查询拍品 -->
+  <select id="selectBySessionId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT ai.*,
+          (
+            CASE 
+              WHEN EXISTS (
+                SELECT 1 FROM auction_session_item asi
+                JOIN auction_session s ON s.id = asi.session_id AND s.deleted = 0
+                WHERE asi.item_id = ai.id AND s.status = 2
+              ) THEN 1
+              WHEN EXISTS (
+                SELECT 1 FROM auction_result ar WHERE ar.item_id = ai.id AND ar.result_status = 1
+              ) THEN 2
+              WHEN EXISTS (
+                SELECT 1 FROM auction_result ar WHERE ar.item_id = ai.id AND ar.result_status = 0
+              ) THEN 3
+              ELSE 0
+            END
+          ) AS auction_status
+        FROM auction_item ai
+        WHERE ai.id IN (
+            SELECT item_id FROM auction_session_item WHERE session_id = #{sessionId}
+        )
+        AND ai.deleted = 0
+        ORDER BY ai.create_time DESC
+  </select>
+
+    <!-- 根据ID查询拍品 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_item
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 查询拍品列表 -->
+    <select id="selectList" parameterType="com.auction.entity.AuctionItem" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_item
+        <where>
+            deleted = 0
+            <if test="itemName != null and itemName != ''">
+                AND item_name LIKE CONCAT('%', #{itemName}, '%')
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            
+            <if test="uploaderId != null">
+                AND uploader_id = #{uploaderId}
+            </if>
+            <if test="categoryId != null">
+                AND category_id = #{categoryId}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据ID删除拍品 -->
+    <update id="deleteById" parameterType="java.lang.Long">
+        UPDATE auction_item
+        SET deleted = 1, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据拍卖会ID更新拍品状态 -->
+    <update id="updateBySessionId">
+        UPDATE auction_item
+        SET status = #{item.status}, update_time = #{item.updateTime}
+        WHERE id IN (
+            SELECT item_id FROM auction_session_item WHERE session_id = #{sessionId}
+        ) AND deleted = 0
+    </update>
+
+    <!-- 根据状态查询拍品 -->
+    <select id="selectByStatus" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_item
+        WHERE status = #{status} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 查询所有拍品 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_item
+        WHERE deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据用户ID查询拍品 -->
+    <select id="selectByUserId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_item
+        WHERE uploader_id = #{userId} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据ID更新拍品 -->
+    <update id="updateById" parameterType="com.auction.entity.AuctionItem">
+        UPDATE auction_item
+        <set>
+            <if test="itemName != null">item_name = #{itemName},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="startingPrice != null">starting_price = #{startingPrice},</if>
+            <if test="reservePrice != null">reserve_price = #{reservePrice},</if>
+            <if test="currentPrice != null">current_price = #{currentPrice},</if>
+            <if test="depositRatio != null">deposit_ratio = #{depositRatio},</if>
+            <if test="commissionRatio != null">commission_ratio = #{commissionRatio},</if>
+            <if test="isAuthentic != null">is_authentic = #{isAuthentic},</if>
+            <if test="isFreeShipping != null">is_free_shipping = #{isFreeShipping},</if>
+            <if test="isReturnable != null">is_returnable = #{isReturnable},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="uploaderId != null">uploader_id = #{uploaderId},</if>
+            <if test="images != null">images = #{images},</if>
+            <if test="detailImages != null">detail_images = #{detailImages},</if>
+            <if test="weight != null">weight = #{weight},</if>
+            <if test="dimensions != null">dimensions = #{dimensions},</if>
+            <if test="material != null">material = #{material},</if>
+            <if test="era != null">era = #{era},</if>
+            <if test="source != null">source = #{source},</if>
+            <if test="certificate != null">certificate = #{certificate},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+</mapper>

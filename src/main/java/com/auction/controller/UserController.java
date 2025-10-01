@@ -1,0 +1,761 @@
+package com.auction.controller;
+
+import com.auction.entity.AuctionBid;
+import com.auction.entity.AuctionOrder;
+import com.auction.entity.AuctionSession;
+import com.auction.entity.UserDepositAccount;
+import com.auction.entity.UserDepositTransaction;
+import com.auction.entity.UserDepositRefund;
+import com.auction.entity.SysUser;
+import com.auction.service.AuctionBidService;
+import com.auction.service.AuctionOrderService;
+import com.auction.websocket.AuctionWebSocketHandler;
+import com.auction.service.RedisService;
+import com.auction.service.AuctionSessionService;
+import com.auction.service.UserDepositAccountService;
+import com.auction.service.UserDepositTransactionService;
+import com.auction.service.UserDepositRefundService;
+import com.auction.common.Result;
+import com.github.pagehelper.PageInfo;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import com.auction.security.CustomUserDetailsService;
+import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 买家控制器
+ * 包含保证金管理、拍卖会列表、竞拍等功能
+ * 
+ * @author auction-system
+ * @version 1.0.0
+ * @since 2024-01-01
+ */
+@Slf4j
+@RestController
+@RequestMapping("/api/user")
+@Tag(name = "买家功能", description = "买家相关接口")
+public class UserController {
+
+    @Autowired
+    private AuctionSessionService auctionSessionService;
+
+    @Autowired
+    private UserDepositAccountService userDepositAccountService;
+
+    @Autowired
+    private UserDepositTransactionService userDepositTransactionService;
+
+    @Autowired
+    private UserDepositRefundService userDepositRefundService;
+
+    @Autowired
+    private AuctionBidService auctionBidService;
+
+    @Autowired
+    private AuctionOrderService auctionOrderService;
+
+    @Autowired
+    private com.auction.mapper.AuctionItemMapper auctionItemMapper;
+
+    @Autowired
+    private AuctionWebSocketHandler auctionWebSocketHandler;
+
+    @Autowired
+    private RedisService redisService;
+
+    // ==================== 拍卖会管理 ====================
+
+    /**
+     * 获取拍卖会列表
+     */
+    @GetMapping("/sessions")
+    @Operation(summary = "获取拍卖会列表", description = "获取所有可用的拍卖会列表")
+    public Result<Map<String, Object>> getSessions(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            // 仅返回“已展示”的拍卖会
+            AuctionSession query = new AuctionSession();
+            query.setIsVisible(1);
+            List<AuctionSession> sessions = auctionSessionService.getSessionList(query);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("data", sessions);
+            result.put("total", sessions.size());
+            
+            return Result.success("查询成功", result);
+
+        } catch (Exception e) {
+            log.error("获取拍卖会列表失败: {}", e.getMessage(), e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取拍卖会详情
+     */
+    @GetMapping("/sessions/{id}")
+    @Operation(summary = "获取拍卖会详情", description = "获取指定拍卖会的详细信息")
+    public Result<Map<String, Object>> getSessionDetail(@PathVariable Long id) {
+        try {
+            // 获取详情后校验是否可见
+            AuctionSession session = auctionSessionService.getSessionById(id);
+            if (session == null) {
+                return Result.error("拍卖会不存在");
+            }
+            if (session.getIsVisible() == null || session.getIsVisible() != 1) {
+                return Result.error("拍卖会暂未对外展示");
+            }
+            
+            Map<String, Object> sessionDetail = new HashMap<>();
+            sessionDetail.put("id", session.getId());
+            sessionDetail.put("sessionName", session.getSessionName());
+            sessionDetail.put("description", session.getDescription());
+            sessionDetail.put("startTime", session.getStartTime());
+            sessionDetail.put("endTime", session.getEndTime());
+            sessionDetail.put("status", session.getStatus());
+            sessionDetail.put("coverImage", session.getCoverImage());
+            sessionDetail.put("depositRatio", session.getDepositRatio());
+            sessionDetail.put("commissionRatio", session.getCommissionRatio());
+            sessionDetail.put("minDepositAmount", session.getMinDepositAmount());
+            sessionDetail.put("maxBidAmount", session.getMaxBidAmount());
+            sessionDetail.put("minIncrementAmount", session.getMinIncrementAmount());
+            sessionDetail.put("totalItems", session.getTotalItems());
+            sessionDetail.put("soldItems", session.getSoldItems());
+            sessionDetail.put("viewCount", session.getViewCount());
+            
+            // 加载该拍卖会的拍品列表
+            List<com.auction.entity.AuctionItem> items = auctionItemMapper.selectBySessionId(id);
+            List<Map<String, Object>> itemList = new ArrayList<>();
+            for (com.auction.entity.AuctionItem item : items) {
+                Map<String, Object> m = new HashMap<>();
+                m.put("id", item.getId());
+                m.put("itemName", item.getItemName());
+                m.put("description", item.getDescription());
+                m.put("itemCode", item.getItemCode());
+                m.put("estimatedPrice", item.getEstimatedPrice());
+                m.put("dimensions", item.getDimensions());
+                m.put("material", item.getMaterial());
+                m.put("startingPrice", item.getStartingPrice());
+                m.put("currentPrice", item.getCurrentPrice());
+                m.put("images", item.getImages());
+                m.put("status", item.getStatus());
+                itemList.add(m);
+            }
+            sessionDetail.put("items", itemList);
+            
+            return Result.success("查询成功", sessionDetail);
+
+        } catch (Exception e) {
+            log.error("获取拍卖会详情失败: {}", e.getMessage(), e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 记录一次围观（浏览）并返回最新围观人数
+     */
+    @PostMapping("/sessions/{id}/view")
+    @Operation(summary = "增加围观人数", description = "用户访问拍卖会详情即计一次围观")
+    public Result<Long> addSessionView(@PathVariable Long id) {
+        try {
+            Long count = redisService.incrementAuctionViewCount(id);
+            return Result.success("记录成功", count);
+        } catch (Exception e) {
+            log.error("记录围观人数失败: sessionId={}, error={}", id, e.getMessage(), e);
+            return Result.error("记录失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取拍卖会出价记录
+     */
+    @GetMapping("/sessions/{id}/bids")
+    @Operation(summary = "获取出价记录", description = "获取指定拍卖会的出价记录")
+    public Result<List<Map<String, Object>>> getSessionBids(@PathVariable Long id) {
+        try {
+            // 使用现有的方法获取出价记录
+            AuctionBid bidQuery = new AuctionBid();
+            bidQuery.setSessionId(id);
+            bidQuery.setStatus(0); // 只查询有效出价
+            List<AuctionBid> bids = auctionBidService.getBidList(bidQuery);
+            
+            List<Map<String, Object>> bidList = new ArrayList<>();
+            for (AuctionBid bid : bids) {
+                Map<String, Object> bidMap = new HashMap<>();
+                bidMap.put("id", bid.getId());
+                bidMap.put("bidAmount", bid.getBidAmount());
+                bidMap.put("bidAmountYuan", bid.getBidAmountYuan());
+                bidMap.put("bidTime", bid.getBidTime());
+                bidMap.put("username", "用户" + bid.getUserId()); // 简化处理
+                bidMap.put("source", bid.getSource());
+                bidMap.put("isAuto", bid.getIsAuto());
+                bidList.add(bidMap);
+            }
+            
+            return Result.success("查询成功", bidList);
+
+        } catch (Exception e) {
+            log.error("获取出价记录失败: {}", e.getMessage(), e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取用户保证金账户信息
+     */
+    @GetMapping("/deposit/account")
+    @Operation(summary = "获取用户保证金账户信息", description = "获取当前用户的保证金账户信息")
+    public Result<Map<String, Object>> getDepositAccount() {
+        try {
+            SysUser currentUser = getCurrentUser();
+            UserDepositAccount account = userDepositAccountService.getAccountByUserId(currentUser.getId());
+            
+            if (account == null) {
+                // 如果账户不存在，创建一个
+                Long accountId = userDepositAccountService.createAccount(currentUser.getId());
+                account = userDepositAccountService.getAccountByUserId(currentUser.getId());
+            }
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("availableAmount", account.getAvailableAmount()); // 可用余额（元）
+            result.put("frozenAmount", account.getFrozenAmount()); // 冻结金额（元）
+            result.put("totalAmount", account.getTotalAmount()); // 总余额（元）
+            
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("获取保证金账户信息失败: {}", e.getMessage(), e);
+            return Result.error("获取保证金账户信息失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 参与竞拍
+     */
+    @PostMapping("/sessions/{id}/bid")
+    @Operation(summary = "参与竞拍", description = "用户参与拍卖会竞拍")
+    public Result<String> placeBid(@PathVariable Long id, @RequestBody Map<String, Object> bidData) {
+        try {
+            SysUser currentUser = getCurrentUser();
+            BigDecimal bidAmount = new BigDecimal(bidData.get("bidAmount").toString());
+            // 读取拍品ID
+            Object itemIdObj = bidData.get("itemId");
+            if (itemIdObj == null) {
+                return Result.error("参数错误：缺少itemId");
+            }
+            Long itemId;
+            if (itemIdObj instanceof Number) {
+                itemId = ((Number) itemIdObj).longValue();
+            } else {
+                itemId = Long.parseLong(itemIdObj.toString());
+            }
+            
+            // 创建出价记录
+            AuctionBid bid = new AuctionBid();
+            bid.setSessionId(id);
+            bid.setItemId(itemId);
+            bid.setUserId(currentUser.getId());
+            // 转换BigDecimal到Long（分）
+            bid.setBidAmount(bidAmount.multiply(new BigDecimal("100")).longValue());
+            bid.setBidAmountYuan(bidAmount); // 设置元金额
+            bid.setBidTime(LocalDateTime.now());
+            bid.setClientIp("127.0.0.1"); // 使用正确的字段名
+            bid.setSource(1); // 1-手动出价
+            bid.setIsAuto(0); // 0-否
+            bid.setStatus(0); // 0-有效
+            // 默认字段，避免NULL
+            bid.setDeleted(0);
+            bid.setCreateTime(LocalDateTime.now());
+            bid.setUpdateTime(LocalDateTime.now());
+
+            Long bidId = auctionBidService.placeBid(bid);
+            
+            if (bidId != null) {
+                // 出价成功后通过WebSocket广播（兼容REST出价路径）
+                try {
+                    Long userBidCount = redisService.incrementUserBidCount(currentUser.getId(), id);
+                    Long auctionBidCount = redisService.incrementAuctionBidCount(id);
+                    auctionWebSocketHandler.sendBidMessage(id, bid, userBidCount, auctionBidCount);
+                } catch (Exception ignore) {}
+                return Result.success("出价成功");
+            } else {
+                return Result.error("出价失败");
+            }
+
+        } catch (Exception e) {
+            log.error("参与竞拍失败: {}", e.getMessage(), e);
+            return Result.error("出价失败: " + e.getMessage());
+        }
+    }
+
+    // ==================== 订单管理 ====================
+
+    /**
+     * 获取用户订单列表
+     */
+    @GetMapping("/orders")
+    @Operation(summary = "获取订单列表", description = "获取当前用户的订单列表")
+    public Result<Map<String, Object>> getOrders(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            SysUser currentUser = getCurrentUser();
+            // 使用现有的方法获取用户订单列表
+            PageInfo<AuctionOrder> pageInfo = auctionOrderService.getUserOrders(currentUser.getId(), page, size);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("data", pageInfo.getList());
+            result.put("total", pageInfo.getTotal());
+            result.put("pageNum", pageInfo.getPageNum());
+            result.put("pageSize", pageInfo.getPageSize());
+            result.put("pages", pageInfo.getPages());
+            
+            return Result.success("查询成功", result);
+
+        } catch (Exception e) {
+            log.error("获取订单列表失败: {}", e.getMessage(), e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 支付订单
+     */
+    @PostMapping("/orders/pay")
+    @Operation(summary = "支付订单", description = "用户支付订单")
+    public Result<String> payOrder(@RequestBody Map<String, Object> paymentData) {
+        try {
+            Long orderId = Long.valueOf(paymentData.get("orderId").toString());
+            String paymentMethod = paymentData.get("paymentMethod").toString();
+            
+            SysUser currentUser = getCurrentUser();
+            // 先验证订单是否属于当前用户
+            AuctionOrder order = auctionOrderService.getOrderById(orderId);
+            if (order == null || !order.getBuyerId().equals(currentUser.getId())) {
+                return Result.error("订单不存在或无权限");
+            }
+            
+            // payOrder方法只接受一个参数（订单ID）
+            boolean success = auctionOrderService.payOrder(orderId);
+            
+            if (success) {
+                return Result.success("支付成功");
+            } else {
+                return Result.error("支付失败");
+            }
+
+        } catch (Exception e) {
+            log.error("支付订单失败: {}", e.getMessage(), e);
+            return Result.error("支付失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 取消订单
+     */
+    @PostMapping("/orders/{id}/cancel")
+    @Operation(summary = "取消订单", description = "用户取消订单")
+    public Result<String> cancelOrder(@PathVariable Long id) {
+        try {
+            SysUser currentUser = getCurrentUser();
+            // 先验证订单是否属于当前用户
+            AuctionOrder order = auctionOrderService.getOrderById(id);
+            if (order == null || !order.getBuyerId().equals(currentUser.getId())) {
+                return Result.error("订单不存在或无权限");
+            }
+            
+            boolean success = auctionOrderService.cancelOrder(id);
+            
+            if (success) {
+                return Result.success("订单已取消");
+            } else {
+                return Result.error("取消失败");
+            }
+
+        } catch (Exception e) {
+            log.error("取消订单失败: {}", e.getMessage(), e);
+            return Result.error("取消失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 确认收货
+     */
+    @PostMapping("/orders/{id}/confirm")
+    @Operation(summary = "确认收货", description = "用户确认收货")
+    public Result<String> confirmReceive(@PathVariable Long id) {
+        try {
+            SysUser currentUser = getCurrentUser();
+            // 先验证订单是否属于当前用户
+            AuctionOrder order = auctionOrderService.getOrderById(id);
+            if (order == null || !order.getBuyerId().equals(currentUser.getId())) {
+                return Result.error("订单不存在或无权限");
+            }
+            
+            boolean success = auctionOrderService.confirmReceive(id);
+            
+            if (success) {
+                return Result.success("确认收货成功");
+            } else {
+                return Result.error("确认收货失败");
+            }
+
+        } catch (Exception e) {
+            log.error("确认收货失败: {}", e.getMessage(), e);
+            return Result.error("确认收货失败: " + e.getMessage());
+        }
+    }
+
+    // ==================== 保证金管理 ====================
+
+
+    /**
+     * 获取保证金状态
+     */
+    @GetMapping("/deposits/status")
+    @Operation(summary = "获取保证金状态", description = "检查用户是否有足够的保证金")
+    public Result<Map<String, Object>> getDepositStatus() {
+        try {
+            SysUser currentUser = getCurrentUser();
+            UserDepositAccount account = userDepositAccountService.getAccountByUserId(currentUser.getId());
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("hasDeposit", account != null && account.getAvailableAmount().compareTo(BigDecimal.ZERO) > 0);
+            result.put("balance", account != null ? account.getAvailableAmount() : BigDecimal.ZERO);
+            
+            return Result.success("查询成功", result);
+
+        } catch (Exception e) {
+            log.error("获取保证金状态失败: {}", e.getMessage(), e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取保证金交易记录
+     */
+    @GetMapping("/deposits/transactions")
+    @Operation(summary = "获取保证金交易记录", description = "获取用户的保证金交易记录")
+    public Result<List<Map<String, Object>>> getDepositTransactions() {
+        try {
+            SysUser currentUser = getCurrentUser();
+            // 获取交易记录列表
+            List<UserDepositTransaction> transactionList = userDepositTransactionService.getTransactionsByUserId(currentUser.getId());
+            
+            // 转换为Map格式
+            List<Map<String, Object>> transactions = new ArrayList<>();
+            for (UserDepositTransaction transaction : transactionList) {
+                Map<String, Object> transactionMap = new HashMap<>();
+                transactionMap.put("id", transaction.getId());
+                transactionMap.put("transactionNo", transaction.getTransactionNo());
+                transactionMap.put("transactionType", transaction.getTransactionType());
+                transactionMap.put("amount", transaction.getAmount());
+                transactionMap.put("balanceBefore", transaction.getBalanceBefore());
+                transactionMap.put("balanceAfter", transaction.getBalanceAfter());
+                transactionMap.put("status", transaction.getStatus());
+                transactionMap.put("description", transaction.getDescription());
+                transactionMap.put("createTime", transaction.getCreateTime());
+                transactionMap.put("relatedId", transaction.getRelatedId());
+                transactionMap.put("relatedType", transaction.getRelatedType());
+                transactions.add(transactionMap);
+            }
+            
+            return Result.success("查询成功", transactions);
+
+        } catch (Exception e) {
+            log.error("获取保证金交易记录失败: {}", e.getMessage(), e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 充值保证金
+     */
+    @PostMapping("/deposits/deposit")
+    @Operation(summary = "充值保证金", description = "充值保证金到账户")
+    public Result<String> rechargeDeposit(@RequestParam BigDecimal amount, 
+                                        @RequestParam(required = false) String description) {
+        try {
+            if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+                return Result.error("充值金额必须大于0");
+            }
+
+            SysUser currentUser = getCurrentUser();
+            
+            boolean success = userDepositAccountService.recharge(
+                currentUser.getId(), 
+                amount, 
+                description != null ? description : "用户充值"
+            );
+
+            if (success) {
+                return Result.success("保证金充值成功");
+            } else {
+                return Result.error("保证金充值失败");
+            }
+
+        } catch (Exception e) {
+            log.error("保证金充值失败: {}", e.getMessage(), e);
+            return Result.error("保证金充值失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 提现保证金
+     */
+    @PostMapping("/deposits/withdraw")
+    @Operation(summary = "提现保证金", description = "从保证金账户提现")
+    public Result<String> withdrawDeposit(@RequestBody Map<String, Object> withdrawData) {
+        try {
+            BigDecimal amount = new BigDecimal(withdrawData.get("amount").toString());
+            String withdrawMethod = withdrawData.get("withdrawMethod").toString();
+            String account = withdrawData.get("account").toString();
+            String remark = withdrawData.get("remark") != null ? withdrawData.get("remark").toString() : "";
+            
+            if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+                return Result.error("提现金额必须大于0");
+            }
+
+            SysUser currentUser = getCurrentUser();
+            
+            // 简化处理：暂时不支持提现功能
+            // 实际项目中应该实现完整的提现流程
+            boolean success = false;
+            
+            // 这里可以添加提现逻辑，比如：
+            // 1. 检查账户余额
+            // 2. 创建提现申请
+            // 3. 等待管理员审核
+            // 4. 审核通过后扣除余额
+            
+            // 暂时返回失败，提示功能暂未开放
+            return Result.error("提现功能暂未开放，请联系管理员");
+
+        } catch (Exception e) {
+            log.error("保证金提现失败: {}", e.getMessage(), e);
+            return Result.error("提现失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 查询交易流水
+     */
+    @GetMapping("/deposit/transactions")
+    @Operation(summary = "查询交易流水", description = "查询当前用户的保证金交易流水")
+    public Result<List<UserDepositTransaction>> getDepositTransactions(@RequestParam(required = false) Integer transactionType) {
+        try {
+            SysUser currentUser = getCurrentUser();
+            
+            UserDepositTransaction transaction = new UserDepositTransaction();
+            transaction.setUserId(currentUser.getId());
+            if (transactionType != null) {
+                transaction.setTransactionType(transactionType);
+            }
+            
+            List<UserDepositTransaction> transactions = userDepositTransactionService.getTransactionList(transaction);
+            return Result.success("查询成功", transactions);
+
+        } catch (Exception e) {
+            log.error("查询交易流水失败: {}", e.getMessage(), e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 申请退还保证金
+     */
+    @PostMapping("/deposit/refund")
+    @Operation(summary = "申请退还保证金", description = "申请退还保证金")
+    public Result<Map<String, Object>> applyRefund(@RequestParam BigDecimal amount, 
+                                                  @RequestParam(required = false) String reason) {
+        try {
+            if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+                return Result.error("退款金额必须大于0");
+            }
+
+            SysUser currentUser = getCurrentUser();
+            
+            Long refundId = userDepositRefundService.createRefundApplication(
+                currentUser.getId(), 
+                amount, 
+                reason != null ? reason : "用户申请退款"
+            );
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("refundId", refundId);
+
+            return Result.success("退款申请提交成功", data);
+
+        } catch (Exception e) {
+            log.error("退款申请失败: {}", e.getMessage(), e);
+            return Result.error("退款申请失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 查询退款申请列表
+     */
+    @GetMapping("/deposit/refunds")
+    @Operation(summary = "查询退款申请列表", description = "查询当前用户的退款申请列表")
+    public Result<List<UserDepositRefund>> getDepositRefunds(@RequestParam(required = false) Integer status) {
+        try {
+            SysUser currentUser = getCurrentUser();
+            
+            UserDepositRefund refund = new UserDepositRefund();
+            refund.setUserId(currentUser.getId());
+            if (status != null) {
+                refund.setStatus(status);
+            }
+            
+            List<UserDepositRefund> refunds = userDepositRefundService.getRefundList(refund);
+            return Result.success("查询成功", refunds);
+
+        } catch (Exception e) {
+            log.error("查询退款申请失败: {}", e.getMessage(), e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    // ==================== 竞拍功能 ====================
+
+    /**
+     * 出价
+     */
+    @PostMapping("/bids")
+    @Operation(summary = "出价", description = "对拍品进行出价")
+    public Result<Map<String, Object>> placeBid(
+            @RequestParam Long sessionId,
+            @RequestParam Long itemId,
+            @RequestParam BigDecimal bidAmount) {
+        try {
+            SysUser currentUser = getCurrentUser();
+            
+            AuctionBid bid = new AuctionBid();
+            bid.setSessionId(sessionId);
+            bid.setItemId(itemId);
+            bid.setUserId(currentUser.getId());
+            bid.setBidAmountYuan(bidAmount);
+            bid.setBidAmount(bidAmount.multiply(new BigDecimal("100")).longValue()); // 转换为分
+            bid.setSource(1); // 手动出价
+            bid.setIsAuto(0);
+            
+            Long bidId = auctionBidService.placeBid(bid);
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("bidId", bidId);
+
+            return Result.success("出价成功", data);
+
+        } catch (Exception e) {
+            log.error("出价失败: {}", e.getMessage(), e);
+            return Result.error("出价失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 查询出价记录
+     */
+    @GetMapping("/bids")
+    @Operation(summary = "查询出价记录", description = "查询当前用户的出价记录")
+    public Result<List<AuctionBid>> getBidList(AuctionBid bid) {
+        try {
+            SysUser currentUser = getCurrentUser();
+            bid.setUserId(currentUser.getId());
+            
+            List<AuctionBid> bids = auctionBidService.getBidList(bid);
+            return Result.success("查询成功", bids);
+
+        } catch (Exception e) {
+            log.error("查询出价记录失败: {}", e.getMessage(), e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 查询拍品出价记录
+     */
+    @GetMapping("/items/{itemId}/bids")
+    @Operation(summary = "查询拍品出价记录", description = "查询指定拍品的出价记录")
+    public Result<List<AuctionBid>> getItemBidList(@PathVariable Long itemId) {
+        try {
+            List<AuctionBid> bids = auctionBidService.getItemBidList(itemId);
+            return Result.success("查询成功", bids);
+
+        } catch (Exception e) {
+            log.error("查询拍品出价记录失败: itemId={}, 错误: {}", itemId, e.getMessage(), e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取拍卖会统计信息
+     * 
+     * @param sessionId 拍卖会ID
+     * @return 统计信息
+     */
+    @GetMapping("/sessions/{sessionId}/statistics")
+    @Operation(summary = "获取拍卖会统计信息", description = "获取指定拍卖会的围观人数、出价次数等统计信息")
+    public Result<Map<String, Object>> getSessionStatistics(@PathVariable Long sessionId) {
+        try {
+            Map<String, Object> statistics = auctionSessionService.getSessionStatistics(sessionId);
+            return Result.success("获取统计信息成功", statistics);
+        } catch (Exception e) {
+            log.error("获取拍卖会统计信息失败: 拍卖会ID={}, 错误: {}", sessionId, e.getMessage(), e);
+            return Result.error("获取统计信息失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取我的出价统计
+     * 
+     * @param sessionId 拍卖会ID
+     * @return 我的出价统计
+     */
+    @GetMapping("/sessions/{sessionId}/my-bid-statistics")
+    @Operation(summary = "获取我的出价统计", description = "获取当前用户在指定拍卖会的出价统计信息")
+    public Result<Map<String, Object>> getMyBidStatistics(@PathVariable Long sessionId) {
+        try {
+            SysUser currentUser = getCurrentUser();
+            Map<String, Object> statistics = auctionSessionService.getUserBidStatistics(currentUser.getId(), sessionId);
+            return Result.success("获取我的出价统计成功", statistics);
+        } catch (Exception e) {
+            log.error("获取我的出价统计失败: 拍卖会ID={}, 错误: {}", sessionId, e.getMessage(), e);
+            return Result.error("获取我的出价统计失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取当前用户
+     */
+    private SysUser getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            throw new RuntimeException("用户未登录");
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof CustomUserDetailsService.CustomUserPrincipal) {
+            return ((CustomUserDetailsService.CustomUserPrincipal) principal).getUser();
+        }
+        if (principal instanceof SysUser) {
+            return (SysUser) principal;
+        }
+        if (principal instanceof UserDetails) {
+            // 仅兜底：尽量从 UserDetails 还原用户名并报更清晰错误
+            throw new RuntimeException("用户未登录");
+        }
+        throw new RuntimeException("用户未登录");
+    }
+}

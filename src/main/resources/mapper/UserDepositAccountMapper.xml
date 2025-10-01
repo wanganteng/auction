@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.auction.mapper.UserDepositAccountMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.auction.entity.UserDepositAccount">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="total_amount" property="totalAmount" jdbcType="DECIMAL"/>
+        <result column="available_amount" property="availableAmount" jdbcType="DECIMAL"/>
+        <result column="frozen_amount" property="frozenAmount" jdbcType="DECIMAL"/>
+        <result column="refunded_amount" property="refundedAmount" jdbcType="DECIMAL"/>
+        <result column="status" property="status" jdbcType="TINYINT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, user_id, total_amount, available_amount, frozen_amount, refunded_amount,
+        status, create_time, update_time, deleted
+    </sql>
+
+    <!-- 插入保证金账户 -->
+    <insert id="insert" parameterType="com.auction.entity.UserDepositAccount" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_deposit_account (
+            user_id, total_amount, available_amount, frozen_amount, refunded_amount,
+            status, create_time, update_time, deleted
+        ) VALUES (
+            #{userId}, #{totalAmount}, #{availableAmount}, #{frozenAmount}, #{refundedAmount},
+            #{status}, #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <!-- 更新保证金账户 -->
+    <update id="update" parameterType="com.auction.entity.UserDepositAccount">
+        UPDATE user_deposit_account
+        <set>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="totalAmount != null">total_amount = #{totalAmount},</if>
+            <if test="availableAmount != null">available_amount = #{availableAmount},</if>
+            <if test="frozenAmount != null">frozen_amount = #{frozenAmount},</if>
+            <if test="refundedAmount != null">refunded_amount = #{refundedAmount},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <!-- 根据ID查询保证金账户 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_deposit_account
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 根据用户ID查询保证金账户 -->
+    <select id="selectByUserId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_deposit_account
+        WHERE user_id = #{userId} AND deleted = 0
+    </select>
+
+    <!-- 查询保证金账户列表 -->
+    <select id="selectList" parameterType="com.auction.entity.UserDepositAccount" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_deposit_account
+        <where>
+            deleted = 0
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据ID删除保证金账户 -->
+    <update id="deleteById" parameterType="java.lang.Long">
+        UPDATE user_deposit_account
+        SET deleted = 1, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 更新账户金额（原子操作） -->
+    <update id="updateAmount">
+        UPDATE user_deposit_account
+        SET total_amount = #{totalAmount},
+            available_amount = #{availableAmount},
+            frozen_amount = #{frozenAmount},
+            refunded_amount = #{refundedAmount},
+            update_time = NOW()
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+</mapper>

@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拍卖会详情 - 拍卖系统</title>
+    <link rel="stylesheet" href="/css/element-plus.css">
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif; background-color: #f5f5f5; }
+        .header { background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 0 20px; position: sticky; top: 0; z-index: 1000; }
+        .header-content { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; height: 60px; }
+        .logo { display: flex; align-items: center; font-size: 24px; font-weight: bold; color: #409EFF; }
+        .nav-links { display: flex; gap: 20px; }
+        .main { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+        .session-hero { display: grid; grid-template-columns: 360px 1fr; gap: 20px; margin-bottom: 20px; }
+        .hero-card { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden; }
+        .hero-image { width: 100%; height: 240px; object-fit: cover; }
+        .hero-content { padding: 20px; }
+        .hero-title { margin: 0 0 8px 0; font-size: 22px; color: #303133; }
+        .hero-desc { margin: 0 0 12px 0; color: #606266; line-height: 1.6; }
+        .hero-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .hero-item { background: #f8f9fa; border-radius: 8px; padding: 12px; text-align: center; }
+        .hero-item .label { font-size: 12px; color: #909399; }
+        .hero-item .value { margin-top: 4px; font-weight: bold; color: #303133; }
+        .items-card { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 20px; }
+        .items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+        .item-card { border: 1px solid #ebeef5; border-radius: 8px; overflow: hidden; transition: .2s; background: #fff; }
+        .item-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.08); transform: translateY(-2px); }
+        .item-img { width: 100%; height: 180px; object-fit: cover; display: block; }
+        .item-body { padding: 12px; }
+        .item-title { margin: 0 0 6px 0; font-size: 16px; color: #303133; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .item-desc { margin: 0 0 10px 0; font-size: 12px; color: #909399; height: 32px; overflow: hidden; }
+        .item-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .meta { background: #f8f9fa; border-radius: 6px; padding: 8px; text-align: center; }
+        .meta .label { font-size: 12px; color: #909399; }
+        .meta .value { margin-top: 4px; font-weight: bold; color: #f56c6c; }
+        .item-actions { display: flex; gap: 8px; }
+    </style>
+    </head>
+<body>
+    <div id="app">
+        <el-header class="header">
+            <div class="header-content">
+                <div class="logo"><i class="el-icon-gavel"></i><span>拍卖系统</span></div>
+                <div class="nav-links">
+                    <el-link :underline="false" disabled style="font-weight: bold; color: #409EFF; cursor: not-allowed;">拍卖会</el-link>
+                    <el-link href="/auction/user/orders" :underline="false">我的订单</el-link>
+                    <el-link href="/auction/user/deposits" :underline="false">保证金</el-link>
+                    <el-link href="/auction/user/notifications" :underline="false">我的通知</el-link>
+                </div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <el-button v-if="!isLoggedIn" @click="goToLogin" type="primary" size="small">登录</el-button>
+                    <template v-else>
+                        <el-badge :value="unreadNotifications" :hidden="unreadNotifications === 0">
+                            <el-button icon="el-icon-bell" circle @click="goToNotifications"></el-button>
+                        </el-badge>
+                        <span style="color: #606266;">欢迎，{{ userInfo.nickname || userInfo.username }}</span>
+                        <el-button @click="logout" type="danger" size="small">退出登录</el-button>
+                    </template>
+                </div>
+            </div>
+        </el-header>
+
+        <el-main class="main">
+            <!-- 会场信息 -->
+            <div class="session-hero">
+                <div class="hero-card">
+                    <img :src="session.coverImage || '/images/default-session.jpg'" class="hero-image" :alt="session.sessionName">
+                    <div class="hero-content">
+                        <h2 class="hero-title">{{ session.sessionName }}</h2>
+                        <p class="hero-desc">{{ session.description }}</p>
+                        <div style="margin-top:8px; color:#606266; font-size:13px;">
+                            <strong>拍卖规则：</strong>
+                            <span>{{ session.rules || '—' }}</span>
+                        </div>
+                        <div class="hero-grid">
+                            <div class="hero-item">
+                                <div class="label">开始时间</div>
+                                <div class="value">{{ formatTime(session.startTime) }}</div>
+                            </div>
+                            <div class="hero-item">
+                                <div class="label">结束时间</div>
+                                <div class="value">{{ formatTime(session.endTime) }}</div>
+                            </div>
+                            <div class="hero-item">
+                                <div class="label">拍品数量</div>
+                                <div class="value">{{ session.totalItems || (session.items ? session.items.length : 0) }}</div>
+                            </div>
+                            <div class="hero-item">
+                                <div class="label">围观人数</div>
+                                <div class="value">{{ (session.viewCount !== undefined && session.viewCount !== null) ? Number(session.viewCount) : 0 }}</div>
+                            </div>
+                            <div class="hero-item">
+                                <div class="label">保证金比例</div>
+                                <div class="value">{{ (session.depositRatio || 0) * 100 }}%</div>
+                            </div>
+                            <div class="hero-item">
+                                <div class="label">佣金比例</div>
+                                <div class="value">{{ (session.commissionRatio || 0) * 100 }}%</div>
+                            </div>
+                            <!-- 去除冗余字段：服务展示 -->
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+
+            <!-- 拍品列表 -->
+            <div class="items-card">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin:0 0 12px 0;">
+                    <h3 style="margin: 0;">拍品列表</h3>
+                    <!-- 顶部固定可见的排序按钮（弹出层） -->
+                    <el-popover placement="bottom-end" trigger="click" :append-to-body="true" popper-class="sort-popper-high">
+                        <template #reference>
+                            <el-button size="small" type="primary">排序</el-button>
+                        </template>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; max-width:320px;">
+                            <el-button size="small" @click="sortField='itemCode'; sortOrder='desc'">编号 高→低</el-button>
+                            <el-button size="small" @click="sortField='itemCode'; sortOrder='asc'">编号 低→高</el-button>
+                            <el-button size="small" @click="sortField='startingPrice'; sortOrder='desc'">起拍价 高→低</el-button>
+                            <el-button size="small" @click="sortField='startingPrice'; sortOrder='asc'">起拍价 低→高</el-button>
+                            
+                        </div>
+                    </el-popover>
+                </div>
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap; background:#f8f9fa; border:1px solid #ebeef5; border-radius:8px; padding:10px;">
+                    <el-input v-model="searchCode" placeholder="按拍品编号或名称搜索" size="small" clearable style="width: 280px;" />
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <span style="color:#606266;">排序字段</span>
+                        <el-select v-model="sortField" size="small" style="width: 160px;">
+                            <el-option label="拍品编号" value="itemCode" />
+                            <el-option label="起拍价" value="startingPrice" />
+                            
+                        </el-select>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <span style="color:#606266;">排序方式</span>
+                        <el-radio-group v-model="sortOrder" size="small">
+                            <el-radio-button label="desc">从高到低</el-radio-button>
+                            <el-radio-button label="asc">从低到高</el-radio-button>
+                        </el-radio-group>
+                    </div>
+                    <!-- 弹出排序改移到标题右侧，避免被遮挡 -->
+                </div>
+                <div v-if="loading" style="text-align: center; padding: 20px;">
+                    <el-icon class="is-loading"><Loading /></el-icon>
+                    <p>加载中...</p>
+                </div>
+                <div v-else-if="!session.items || session.items.length === 0" style="text-align:center; color:#909399; padding: 30px;">暂无拍品</div>
+                <div v-else class="items-grid">
+                    <div v-for="it in filteredSortedItems" :key="it.id" class="item-card">
+                        <img :src="extractFirstImage(it.images) || '/images/default-item.jpg'" class="item-img" :alt="it.itemName">
+                        <div class="item-body">
+                            <h4 class="item-title">{{ it.itemName }}</h4>
+                            <div class="item-desc">{{ it.description }}</div>
+                            <div class="item-meta">
+                                <div class="meta">
+                                    <div class="label">拍品编号</div>
+                                    <div class="value" style="color:#303133;">{{ it.itemCode || '-' }}</div>
+                                </div>
+                                <div class="meta">
+                                    <div class="label">起拍价</div>
+                                    <div class="value">¥{{ toYuan(it.startingPrice) }}</div>
+                                </div>
+                                <div class="meta">
+                                    <div class="label">当前价</div>
+                                    <div class="value">¥{{ toYuan(it.currentPrice) }}</div>
+                                </div>
+                                
+                            </div>
+                            <div class="item-actions">
+                                <el-button type="primary" @click="enterBidding(it.id)">进入实时竞价</el-button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </el-main>
+    </div>
+
+    <script src="/js/vue.js"></script>
+    <script src="/js/element-plus.js"></script>
+    <script src="/js/axios.js"></script>
+    <script src="/js/api-init.js"></script>
+    <script>
+        const { createApp } = Vue;
+        const { ElMessage, ElMessageBox } = ElementPlus;
+        const __app__factory = createApp({
+            data() {
+                return {
+                    isLoggedIn: false,
+                    userInfo: {},
+                    unreadNotifications: 0,
+                    loading: true,
+                    session: {},
+                    // 搜索与排序
+                    searchCode: '',
+                    sortField: 'itemCode',
+                    sortOrder: 'asc'
+                }
+            },
+            mounted() {
+                this.setupAxiosInterceptors();
+                this.checkLoginStatus();
+                if (this.isLoggedIn) {
+                    this.loadSession();
+                    this.loadUnreadNotifications();
+                    // 每30秒刷新未读通知数
+                    setInterval(() => {
+                        if (this.isLoggedIn) {
+                            this.loadUnreadNotifications();
+                        }
+                    }, 30000);
+                }
+            },
+            methods: {
+                setupAxiosInterceptors() {
+                    axios.interceptors.request.use(
+                        config => {
+                            const token = localStorage.getItem('accessToken');
+                            if (token) {
+                                config.headers.Authorization = `Bearer ${token}`;
+                            }
+                            return config;
+                        },
+                        error => Promise.reject(error)
+                    );
+                    
+                    axios.interceptors.response.use(
+                        response => response,
+                        async error => {
+                            if (error.response && error.response.status === 401) {
+                                const refreshToken = localStorage.getItem('refreshToken');
+                                if (refreshToken) {
+                                    try {
+                                        const response = await axios.post('/api/auth/refresh', { refreshToken });
+                                        if (response.data.code === 200) {
+                                            const newAccessToken = response.data.data.accessToken;
+                                            localStorage.setItem('accessToken', newAccessToken);
+                                            error.config.headers.Authorization = `Bearer ${newAccessToken}`;
+                                            return axios.request(error.config);
+                                        }
+                                    } catch (e) {
+                                        console.error('Token刷新失败:', e);
+                                    }
+                                }
+                                
+                                localStorage.removeItem('accessToken');
+                                localStorage.removeItem('refreshToken');
+                                localStorage.removeItem('userInfo');
+                                this.isLoggedIn = false;
+                                this.userInfo = {};
+                                ElMessage.error('登录已过期，请重新登录');
+                                window.location.href = '/auction/login';
+                            }
+                            return Promise.reject(error);
+                        }
+                    );
+                },
+                
+                checkLoginStatus() {
+                    const accessToken = localStorage.getItem('accessToken');
+                    const refreshToken = localStorage.getItem('refreshToken');
+                    const userInfoStr = localStorage.getItem('userInfo');
+                    
+                    if (accessToken && refreshToken) {
+                        this.isLoggedIn = true;
+                        if (userInfoStr) {
+                            this.userInfo = JSON.parse(userInfoStr);
+                        } else {
+                            this.userInfo = { username: 'buyer1', nickname: '买家1' };
+                        }
+                    } else {
+                        this.isLoggedIn = false;
+                        ElMessage.warning('请先登录');
+                        window.location.href = '/auction/login';
+                    }
+                },
+                
+                async loadUnreadNotifications() {
+                    try {
+                        const response = await axios.get('/api/notifications/unread-count');
+                        if (response.data.code === 200) {
+                            this.unreadNotifications = response.data.data;
+                        }
+                    } catch (error) {
+                        console.error('获取未读通知数失败:', error);
+                    }
+                },
+                
+                goToNotifications() {
+                    window.location.href = '/auction/user/notifications';
+                },
+                getSessionId() {
+                    const m = window.location.pathname.match(/\/sessions\/(\d+)/);
+                    return m ? m[1] : null;
+                },
+                loadSession() {
+                    const id = this.getSessionId();
+                    if (!id) { this.loading = false; return; }
+                    axios.get(`/api/user/sessions/${id}`)
+                        .then(res => {
+                            if (res.data.code === 200) {
+                                this.session = res.data.data || {};
+                                // 访问详情页即计一次围观
+                                axios.post(`/api/user/sessions/${id}/view`).then(r => {
+                                    if (r.data && r.data.code === 200) {
+                                        // 使用返回的最新计数更新显示
+                                        const c = Number(r.data.data || 0);
+                                        this.session.viewCount = isNaN(c) ? (this.session.viewCount || 0) : c;
+                                    }
+                                }).catch(()=>{});
+                            } else {
+                                ElMessage.error('加载拍卖会失败');
+                            }
+                        })
+                        .catch(e => {
+                            console.error('加载拍卖会失败', e);
+                            ElMessage.error('加载拍卖会失败');
+                        })
+                        .finally(() => this.loading = false);
+                },
+                formatTime(t) { return t ? new Date(t).toLocaleString('zh-CN') : '—'; },
+                toYuan(v) { if (v == null) return 0; return typeof v === 'number' ? v : parseFloat(v); },
+                extractFirstImage(images) {
+                    if (!images) return null;
+                    try {
+                        const arr = JSON.parse(images);
+                        return Array.isArray(arr) && arr.length > 0 ? arr[0] : null;
+                    } catch (_) { return null; }
+                },
+                enterBidding(itemId) {
+                    const id = this.getSessionId();
+                    window.location.href = `/auction/user/sessions/${id}/bidding?itemId=${itemId}`;
+                },
+                goToLogin() { window.location.href = '/auction/login'; },
+                logout() {
+                    ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(() => {
+                        localStorage.removeItem('accessToken');
+                        localStorage.removeItem('refreshToken');
+                        localStorage.removeItem('userInfo');
+                        
+                        axios.post('/api/auth/logout').finally(() => {
+                            this.isLoggedIn = false;
+                            this.userInfo = {};
+                            ElMessage.success('已退出登录');
+                            window.location.href = '/auction/login';
+                        });
+                    }).catch(() => {});
+                },
+                // 过滤与排序
+                filteredSorted(items) {
+                    let list = Array.isArray(items) ? items.slice() : [];
+                    if (this.searchCode && this.searchCode.trim()) {
+                        const key = this.searchCode.trim().toLowerCase();
+                        list = list.filter(it => ((it.itemCode || '').toLowerCase().includes(key)) || ((it.itemName || '').toLowerCase().includes(key)));
+                    }
+                    const field = this.sortField;
+                    const order = this.sortOrder === 'desc' ? -1 : 1;
+                    const getVal = (it) => {
+                        if (field === 'itemCode') return (it.itemCode || '').toString();
+                        if (field === 'startingPrice') return Number(this.toYuan(it.startingPrice) || 0);
+                        if (field === 'hammerPrice') return Number(this.toYuan(it.hammerPrice != null ? it.hammerPrice : it.currentPrice));
+                        return 0;
+                    };
+                    list.sort((a, b) => {
+                        const va = getVal(a), vb = getVal(b);
+                        if (typeof va === 'string' && typeof vb === 'string') {
+                            return va.localeCompare(vb) * order;
+                        }
+                        return (va - vb) * order;
+                    });
+                    return list;
+                }
+            },
+            computed: {
+                filteredSortedItems() {
+                    return this.filteredSorted((this.session && this.session.items) ? this.session.items : []);
+                }
+            }
+        }).use(ElementPlus);
+        const __app__mounted = __app__factory.mount('#app');
+        window.__app__ref = __app__mounted;
+    </script>
+</body>
+</html>
+
+

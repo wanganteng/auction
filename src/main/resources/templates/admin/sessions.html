@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拍卖会管理 - 拍卖系统</title>
+    
+    <!-- Element UI CSS -->
+    <link rel="stylesheet" href="/css/element-plus.css">
+    <!-- 自定义样式 -->
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 300;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        
+        .toolbar {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .content {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .session-card {
+            border: 1px solid #e4e7ed;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+        
+        .session-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        
+        .session-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #303133;
+            margin: 0;
+        }
+        
+        .session-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-scheduled { background: #e1f3d8; color: #67c23a; }
+        .status-ongoing { background: #e1f3d8; color: #67c23a; }
+        .status-finished { background: #f4f4f5; color: #909399; }
+        .status-cancelled { background: #fef0f0; color: #f56c6c; }
+        
+        .session-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .info-item {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            color: #606266;
+        }
+        
+        .info-label {
+            font-weight: 500;
+            margin-right: 8px;
+            min-width: 80px;
+        }
+        
+        .session-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: 600;
+            color: #409eff;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #909399;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 头部 -->
+        <div class="header">
+            <h1>拍卖会管理</h1>
+        </div>
+        
+        <!-- 主容器 -->
+        <div class="container">
+            <!-- 统计卡片 -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">{{ stats.totalSessions }}</div>
+                    <div class="stat-label">总拍卖会</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ stats.ongoingSessions }}</div>
+                    <div class="stat-label">进行中</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ stats.finishedSessions }}</div>
+                    <div class="stat-label">已结束</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ stats.totalRevenue }}</div>
+                    <div class="stat-label">总成交额(元)</div>
+                </div>
+            </div>
+            
+            <!-- 工具栏 -->
+            <div class="toolbar">
+                <el-row :gutter="20">
+                    <el-col :span="6">
+                        <el-input
+                            v-model="searchForm.sessionName"
+                            placeholder="搜索拍卖会名称"
+                            clearable
+                            @keyup.enter="searchSessions">
+                            <template #prefix>
+                                <el-icon><Search /></el-icon>
+                            </template>
+                        </el-input>
+                    </el-col>
+                    <el-col :span="4">
+                        <el-select v-model="searchForm.status" placeholder="状态筛选" clearable>
+                            <el-option label="未开始" value="0"></el-option>
+                            <el-option label="进行中" value="1"></el-option>
+                            <el-option label="已结束" value="2"></el-option>
+                            <el-option label="已取消" value="3"></el-option>
+                        </el-select>
+                    </el-col>
+                    <el-col :span="6">
+                        <el-date-picker
+                            v-model="searchForm.dateRange"
+                            type="daterange"
+                            range-separator="至"
+                            start-placeholder="开始日期"
+                            end-placeholder="结束日期"
+                            format="YYYY-MM-DD"
+                            value-format="YYYY-MM-DD">
+                        </el-date-picker>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-button type="primary" @click="searchSessions">
+                            <el-icon><Search /></el-icon>
+                            搜索
+                        </el-button>
+                        <el-button @click="resetSearch">
+                            <el-icon><Refresh /></el-icon>
+                            重置
+                        </el-button>
+                        <el-button type="success" @click="showCreateDialog">
+                            <el-icon><Plus /></el-icon>
+                            创建拍卖会
+                        </el-button>
+                    </el-col>
+                </el-row>
+            </div>
+            
+            <!-- 内容区域 -->
+            <div class="content">
+                <el-table :data="sessions" v-loading="loading" style="width: 100%">
+                    <el-table-column prop="id" label="ID" width="80"></el-table-column>
+                    <el-table-column prop="sessionName" label="拍卖会名称" min-width="200">
+                        <template #default="scope">
+                            <div class="session-title">{{ scope.row.sessionName }}</div>
+                            <div style="font-size: 12px; color: #909399; margin-top: 4px;">
+                                {{ scope.row.description }}
+                            </div>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="status" label="状态" width="100">
+                        <template #default="scope">
+                            <el-tag :type="getStatusType(scope.row.status)" class="session-status">
+                                {{ getStatusText(scope.row.status) }}
+                            </el-tag>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="startTime" label="开始时间" width="180">
+                        <template #default="scope">
+                            {{ formatDateTime(scope.row.startTime) }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="endTime" label="结束时间" width="180">
+                        <template #default="scope">
+                            {{ formatDateTime(scope.row.endTime) }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="totalItems" label="拍品数量" width="100">
+                        <template #default="scope">
+                            {{ scope.row.totalItems || 0 }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="soldItems" label="已成交" width="100">
+                        <template #default="scope">
+                            {{ scope.row.soldItems || 0 }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="totalRevenue" label="成交额" width="120">
+                        <template #default="scope">
+                            ¥{{ ((scope.row.totalRevenue || 0) / 100).toFixed(2) }}
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="250" fixed="right">
+                        <template #default="scope">
+                            <el-button size="small" @click="viewSession(scope.row)">查看</el-button>
+                            <el-button size="small" type="primary" @click="editSession(scope.row)">编辑</el-button>
+                            <el-button 
+                                size="small" 
+                                type="success" 
+                                v-if="scope.row.status == 0"
+                                @click="startSession(scope.row)">
+                                开始
+                            </el-button>
+                            <el-button 
+                                size="small" 
+                                type="warning" 
+                                v-if="scope.row.status == 1"
+                                @click="endSession(scope.row)">
+                                结束
+                            </el-button>
+                            <el-button 
+                                size="small" 
+                                type="danger" 
+                                v-if="scope.row.status != 2"
+                                @click="cancelSession(scope.row)">
+                                取消
+                            </el-button>
+                            <el-button 
+                                size="small" 
+                                type="danger" 
+                                @click="deleteSession(scope.row)">
+                                删除
+                            </el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+                
+                <!-- 分页 -->
+                <div style="padding: 20px; text-align: center;">
+                    <el-pagination
+                        v-model:current-page="page"
+                        v-model:page-size="pageSize"
+                        :page-sizes="[10, 20, 50, 100]"
+                        :total="total"
+                        layout="total, sizes, prev, pager, next, jumper"
+                        @size-change="handleSizeChange"
+                        @current-change="handleCurrentChange">
+                    </el-pagination>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 创建/编辑拍卖会对话框 -->
+        <el-dialog 
+            :title="dialogTitle" 
+            v-model="dialogVisible" 
+            width="1000px"
+            :close-on-click-modal="false">
+            <el-form :model="sessionForm" :rules="sessionRules" ref="sessionFormRef" label-width="120px">
+                <el-row :gutter="20">
+                    <el-col :span="12">
+                        <el-form-item label="拍卖会名称" prop="sessionName">
+                            <el-input v-model="sessionForm.sessionName" placeholder="请输入拍卖会名称"></el-input>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="12">
+                        <el-form-item label="拍卖会类型" prop="sessionType">
+                            <el-select v-model="sessionForm.sessionType" placeholder="请选择类型" style="width: 100%">
+                                <el-option label="书画专场" value="1"></el-option>
+                                <el-option label="陶瓷专场" value="2"></el-option>
+                                <el-option label="玉器专场" value="3"></el-option>
+                                <el-option label="珠宝专场" value="4"></el-option>
+                                <el-option label="综合专场" value="5"></el-option>
+                            </el-select>
+                        </el-form-item>
+                    </el-col>
+                </el-row>
+                
+                <el-form-item label="拍卖会描述" prop="description">
+                    <el-input 
+                        v-model="sessionForm.description" 
+                        type="textarea" 
+                        :rows="3" 
+                        placeholder="请输入拍卖会描述">
+                    </el-input>
+                </el-form-item>
+                
+                <el-row :gutter="20">
+                    <el-col :span="12">
+                        <el-form-item label="开始时间" prop="startTime">
+                            <el-date-picker
+                                v-model="sessionForm.startTime"
+                                type="datetime"
+                                placeholder="选择开始时间"
+                                format="YYYY-MM-DD HH:mm:ss"
+                                value-format="YYYY-MM-DD HH:mm:ss"
+                                style="width: 100%">
+                            </el-date-picker>
+                        </el-form-item>
+                    </el-col>
+                    <el-col :span="12">
+                        <el-form-item label="结束时间" prop="endTime">
+                            <el-date-picker
+                                v-model="sessionForm.endTime"
+                                type="datetime"
+                                placeholder="选择结束时间"
+                                format="YYYY-MM-DD HH:mm:ss"
+                                value-format="YYYY-MM-DD HH:mm:ss"
+                                style="width: 100%">
+                            </el-date-picker>
+                        </el-form-item>
+                    </el-col>
+                </el-row>
+                
+                <!-- 费用设置 -->
+                <div class="form-section">
+                    <h3 class="section-title">费用设置</h3>
+                    <el-row :gutter="20">
+                        <el-col :span="8">
+                            <el-form-item label="保证金比例" prop="depositRatio">
+                                <el-input-number 
+                                    v-model="sessionForm.depositRatio" 
+                                    :min="0" 
+                                    :max="1" 
+                                    :precision="3" 
+                                    :step="0.001" 
+                                    placeholder="保证金比例" 
+                                    style="width: 100%">
+                                </el-input-number>
+                                <div class="form-tip">例如：0.1 表示 10%</div>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="8">
+                            <el-form-item label="佣金比例" prop="commissionRatio">
+                                <el-input-number 
+                                    v-model="sessionForm.commissionRatio" 
+                                    :min="0" 
+                                    :max="1" 
+                                    :precision="3" 
+                                    :step="0.001" 
+                                    placeholder="佣金比例" 
+                                    style="width: 100%">
+                                </el-input-number>
+                                <div class="form-tip">例如：0.05 表示 5%</div>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="8">
+                            <el-form-item label="最小保证金" prop="minDepositAmount">
+                                <el-input-number 
+                                    v-model="sessionForm.minDepositAmount" 
+                                    :min="0" 
+                                    :precision="2" 
+                                    placeholder="最小保证金金额" 
+                                    style="width: 100%">
+                                </el-input-number>
+                                <div class="form-tip">单位：元</div>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+                    <el-row :gutter="20">
+                        <el-col :span="8">
+                            <el-form-item label="最大出价" prop="maxBidAmount">
+                                <el-input-number 
+                                    v-model="sessionForm.maxBidAmount" 
+                                    :min="0" 
+                                    :precision="2" 
+                                    placeholder="最大出价金额" 
+                                    style="width: 100%">
+                                </el-input-number>
+                                <div class="form-tip">单位：元</div>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="8">
+                            <el-form-item label="最小加价" prop="minIncrementAmount">
+                                <el-input-number 
+                                    v-model="sessionForm.minIncrementAmount" 
+                                    :min="0" 
+                                    :precision="2" 
+                                    placeholder="最小加价幅度" 
+                                    style="width: 100%">
+                                </el-input-number>
+                                <div class="form-tip">单位：元</div>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+                </div>
+                
+                <!-- 服务设置 -->
+                <div class="form-section">
+                    <h3 class="section-title">服务设置</h3>
+                    <el-row :gutter="20">
+                        <el-col :span="8">
+                            <el-form-item label="是否保真">
+                                <el-switch v-model="sessionForm.isAuthentic" active-text="是" inactive-text="否"></el-switch>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="8">
+                            <el-form-item label="是否包邮">
+                                <el-switch v-model="sessionForm.isFreeShipping" active-text="是" inactive-text="否"></el-switch>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="8">
+                            <el-form-item label="是否支持退货">
+                                <el-switch v-model="sessionForm.isReturnable" active-text="是" inactive-text="否"></el-switch>
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+                    <el-form-item label="拍卖会规则">
+                        <el-input 
+                            v-model="sessionForm.rules" 
+                            type="textarea" 
+                            :rows="3" 
+                            placeholder="请输入拍卖会规则说明">
+                        </el-input>
+                    </el-form-item>
+                </div>
+                
+                <!-- 拍品选择 -->
+                <div class="form-section">
+                    <h3 class="section-title">选择拍品</h3>
+                    <el-button type="primary" @click="showItemSelector">选择拍品</el-button>
+                    <div v-if="selectedItems.length > 0" style="margin-top: 15px;">
+                        <el-tag 
+                            v-for="item in selectedItems" 
+                            :key="item.id" 
+                            closable 
+                            @close="removeSelectedItem(item)"
+                            style="margin-right: 10px; margin-bottom: 10px;">
+                            {{ item.itemName }}
+                        </el-tag>
+                    </div>
+                </div>
+            </el-form>
+            
+            <template #footer>
+                <el-button @click="dialogVisible = false">取消</el-button>
+                <el-button type="primary" @click="submitSession" :loading="submitting">
+                    {{ isEdit ? '更新' : '创建' }}
+                </el-button>
+            </template>
+        </el-dialog>
+        
+        <!-- 拍品选择对话框 -->
+        <el-dialog title="选择拍品" v-model="itemSelectorVisible" width="1000px">
+            <el-table 
+                :data="availableItems" 
+                v-loading="itemsLoading"
+                @selection-change="handleItemSelection"
+                :row-key="row => row.id"
+                style="width: 100%">
+                <el-table-column type="selection" width="55" :reserve-selection="true"></el-table-column>
+                
+                <!-- 拍品图片 -->
+                <el-table-column label="图片" width="100">
+                    <template #default="scope">
+                        <el-image 
+                            v-if="scope.row.coverImage || (scope.row.imageList && scope.row.imageList.length > 0)"
+                            :src="scope.row.coverImage || scope.row.imageList[0]"
+                            :preview-src-list="scope.row.imageList || [scope.row.coverImage]"
+                            fit="cover"
+                            style="width: 70px; height: 70px; border-radius: 4px; cursor: pointer;">
+                            <template #error>
+                                <div style="width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; background: #f5f5f5; border-radius: 4px;">
+                                    <i class="el-icon-picture-outline" style="font-size: 28px; color: #ccc;"></i>
+                                </div>
+                            </template>
+                        </el-image>
+                        <div v-else style="width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; background: #f5f5f5; border-radius: 4px;">
+                            <i class="el-icon-picture-outline" style="font-size: 28px; color: #ccc;"></i>
+                        </div>
+                    </template>
+                </el-table-column>
+                
+                <el-table-column prop="itemName" label="拍品名称" min-width="180"></el-table-column>
+                <el-table-column prop="category" label="分类" width="100">
+                    <template #default="scope">
+                        {{ getCategoryName(scope.row.category) }}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="startingPrice" label="起拍价" width="120">
+                    <template #default="scope">
+                        <span style="color: #F56C6C; font-weight: bold;">
+                            ¥{{ (scope.row.startingPrice / 100).toFixed(2) }}
+                        </span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="status" label="状态" width="80">
+                    <template #default="scope">
+                        <el-tag :type="getItemStatusType(scope.row.status)" size="small">
+                            {{ getItemStatusText(scope.row.status) }}
+                        </el-tag>
+                    </template>
+                </el-table-column>
+            </el-table>
+            
+            <!-- 已选择提示 -->
+            <div v-if="tempSelectedItems.length > 0" style="margin-top: 15px; padding: 10px; background: #f0f9ff; border-radius: 4px;">
+                <i class="el-icon-info" style="color: #409EFF;"></i>
+                已选择 <strong style="color: #409EFF;">{{ tempSelectedItems.length }}</strong> 个拍品
+            </div>
+            
+            <template #footer>
+                <el-button @click="itemSelectorVisible = false">取消</el-button>
+                <el-button type="primary" @click="confirmItemSelection" :disabled="tempSelectedItems.length === 0">
+                    确定（{{ tempSelectedItems.length }}）
+                </el-button>
+            </template>
+        </el-dialog>
+    </div>
+
+    <!-- Element UI JS -->
+    <script src="/js/vue.js"></script>
+    <script src="/js/element-plus.js"></script>
+    <script src="/js/axios.js"></script>
+    
+    <script>
+        const { createApp } = Vue;
+        const { ElMessage, ElMessageBox } = ElementPlus;
+
+        createApp({
+            data() {
+                return {
+                    // 数据
+                    sessions: [],
+                    loading: false,
+                    page: 1,
+                    pageSize: 10,
+                    total: 0,
+                    
+                    // 统计数据
+                    stats: {
+                        totalSessions: 0,
+                        ongoingSessions: 0,
+                        finishedSessions: 0,
+                        totalRevenue: 0
+                    },
+                    
+                    // 搜索表单
+                    searchForm: {
+                        sessionName: '',
+                        status: '',
+                        dateRange: []
+                    },
+                    
+                    // 对话框
+                    dialogVisible: false,
+                    dialogTitle: '创建拍卖会',
+                    isEdit: false,
+                    submitting: false,
+                    
+                    // 拍卖会表单
+                    sessionForm: {
+                        id: null,
+                        sessionName: '',
+                        sessionType: '',
+                        description: '',
+                        startTime: '',
+                        endTime: '',
+                        depositRatio: 0.1,
+                        commissionRatio: 0.05,
+                        minDepositAmount: 100,
+                        maxBidAmount: 1000000,
+                        minIncrementAmount: 10,
+                        isAuthentic: true,
+                        isFreeShipping: true,
+                        isReturnable: true,
+                        rules: ''
+                    },
+                    
+                    // 表单验证规则
+                    sessionRules: {
+                        sessionName: [
+                            { required: true, message: '请输入拍卖会名称', trigger: 'blur' }
+                        ],
+                        sessionType: [
+                            { required: true, message: '请选择拍卖会类型', trigger: 'change' }
+                        ],
+                        description: [
+                            { required: true, message: '请输入拍卖会描述', trigger: 'blur' }
+                        ],
+                        startTime: [
+                            { required: true, message: '请选择开始时间', trigger: 'change' }
+                        ],
+                        endTime: [
+                            { required: true, message: '请选择结束时间', trigger: 'change' }
+                        ],
+                        depositRatio: [
+                            { required: true, message: '请输入保证金比例', trigger: 'blur' },
+                            { type: 'number', min: 0, max: 1, message: '保证金比例必须在 0 到 1 之间', trigger: 'blur' }
+                        ],
+                        commissionRatio: [
+                            { required: true, message: '请输入佣金比例', trigger: 'blur' },
+                            { type: 'number', min: 0, max: 1, message: '佣金比例必须在 0 到 1 之间', trigger: 'blur' }
+                        ],
+                        minDepositAmount: [
+                            { required: true, message: '请输入最小保证金金额', trigger: 'blur' },
+                            { type: 'number', min: 0, message: '最小保证金金额必须大于等于0', trigger: 'blur' }
+                        ],
+                        maxBidAmount: [
+                            { required: true, message: '请输入最大出价金额', trigger: 'blur' },
+                            { type: 'number', min: 0, message: '最大出价金额必须大于等于0', trigger: 'blur' }
+                        ],
+                        minIncrementAmount: [
+                            { required: true, message: '请输入最小加价幅度', trigger: 'blur' },
+                            { type: 'number', min: 0, message: '最小加价幅度必须大于等于0', trigger: 'blur' }
+                        ]
+                    },
+                    
+                    // 拍品选择
+                    selectedItems: [],
+                    itemSelectorVisible: false,
+                    availableItems: [],
+                    itemsLoading: false,
+                    tempSelectedItems: []
+                }
+            },
+            
+            mounted() {
+                this.setupAxiosInterceptors();
+                this.loadSessions();
+                this.loadStats();
+            },
+            
+            methods: {
+                // 设置axios拦截器
+                setupAxiosInterceptors() {
+                    axios.interceptors.request.use(config => {
+                        const token = localStorage.getItem('adminToken');
+                        if (token) {
+                            config.headers.Authorization = `Bearer ${token}`;
+                        }
+                        return config;
+                    });
+                    
+                    axios.interceptors.response.use(
+                        response => response,
+                        error => {
+                            if (error.response && error.response.status === 401) {
+                                localStorage.removeItem('adminToken');
+                                ElMessage.error('登录已过期，请重新登录');
+                                window.location.href = '/auction/login';
+                            }
+                            return Promise.reject(error);
+                        }
+                    );
+                },
+                
+                // 加载拍卖会列表
+                async loadSessions() {
+                    this.loading = true;
+                    try {
+                        const params = {
+                            page: this.page,
+                            pageSize: this.pageSize,
+                            ...this.searchForm
+                        };
+                        
+                        if (this.searchForm.dateRange && this.searchForm.dateRange.length === 2) {
+                            params.startDate = this.searchForm.dateRange[0];
+                            params.endDate = this.searchForm.dateRange[1];
+                        }
+                        
+                        const response = await axios.get('/api/admin/sessions', { params });
+                        this.sessions = response.data.data.records || [];
+                        this.total = response.data.data.total || 0;
+                    } catch (error) {
+                        console.error('加载拍卖会列表失败:', error);
+                        ElMessage.error('加载拍卖会列表失败');
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                
+                // 加载统计数据
+                async loadStats() {
+                    try {
+                        const response = await axios.get('/api/admin/sessions/stats');
+                        this.stats = response.data.data || this.stats;
+                    } catch (error) {
+                        console.error('加载统计数据失败:', error);
+                    }
+                },
+                
+                // 搜索拍卖会
+                searchSessions() {
+                    this.page = 1;
+                    this.loadSessions();
+                },
+                
+                // 重置搜索
+                resetSearch() {
+                    this.searchForm = {
+                        sessionName: '',
+                        status: '',
+                        dateRange: []
+                    };
+                    this.page = 1;
+                    this.loadSessions();
+                },
+                
+                // 显示创建对话框
+                showCreateDialog() {
+                    this.dialogTitle = '创建拍卖会';
+                    this.isEdit = false;
+                    this.dialogVisible = true;
+                    this.resetForm();
+                },
+                
+                // 查看拍卖会
+                viewSession(session) {
+                    ElMessageBox.alert(`
+                        <div style="text-align: left;">
+                            <p><strong>拍卖会名称：</strong>${session.sessionName}</p>
+                            <p><strong>描述：</strong>${session.description}</p>
+                            <p><strong>开始时间：</strong>${this.formatDateTime(session.startTime)}</p>
+                            <p><strong>结束时间：</strong>${this.formatDateTime(session.endTime)}</p>
+                            <p><strong>状态：</strong>${this.getStatusText(session.status)}</p>
+                            <p><strong>拍品数量：</strong>${session.totalItems || 0}</p>
+                            <p><strong>已成交：</strong>${session.soldItems || 0}</p>
+                            <p><strong>成交额：</strong>¥${((session.totalRevenue || 0) / 100).toFixed(2)}</p>
+                        </div>
+                    `, '拍卖会详情', {
+                        dangerouslyUseHTMLString: true,
+                        confirmButtonText: '确定'
+                    });
+                },
+                
+                // 编辑拍卖会
+                editSession(session) {
+                    this.dialogTitle = '编辑拍卖会';
+                    this.isEdit = true;
+                    this.dialogVisible = true;
+                    
+                    this.sessionForm = {
+                        id: session.id,
+                        sessionName: session.sessionName,
+                        sessionType: session.sessionType?.toString() || '',
+                        description: session.description,
+                        startTime: session.startTime,
+                        endTime: session.endTime,
+                        depositRatio: session.depositRatio || 0.1,
+                        commissionRatio: session.commissionRatio || 0.05,
+                        minDepositAmount: (session.minDepositAmount || 100) / 100,
+                        maxBidAmount: (session.maxBidAmount || 1000000) / 100,
+                        minIncrementAmount: (session.minIncrementAmount || 10) / 100,
+                        isAuthentic: session.isAuthentic !== false,
+                        isFreeShipping: session.isFreeShipping !== false,
+                        isReturnable: session.isReturnable !== false,
+                        rules: session.rules || ''
+                    };
+                    
+                    this.selectedItems = session.items || [];
+                },
+                
+                // 提交拍卖会
+                async submitSession() {
+                    try {
+                        await this.$refs.sessionFormRef.validate();
+                        
+                        if (this.selectedItems.length === 0) {
+                            ElMessage.warning('请至少选择一个拍品');
+                            return;
+                        }
+                        
+                        this.submitting = true;
+                        
+                        const formData = {
+                            ...this.sessionForm,
+                            itemIds: this.selectedItems.map(item => item.id),
+                            // 将元转换为分（后端存储的是分）
+                            minDepositAmount: Math.round(this.sessionForm.minDepositAmount * 100),
+                            maxBidAmount: Math.round(this.sessionForm.maxBidAmount * 100),
+                            minIncrementAmount: Math.round(this.sessionForm.minIncrementAmount * 100)
+                        };
+                        
+                        if (this.isEdit) {
+                            await axios.put(`/api/admin/sessions/${formData.id}`, formData);
+                            ElMessage.success('拍卖会更新成功');
+                        } else {
+                            await axios.post('/api/admin/sessions', formData);
+                            ElMessage.success('拍卖会创建成功');
+                        }
+                        
+                        this.dialogVisible = false;
+                        this.loadSessions();
+                        this.loadStats();
+                        
+                    } catch (error) {
+                        console.error('提交拍卖会失败:', error);
+                        ElMessage.error('提交拍卖会失败');
+                    } finally {
+                        this.submitting = false;
+                    }
+                },
+                
+                // 重置表单
+                resetForm() {
+                    this.sessionForm = {
+                        id: null,
+                        sessionName: '',
+                        sessionType: '',
+                        description: '',
+                        startTime: '',
+                        endTime: '',
+                        depositRatio: 0.1,
+                        commissionRatio: 0.05,
+                        minDepositAmount: 100,
+                        maxBidAmount: 1000000,
+                        minIncrementAmount: 10,
+                        isAuthentic: true,
+                        isFreeShipping: true,
+                        isReturnable: true,
+                        rules: ''
+                    };
+                    this.selectedItems = [];
+                    this.$refs.sessionFormRef?.resetFields();
+                },
+                
+                // 开始拍卖会
+                async startSession(session) {
+                    try {
+                        await ElMessageBox.confirm('确定要开始这个拍卖会吗？', '确认操作');
+                        
+                        await axios.put(`/api/admin/sessions/${session.id}/start`);
+                        ElMessage.success('拍卖会已开始');
+                        this.loadSessions();
+                        this.loadStats();
+                        
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            console.error('开始拍卖会失败:', error);
+                            ElMessage.error('操作失败');
+                        }
+                    }
+                },
+                
+                // 结束拍卖会
+                async endSession(session) {
+                    try {
+                        await ElMessageBox.confirm('确定要结束这个拍卖会吗？', '确认操作');
+                        
+                        await axios.put(`/api/admin/sessions/${session.id}/end`);
+                        ElMessage.success('拍卖会已结束');
+                        this.loadSessions();
+                        this.loadStats();
+                        
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            console.error('结束拍卖会失败:', error);
+                            ElMessage.error('操作失败');
+                        }
+                    }
+                },
+                
+                // 取消拍卖会
+                async cancelSession(session) {
+                    try {
+                        await ElMessageBox.prompt('请输入取消原因', '取消拍卖会', {
+                            confirmButtonText: '确定',
+                            cancelButtonText: '取消',
+                            inputPattern: /.+/,
+                            inputErrorMessage: '请输入取消原因'
+                        });
+                        
+                        await axios.put(`/api/admin/sessions/${session.id}/cancel`, {
+                            reason: '取消原因'
+                        });
+                        ElMessage.success('拍卖会已取消');
+                        this.loadSessions();
+                        this.loadStats();
+                        
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            console.error('取消拍卖会失败:', error);
+                            ElMessage.error('操作失败');
+                        }
+                    }
+                },
+                
+                // 删除拍卖会
+                async deleteSession(session) {
+                    try {
+                        await ElMessageBox.confirm('确定要删除这个拍卖会吗？删除后不可恢复！', '确认删除', {
+                            type: 'warning'
+                        });
+                        
+                        await axios.delete(`/api/admin/sessions/${session.id}`);
+                        ElMessage.success('拍卖会已删除');
+                        this.loadSessions();
+                        this.loadStats();
+                        
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            console.error('删除拍卖会失败:', error);
+                            ElMessage.error('删除失败');
+                        }
+                    }
+                },
+                
+                // 显示拍品选择器
+                async showItemSelector() {
+                    this.itemSelectorVisible = true;
+                    this.itemsLoading = true;
+                    
+                    try {
+                        const response = await axios.get('/api/admin/items', {
+                            params: { page: 1, pageSize: 1000, status: 2 } // 只显示已通过的拍品
+                        });
+                        this.availableItems = response.data.data.records || [];
+                    } catch (error) {
+                        console.error('加载拍品列表失败:', error);
+                        ElMessage.error('加载拍品列表失败');
+                    } finally {
+                        this.itemsLoading = false;
+                    }
+                },
+                
+                // 处理拍品选择
+                handleItemSelection(selection) {
+                    this.tempSelectedItems = selection;
+                },
+                
+                // 确认拍品选择
+                confirmItemSelection() {
+                    this.selectedItems = [...this.tempSelectedItems];
+                    this.itemSelectorVisible = false;
+                    ElMessage.success(`已选择 ${this.selectedItems.length} 个拍品`);
+                },
+                
+                // 移除选中的拍品
+                removeSelectedItem(item) {
+                    const index = this.selectedItems.findIndex(i => i.id === item.id);
+                    if (index > -1) {
+                        this.selectedItems.splice(index, 1);
+                    }
+                },
+                
+                // 分页处理
+                handleSizeChange(val) {
+                    this.pageSize = val;
+                    this.loadSessions();
+                },
+                
+                handleCurrentChange(val) {
+                    this.page = val;
+                    this.loadSessions();
+                },
+                
+                // 工具方法
+                getStatusText(status) {
+                    const statusMap = {
+                        0: '未开始', 1: '进行中', 2: '已结束', 3: '已取消'
+                    };
+                    return statusMap[status] || '未知';
+                },
+                
+                getStatusType(status) {
+                    const typeMap = {
+                        0: 'info', 1: 'success', 2: 'info', 3: 'danger'
+                    };
+                    return typeMap[status] || 'info';
+                },
+                
+                getCategoryName(category) {
+                    const categories = {
+                        1: '书画', 2: '陶瓷', 3: '玉器', 
+                        4: '珠宝', 5: '家具', 6: '杂项'
+                    };
+                    return categories[category] || '未知';
+                },
+                
+                getItemStatusText(status) {
+                    const statusMap = {
+                        0: '草稿', 1: '待审核', 2: '已通过', 
+                        3: '已拒绝', 4: '拍卖中', 5: '已成交', 6: '流拍'
+                    };
+                    return statusMap[status] || '未知';
+                },
+                
+                getItemStatusType(status) {
+                    const typeMap = {
+                        0: 'info', 1: 'warning', 2: 'success',
+                        3: 'danger', 4: 'primary', 5: 'success', 6: 'info'
+                    };
+                    return typeMap[status] || 'info';
+                },
+                
+                formatDateTime(dateTime) {
+                    if (!dateTime) return '';
+                    return new Date(dateTime).toLocaleString('zh-CN');
+                }
+            }
+        }).use(ElementPlus).mount('#app');
+    </script>
+    
+    <style>
+        .form-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .section-title {
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #303133;
+        }
+        
+        .form-tip {
+            font-size: 12px;
+            color: #909399;
+            margin-top: 4px;
+        }
+    </style>
+</body>
+</html>

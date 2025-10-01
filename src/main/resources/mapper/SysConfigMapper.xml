@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.auction.mapper.SysConfigMapper">
+
+    <!-- 基础结果映射 -->
+    <resultMap id="BaseResultMap" type="com.auction.entity.SysConfig">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="config_key" property="configKey" jdbcType="VARCHAR"/>
+        <result column="config_value" property="configValue" jdbcType="VARCHAR"/>
+        <result column="config_type" property="configType" jdbcType="VARCHAR"/>
+        <result column="description" property="description" jdbcType="VARCHAR"/>
+        <result column="is_system" property="isSystem" jdbcType="TINYINT"/>
+        <result column="is_editable" property="isEditable" jdbcType="TINYINT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <!-- 基础列名 -->
+    <sql id="Base_Column_List">
+        id, config_key, config_value, config_type, description, is_system, is_editable, 
+        create_time, update_time, deleted
+    </sql>
+
+    <!-- 根据ID查询配置 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_config
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 根据配置键查询配置 -->
+    <select id="selectByKey" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_config
+        WHERE config_key = #{configKey} AND deleted = 0
+    </select>
+
+    <!-- 查询所有配置 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_config
+        WHERE deleted = 0
+        ORDER BY config_key ASC
+    </select>
+
+    <!-- 根据配置类型查询配置 -->
+    <select id="selectByType" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_config
+        WHERE config_type = #{configType} AND deleted = 0
+        ORDER BY config_key ASC
+    </select>
+
+    <!-- 根据是否系统配置查询 -->
+    <select id="selectBySystem" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM sys_config
+        WHERE is_system = #{isSystem} AND deleted = 0
+        ORDER BY config_key ASC
+    </select>
+
+    <!-- 插入配置 -->
+    <insert id="insert" parameterType="com.auction.entity.SysConfig" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_config (
+            config_key, config_value, config_type, description, 
+            is_system, is_editable, create_time, update_time, deleted
+        ) VALUES (
+            #{configKey}, #{configValue}, #{configType}, #{description},
+            #{isSystem}, #{isEditable}, #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <!-- 更新配置 -->
+    <update id="update" parameterType="com.auction.entity.SysConfig">
+        UPDATE sys_config
+        <set>
+            <if test="configValue != null">config_value = #{configValue},</if>
+            <if test="configType != null">config_type = #{configType},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="isSystem != null">is_system = #{isSystem},</if>
+            <if test="isEditable != null">is_editable = #{isEditable},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        WHERE config_key = #{configKey} AND deleted = 0
+    </update>
+
+    <!-- 根据ID更新配置 -->
+    <update id="updateById" parameterType="com.auction.entity.SysConfig">
+        UPDATE sys_config
+        <set>
+            <if test="configKey != null">config_key = #{configKey},</if>
+            <if test="configValue != null">config_value = #{configValue},</if>
+            <if test="configType != null">config_type = #{configType},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="isSystem != null">is_system = #{isSystem},</if>
+            <if test="isEditable != null">is_editable = #{isEditable},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <!-- 根据配置键更新配置值 -->
+    <update id="updateValueByKey">
+        UPDATE sys_config
+        SET config_value = #{configValue}, update_time = NOW()
+        WHERE config_key = #{configKey} AND deleted = 0
+    </update>
+
+    <!-- 根据ID删除配置 -->
+    <update id="deleteById" parameterType="java.lang.Long">
+        UPDATE sys_config
+        SET deleted = 1, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据配置键删除配置 -->
+    <update id="deleteByKey" parameterType="java.lang.String">
+        UPDATE sys_config
+        SET deleted = 1, update_time = NOW()
+        WHERE config_key = #{configKey}
+    </update>
+
+</mapper>

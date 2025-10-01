@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统登录 - 拍卖系统</title>
+    
+    <!-- Element UI CSS - 使用本地资源 -->
+    <link rel="stylesheet" href="/css/element-plus.css">
+    <!-- 自定义样式 -->
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            padding: 0 20px;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            height: 60px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #409EFF;
+        }
+        
+        .logo i {
+            margin-right: 10px;
+            font-size: 28px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .main-content {
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: calc(100vh - 60px);
+        }
+        
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .login-card {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-header {
+            text-align: center;
+            padding: 20px 0;
+        }
+        
+        .card-header h2 {
+            margin: 0 0 10px 0;
+            color: #303133;
+            font-size: 28px;
+        }
+        
+        .card-header p {
+            margin: 0;
+            color: #909399;
+            font-size: 14px;
+        }
+        
+        .login-form {
+            padding: 20px;
+        }
+        
+        .login-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .login-btn {
+            width: 100%;
+            height: 45px;
+            font-size: 16px;
+        }
+        
+        .login-footer {
+            margin-top: 20px;
+        }
+        
+        .copyright {
+            text-align: center;
+            margin-top: 30px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+        }
+        
+        .user-type-info {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .user-type-info h4 {
+            margin: 0 0 10px 0;
+            color: #0369a1;
+            font-size: 16px;
+        }
+        
+        .user-type-info p {
+            margin: 5px 0;
+            color: #0c4a6e;
+            font-size: 14px;
+        }
+        
+        .test-accounts {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .test-accounts h4 {
+            margin: 0 0 10px 0;
+            color: #92400e;
+            font-size: 16px;
+        }
+        
+        .test-accounts .account-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .test-accounts .account-item .role {
+            color: #f59e0b;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 顶部导航 -->
+        <el-header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="el-icon-gavel"></i>
+                    <span>拍卖系统</span>
+                </div>
+                <div class="nav-links">
+                    <el-link href="/auction/user/" type="primary">用户首页</el-link>
+                    <el-link href="/auction/admin/" type="primary">管理后台</el-link>
+                </div>
+            </div>
+        </el-header>
+
+        <!-- 主要内容 -->
+        <el-main class="main-content">
+            <div class="login-container">
+                <el-card class="login-card" shadow="always">
+                    <template #header>
+                        <div class="card-header">
+                            <h2>系统登录</h2>
+                            <p>欢迎来到拍卖系统</p>
+                        </div>
+                    </template>
+                    
+                    <!-- 用户类型说明 -->
+                    <div class="user-type-info">
+                        <h4>💡 智能登录</h4>
+                        <p>• 管理员登录后自动跳转到管理后台</p>
+                        <p>• 普通用户登录后自动跳转到用户界面</p>
+                        <p>• 系统会根据您的身份自动识别权限</p>
+                    </div>
+                    
+                    <el-form 
+                        ref="loginForm" 
+                        :model="loginForm" 
+                        :rules="loginRules" 
+                        label-width="80px"
+                        class="login-form">
+                        
+                        <el-form-item label="用户名" prop="username">
+                            <el-input 
+                                v-model="loginForm.username" 
+                                placeholder="请输入用户名"
+                                prefix-icon="el-icon-user"
+                                size="large"
+                                clearable
+                                @keyup.enter="handleLogin">
+                            </el-input>
+                        </el-form-item>
+                        
+                        <el-form-item label="密码" prop="password">
+                            <el-input 
+                                v-model="loginForm.password" 
+                                type="password" 
+                                placeholder="请输入密码"
+                                prefix-icon="el-icon-lock"
+                                size="large"
+                                show-password
+                                @keyup.enter="handleLogin">
+                            </el-input>
+                        </el-form-item>
+                        
+                        <el-form-item>
+                            <div class="login-options">
+                                <el-checkbox v-model="loginForm.rememberMe">记住我</el-checkbox>
+                                <el-link href="/auction/user/register" type="primary">注册账号</el-link>
+                            </div>
+                        </el-form-item>
+                        
+                        <el-form-item>
+                            <el-button 
+                                type="primary" 
+                                @click="handleLogin" 
+                                :loading="loading"
+                                size="large"
+                                class="login-btn">
+                                登录
+                            </el-button>
+                        </el-form-item>
+                    </el-form>
+                    
+                    <!-- 测试账号信息 -->
+                    <div class="test-accounts">
+                        <h4>🧪 测试账号</h4>
+                        <div class="account-item">
+                            <span>admin / admin123</span>
+                            <span class="role">管理员</span>
+                        </div>
+                        <div class="account-item">
+                            <span>buyer1 / 123456</span>
+                            <span class="role">普通用户</span>
+                        </div>
+                        <div class="account-item">
+                            <span>buyer2 / 123456</span>
+                            <span class="role">普通用户</span>
+                        </div>
+                    </div>
+                </el-card>
+                
+                <div class="copyright">
+                    <p>&copy; 2024 拍卖系统. 保留所有权利.</p>
+                </div>
+            </div>
+        </el-main>
+    </div>
+
+    <!-- Element UI JS - 使用本地资源 -->
+    <script src="/js/vue.js"></script>
+    <script src="/js/element-plus.js"></script>
+    <script src="/js/axios.js"></script>
+    
+    <script>
+        const { createApp } = Vue;
+        const { ElMessage, ElMessageBox } = ElementPlus;
+
+        createApp({
+            data() {
+                return {
+                    loading: false,
+                    loginForm: {
+                        username: '',
+                        password: '',
+                        rememberMe: false
+                    },
+                    loginRules: {
+                        username: [
+                            { required: true, message: '请输入用户名', trigger: 'blur' },
+                            { min: 3, max: 20, message: '用户名长度在 3 到 20 个字符', trigger: 'blur' }
+                        ],
+                        password: [
+                            { required: true, message: '请输入密码', trigger: 'blur' },
+                            { min: 6, max: 20, message: '密码长度在 6 到 20 个字符', trigger: 'blur' }
+                        ]
+                    }
+                }
+            },
+            mounted() {
+                // 登录页也设置一次全局请求拦截器，避免后续页面缺少头
+                axios.interceptors.request.use(config => {
+                    const token = sessionStorage.getItem('authToken');
+                    if (token) config.headers.Authorization = `Bearer ${token}`;
+                    return config;
+                });
+            },
+            methods: {
+                handleLogin() {
+                    this.$refs.loginForm.validate((valid) => {
+                        if (valid) {
+                            this.loading = true;
+                            
+                            console.log('开始登录请求...');
+                            axios.post('/api/auth/login', this.loginForm)
+                                .then(response => {
+                                    console.log('登录响应:', response);
+                                    console.log('响应状态码:', response.status);
+                                    console.log('响应数据:', response.data);
+                                    
+                                    if (response.data.code === 200) {
+                                        ElMessage.success('登录成功');
+                                        
+                                        // 获取token和跳转地址
+                                        const accessToken = response.data.data.accessToken;
+                                        const refreshToken = response.data.data.refreshToken;
+                                        const redirectUrl = response.data.data.redirectUrl || '/auction/user/';
+                                        const userType = response.data.data.user.userType;
+                                        
+                                        console.log('获取AccessToken:', accessToken);
+                                        console.log('获取RefreshToken:', refreshToken);
+                                        console.log('跳转地址:', redirectUrl);
+                                        console.log('用户类型:', userType);
+                                        
+                                        // 保存token到localStorage（混合模式）
+                                        localStorage.setItem('accessToken', accessToken);
+                                        localStorage.setItem('refreshToken', refreshToken);
+                                        localStorage.setItem('userInfo', JSON.stringify(response.data.data.user));
+                                        
+                                        // 设置全局axios默认请求头
+                                        axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+                                        
+                                        // 根据用户类型跳转到相应页面
+                                        console.log('准备跳转到:', redirectUrl);
+                                        window.location.href = redirectUrl;
+                                    } else {
+                                        console.error('登录失败:', response.data.message);
+                                        ElMessage.error(response.data.message || '登录失败');
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('登录请求错误:', error);
+                                    console.error('错误详情:', error.response);
+                                    ElMessage.error('登录失败，请稍后重试');
+                                })
+                                .finally(() => {
+                                    this.loading = false;
+                                });
+                        }
+                    });
+                }
+            }
+        }).use(ElementPlus).mount('#app');
+    </script>
+    
+</body>
+</html>

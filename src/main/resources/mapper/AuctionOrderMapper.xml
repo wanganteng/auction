@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.auction.mapper.AuctionOrderMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.auction.entity.AuctionOrder">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="order_no" property="orderNo" jdbcType="VARCHAR"/>
+        <result column="session_id" property="sessionId" jdbcType="BIGINT"/>
+        <result column="item_id" property="itemId" jdbcType="BIGINT"/>
+        <result column="buyer_id" property="buyerId" jdbcType="BIGINT"/>
+        <result column="seller_id" property="sellerId" jdbcType="BIGINT"/>
+        <result column="total_amount" property="totalAmount" jdbcType="DECIMAL"/>
+        <result column="deposit_amount" property="depositAmount" jdbcType="DECIMAL"/>
+        <result column="balance_amount" property="balanceAmount" jdbcType="DECIMAL"/>
+        <result column="status" property="status" jdbcType="TINYINT"/>
+        <result column="payment_time" property="paymentTime" jdbcType="TIMESTAMP"/>
+        <result column="ship_time" property="shipTime" jdbcType="TIMESTAMP"/>
+        <result column="receive_time" property="receiveTime" jdbcType="TIMESTAMP"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, order_no, session_id, item_id, buyer_id, seller_id, total_amount,
+        deposit_amount, balance_amount, status, payment_time, ship_time, receive_time,
+        create_time, update_time, deleted
+    </sql>
+
+    <!-- 插入订单 -->
+    <insert id="insert" parameterType="com.auction.entity.AuctionOrder" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO auction_order (
+            order_no, session_id, item_id, buyer_id, seller_id, total_amount,
+            deposit_amount, balance_amount, status, payment_time, ship_time, receive_time,
+            create_time, update_time, deleted
+        ) VALUES (
+            #{orderNo}, #{sessionId}, #{itemId}, #{buyerId}, #{sellerId}, #{totalAmount},
+            #{depositAmount}, #{balanceAmount}, #{status}, #{paymentTime}, #{shipTime}, #{receiveTime},
+            #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <!-- 更新订单 -->
+    <update id="update" parameterType="com.auction.entity.AuctionOrder">
+        UPDATE auction_order
+        <set>
+            <if test="orderNo != null">order_no = #{orderNo},</if>
+            <if test="sessionId != null">session_id = #{sessionId},</if>
+            <if test="itemId != null">item_id = #{itemId},</if>
+            <if test="buyerId != null">buyer_id = #{buyerId},</if>
+            <if test="sellerId != null">seller_id = #{sellerId},</if>
+            <if test="totalAmount != null">total_amount = #{totalAmount},</if>
+            <if test="depositAmount != null">deposit_amount = #{depositAmount},</if>
+            <if test="balanceAmount != null">balance_amount = #{balanceAmount},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="paymentTime != null">payment_time = #{paymentTime},</if>
+            <if test="shipTime != null">ship_time = #{shipTime},</if>
+            <if test="receiveTime != null">receive_time = #{receiveTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <!-- 根据ID查询订单 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_order
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 根据订单号查询订单 -->
+    <select id="selectByOrderNo" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_order
+        WHERE order_no = #{orderNo} AND deleted = 0
+    </select>
+
+    <!-- 查询订单列表 -->
+    <select id="selectList" parameterType="com.auction.entity.AuctionOrder" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_order
+        <where>
+            deleted = 0
+            <if test="orderNo != null and orderNo != ''">
+                AND order_no LIKE CONCAT('%', #{orderNo}, '%')
+            </if>
+            <if test="sessionId != null">
+                AND session_id = #{sessionId}
+            </if>
+            <if test="itemId != null">
+                AND item_id = #{itemId}
+            </if>
+            <if test="buyerId != null">
+                AND buyer_id = #{buyerId}
+            </if>
+            <if test="sellerId != null">
+                AND seller_id = #{sellerId}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据ID删除订单 -->
+    <update id="deleteById" parameterType="java.lang.Long">
+        UPDATE auction_order
+        SET deleted = 1, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据拍卖会ID查询订单 -->
+    <select id="selectBySessionId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_order
+        WHERE session_id = #{sessionId} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据拍品ID查询订单 -->
+    <select id="selectByItemId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_order
+        WHERE item_id = #{itemId} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 查询所有订单 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_order
+        WHERE deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据状态查询订单 -->
+    <select id="selectByStatus" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_order
+        WHERE status = #{status} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>

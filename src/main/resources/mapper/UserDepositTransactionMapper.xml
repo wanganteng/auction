@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.auction.mapper.UserDepositTransactionMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.auction.entity.UserDepositTransaction">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="account_id" property="accountId" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="transaction_no" property="transactionNo" jdbcType="VARCHAR"/>
+        <result column="transaction_type" property="transactionType" jdbcType="TINYINT"/>
+        <result column="amount" property="amount" jdbcType="DECIMAL"/>
+        <result column="balance_before" property="balanceBefore" jdbcType="DECIMAL"/>
+        <result column="balance_after" property="balanceAfter" jdbcType="DECIMAL"/>
+        <result column="related_id" property="relatedId" jdbcType="BIGINT"/>
+        <result column="related_type" property="relatedType" jdbcType="VARCHAR"/>
+        <result column="description" property="description" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="TINYINT"/>
+        <result column="reviewer_id" property="reviewerId" jdbcType="BIGINT"/>
+        <result column="review_time" property="reviewTime" jdbcType="TIMESTAMP"/>
+        <result column="review_remark" property="reviewRemark" jdbcType="VARCHAR"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, account_id, user_id, transaction_no, transaction_type, amount,
+        balance_before, balance_after, related_id, related_type, description,
+        status, reviewer_id, review_time, review_remark, create_time, update_time, deleted
+    </sql>
+
+    <!-- 插入交易流水 -->
+    <insert id="insert" parameterType="com.auction.entity.UserDepositTransaction" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_deposit_transaction (
+            account_id, user_id, transaction_no, transaction_type, amount,
+            balance_before, balance_after, related_id, related_type, description,
+            status, create_time, update_time, deleted
+        ) VALUES (
+            #{accountId}, #{userId}, #{transactionNo}, #{transactionType}, #{amount},
+            #{balanceBefore}, #{balanceAfter}, #{relatedId}, #{relatedType}, #{description},
+            #{status}, #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <!-- 更新交易流水 -->
+    <update id="update" parameterType="com.auction.entity.UserDepositTransaction">
+        UPDATE user_deposit_transaction
+        <set>
+            <if test="accountId != null">account_id = #{accountId},</if>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="transactionNo != null">transaction_no = #{transactionNo},</if>
+            <if test="transactionType != null">transaction_type = #{transactionType},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="balanceBefore != null">balance_before = #{balanceBefore},</if>
+            <if test="balanceAfter != null">balance_after = #{balanceAfter},</if>
+            <if test="relatedId != null">related_id = #{relatedId},</if>
+            <if test="relatedType != null">related_type = #{relatedType},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="reviewerId != null">reviewer_id = #{reviewerId},</if>
+            <if test="reviewTime != null">review_time = #{reviewTime},</if>
+            <if test="reviewRemark != null">review_remark = #{reviewRemark},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <!-- 根据ID查询交易流水 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_deposit_transaction
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 根据交易流水号查询 -->
+    <select id="selectByTransactionNo" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_deposit_transaction
+        WHERE transaction_no = #{transactionNo} AND deleted = 0
+    </select>
+
+    <!-- 查询交易流水列表 -->
+    <select id="selectList" parameterType="com.auction.entity.UserDepositTransaction" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_deposit_transaction
+        <where>
+            deleted = 0
+            <if test="accountId != null">
+                AND account_id = #{accountId}
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="transactionType != null">
+                AND transaction_type = #{transactionType}
+            </if>
+            <if test="relatedId != null">
+                AND related_id = #{relatedId}
+            </if>
+            <if test="relatedType != null and relatedType != ''">
+                AND related_type = #{relatedType}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据账户ID查询交易流水 -->
+    <select id="selectByAccountId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_deposit_transaction
+        WHERE account_id = #{accountId} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据用户ID查询交易流水 -->
+    <select id="selectByUserId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_deposit_transaction
+        WHERE user_id = #{userId} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据关联ID和类型查询交易流水 -->
+    <select id="selectByRelatedId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_deposit_transaction
+        WHERE related_id = #{relatedId} AND related_type = #{relatedType} AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据ID删除交易流水 -->
+    <update id="deleteById" parameterType="java.lang.Long">
+        UPDATE user_deposit_transaction
+        SET deleted = 1, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 查询待审核的交易列表 -->
+    <select id="selectPendingTransactions" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM user_deposit_transaction
+        WHERE status = 0 AND deleted = 0
+        <if test="transactionType != null">
+            AND transaction_type = #{transactionType}
+        </if>
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>

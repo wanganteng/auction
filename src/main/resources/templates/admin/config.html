@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统配置管理 - 拍卖系统</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        .config-container {
+            padding: 20px;
+            background-color: #f5f5f5;
+            min-height: 100vh;
+        }
+        .config-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .config-header {
+            padding: 20px;
+            border-bottom: 1px solid #ebeef5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .config-content {
+            padding: 20px;
+        }
+        .config-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ebeef5;
+            border-radius: 6px;
+            background-color: #fafafa;
+        }
+        .config-item.editing {
+            border-color: #409eff;
+            background-color: #f0f9ff;
+        }
+        .config-key {
+            font-weight: bold;
+            color: #303133;
+            margin-bottom: 8px;
+        }
+        .config-description {
+            color: #606266;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .config-value {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .config-type {
+            font-size: 12px;
+            color: #909399;
+            background-color: #f4f4f5;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .config-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        .batch-actions {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+        }
+        .search-box {
+            margin-bottom: 20px;
+        }
+        .filter-tabs {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="config-container">
+        <!-- 页面标题 -->
+        <div class="config-card">
+            <div class="config-header">
+                <h2>系统配置管理</h2>
+                <div>
+                    <el-button type="primary" @click="showAddDialog = true">
+                        <i class="el-icon-plus"></i> 添加配置
+                    </el-button>
+                    <el-button @click="reloadConfigs">
+                        <i class="el-icon-refresh"></i> 刷新
+                    </el-button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 搜索和筛选 -->
+        <div class="config-card">
+            <div class="config-content">
+                <div class="search-box">
+                    <el-input
+                        v-model="searchKeyword"
+                        placeholder="搜索配置键或描述..."
+                        prefix-icon="el-icon-search"
+                        @input="filterConfigs"
+                        clearable>
+                    </el-input>
+                </div>
+                
+                <div class="filter-tabs">
+                    <el-tabs v-model="activeTab" @tab-click="handleTabClick">
+                        <el-tab-pane label="全部配置" name="all"></el-tab-pane>
+                        <el-tab-pane label="系统配置" name="system"></el-tab-pane>
+                        <el-tab-pane label="字符串类型" name="STRING"></el-tab-pane>
+                        <el-tab-pane label="数字类型" name="NUMBER"></el-tab-pane>
+                        <el-tab-pane label="布尔类型" name="BOOLEAN"></el-tab-pane>
+                    </el-tabs>
+                </div>
+
+                <div class="batch-actions" v-if="selectedConfigs.length > 0">
+                    <el-alert
+                        :title="`已选择 ${selectedConfigs.length} 个配置项`"
+                        type="info"
+                        show-icon
+                        :closable="false">
+                    </el-alert>
+                    <div style="margin-top: 10px;">
+                        <el-button type="primary" @click="batchUpdate">
+                            <i class="el-icon-edit"></i> 批量更新
+                        </el-button>
+                        <el-button type="danger" @click="batchDelete">
+                            <i class="el-icon-delete"></i> 批量删除
+                        </el-button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 配置列表 -->
+        <div class="config-card">
+            <div class="config-content">
+                <div v-if="loading" style="text-align: center; padding: 40px;">
+                    <el-loading-spinner></el-loading-spinner>
+                    <p>加载中...</p>
+                </div>
+                
+                <div v-else-if="filteredConfigs.length === 0" style="text-align: center; padding: 40px; color: #909399;">
+                    <i class="el-icon-info" style="font-size: 48px; margin-bottom: 16px;"></i>
+                    <p>暂无配置数据</p>
+                </div>
+                
+                <div v-else>
+                    <div v-for="config in filteredConfigs" :key="config.id" class="config-item" :class="{ editing: editingConfigs[config.id] }">
+                        <div class="config-key">{{ config.configKey }}</div>
+                        <div class="config-description">{{ config.description }}</div>
+                        
+                        <div class="config-value">
+                            <span v-if="!editingConfigs[config.id]">
+                                <el-tag v-if="config.configType === 'BOOLEAN'" :type="config.configValue === 'true' ? 'success' : 'info'">
+                                    {{ config.configValue === 'true' ? '是' : '否' }}
+                                </el-tag>
+                                <span v-else>{{ config.configValue }}</span>
+                            </span>
+                            <el-input
+                                v-else
+                                v-model="editingValues[config.id]"
+                                :type="getInputType(config.configType)"
+                                size="small"
+                                style="width: 200px;">
+                            </el-input>
+                            
+                            <el-tag class="config-type" size="mini">{{ config.configType }}</el-tag>
+                            
+                            <el-checkbox v-model="selectedConfigs" :label="config.id" style="margin-left: auto;">
+                                选择
+                            </el-checkbox>
+                        </div>
+                        
+                        <div class="config-actions">
+                            <el-button
+                                v-if="!editingConfigs[config.id]"
+                                type="primary"
+                                size="mini"
+                                @click="startEdit(config)">
+                                <i class="el-icon-edit"></i> 编辑
+                            </el-button>
+                            <template v-else>
+                                <el-button
+                                    type="success"
+                                    size="mini"
+                                    @click="saveConfig(config)">
+                                    <i class="el-icon-check"></i> 保存
+                                </el-button>
+                                <el-button
+                                    size="mini"
+                                    @click="cancelEdit(config)">
+                                    <i class="el-icon-close"></i> 取消
+                                </el-button>
+                            </template>
+                            
+                            <el-button
+                                type="danger"
+                                size="mini"
+                                @click="deleteConfig(config)"
+                                :disabled="config.isSystem === 1">
+                                <i class="el-icon-delete"></i> 删除
+                            </el-button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加配置对话框 -->
+        <el-dialog title="添加配置" :visible.sync="showAddDialog" width="500px">
+            <el-form :model="newConfig" :rules="configRules" ref="configForm" label-width="100px">
+                <el-form-item label="配置键" prop="configKey">
+                    <el-input v-model="newConfig.configKey" placeholder="请输入配置键"></el-input>
+                </el-form-item>
+                <el-form-item label="配置值" prop="configValue">
+                    <el-input v-model="newConfig.configValue" placeholder="请输入配置值"></el-input>
+                </el-form-item>
+                <el-form-item label="配置类型" prop="configType">
+                    <el-select v-model="newConfig.configType" placeholder="请选择配置类型">
+                        <el-option label="字符串" value="STRING"></el-option>
+                        <el-option label="数字" value="NUMBER"></el-option>
+                        <el-option label="布尔" value="BOOLEAN"></el-option>
+                        <el-option label="JSON" value="JSON"></el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="描述" prop="description">
+                    <el-input v-model="newConfig.description" type="textarea" placeholder="请输入配置描述"></el-input>
+                </el-form-item>
+                <el-form-item label="是否系统配置">
+                    <el-switch v-model="newConfig.isSystem" :active-value="1" :inactive-value="0"></el-switch>
+                </el-form-item>
+                <el-form-item label="是否可编辑">
+                    <el-switch v-model="newConfig.isEditable" :active-value="1" :inactive-value="0"></el-switch>
+                </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button @click="showAddDialog = false">取消</el-button>
+                <el-button type="primary" @click="addConfig">确定</el-button>
+            </div>
+        </el-dialog>
+
+        <!-- 批量更新对话框 -->
+        <el-dialog title="批量更新配置" :visible.sync="showBatchUpdateDialog" width="600px">
+            <el-form :model="batchUpdateForm" label-width="100px">
+                <div v-for="config in selectedConfigs" :key="config" style="margin-bottom: 15px;">
+                    <el-form-item :label="getConfigKey(config)">
+                        <el-input v-model="batchUpdateValues[config]" placeholder="请输入新值"></el-input>
+                    </el-form-item>
+                </div>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button @click="showBatchUpdateDialog = false">取消</el-button>
+                <el-button type="primary" @click="confirmBatchUpdate">确定</el-button>
+            </div>
+        </el-dialog>
+    </div>
+
+    <script>
+        new Vue({
+            el: '#app',
+            data() {
+                return {
+                    loading: false,
+                    configs: [],
+                    filteredConfigs: [],
+                    searchKeyword: '',
+                    activeTab: 'all',
+                    selectedConfigs: [],
+                    editingConfigs: {},
+                    editingValues: {},
+                    showAddDialog: false,
+                    showBatchUpdateDialog: false,
+                    batchUpdateValues: {},
+                    newConfig: {
+                        configKey: '',
+                        configValue: '',
+                        configType: 'STRING',
+                        description: '',
+                        isSystem: 0,
+                        isEditable: 1
+                    },
+                    configRules: {
+                        configKey: [
+                            { required: true, message: '请输入配置键', trigger: 'blur' }
+                        ],
+                        configValue: [
+                            { required: true, message: '请输入配置值', trigger: 'blur' }
+                        ],
+                        configType: [
+                            { required: true, message: '请选择配置类型', trigger: 'change' }
+                        ]
+                    }
+                }
+            },
+            mounted() {
+                this.loadConfigs();
+            },
+            methods: {
+                async loadConfigs() {
+                    this.loading = true;
+                    try {
+                        const response = await axios.get('/api/admin/configs');
+                        if (response.data.success) {
+                            this.configs = response.data.data;
+                            this.filterConfigs();
+                        } else {
+                            this.$message.error(response.data.message);
+                        }
+                    } catch (error) {
+                        this.$message.error('加载配置失败: ' + error.message);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                
+                filterConfigs() {
+                    let filtered = this.configs;
+                    
+                    // 按类型筛选
+                    if (this.activeTab !== 'all') {
+                        if (this.activeTab === 'system') {
+                            filtered = filtered.filter(config => config.isSystem === 1);
+                        } else {
+                            filtered = filtered.filter(config => config.configType === this.activeTab);
+                        }
+                    }
+                    
+                    // 按关键词搜索
+                    if (this.searchKeyword) {
+                        const keyword = this.searchKeyword.toLowerCase();
+                        filtered = filtered.filter(config => 
+                            config.configKey.toLowerCase().includes(keyword) ||
+                            (config.description && config.description.toLowerCase().includes(keyword))
+                        );
+                    }
+                    
+                    this.filteredConfigs = filtered;
+                },
+                
+                handleTabClick() {
+                    this.filterConfigs();
+                },
+                
+                startEdit(config) {
+                    this.$set(this.editingConfigs, config.id, true);
+                    this.$set(this.editingValues, config.id, config.configValue);
+                },
+                
+                cancelEdit(config) {
+                    this.$set(this.editingConfigs, config.id, false);
+                    this.$set(this.editingValues, config.id, '');
+                },
+                
+                async saveConfig(config) {
+                    const newValue = this.editingValues[config.id];
+                    if (!newValue) {
+                        this.$message.warning('配置值不能为空');
+                        return;
+                    }
+                    
+                    try {
+                        const response = await axios.put(`/api/admin/configs/${config.configKey}`, {
+                            configValue: newValue
+                        });
+                        
+                        if (response.data.success) {
+                            config.configValue = newValue;
+                            this.$set(this.editingConfigs, config.id, false);
+                            this.$message.success('配置更新成功');
+                        } else {
+                            this.$message.error(response.data.message);
+                        }
+                    } catch (error) {
+                        this.$message.error('更新配置失败: ' + error.message);
+                    }
+                },
+                
+                async deleteConfig(config) {
+                    if (config.isSystem === 1) {
+                        this.$message.warning('系统配置不能删除');
+                        return;
+                    }
+                    
+                    try {
+                        await this.$confirm('确定要删除这个配置吗？', '提示', {
+                            confirmButtonText: '确定',
+                            cancelButtonText: '取消',
+                            type: 'warning'
+                        });
+                        
+                        const response = await axios.delete(`/api/admin/configs/${config.id}`);
+                        if (response.data.success) {
+                            this.loadConfigs();
+                            this.$message.success('配置删除成功');
+                        } else {
+                            this.$message.error(response.data.message);
+                        }
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            this.$message.error('删除配置失败: ' + error.message);
+                        }
+                    }
+                },
+                
+                async addConfig() {
+                    try {
+                        await this.$refs.configForm.validate();
+                        
+                        const response = await axios.post('/api/admin/configs', this.newConfig);
+                        if (response.data.success) {
+                            this.showAddDialog = false;
+                            this.loadConfigs();
+                            this.$message.success('配置添加成功');
+                            this.resetNewConfig();
+                        } else {
+                            this.$message.error(response.data.message);
+                        }
+                    } catch (error) {
+                        if (error !== false) {
+                            this.$message.error('添加配置失败: ' + error.message);
+                        }
+                    }
+                },
+                
+                resetNewConfig() {
+                    this.newConfig = {
+                        configKey: '',
+                        configValue: '',
+                        configType: 'STRING',
+                        description: '',
+                        isSystem: 0,
+                        isEditable: 1
+                    };
+                },
+                
+                batchUpdate() {
+                    if (this.selectedConfigs.length === 0) {
+                        this.$message.warning('请先选择要更新的配置');
+                        return;
+                    }
+                    
+                    this.batchUpdateValues = {};
+                    this.selectedConfigs.forEach(configId => {
+                        const config = this.configs.find(c => c.id === configId);
+                        this.batchUpdateValues[configId] = config.configValue;
+                    });
+                    
+                    this.showBatchUpdateDialog = true;
+                },
+                
+                async confirmBatchUpdate() {
+                    try {
+                        const response = await axios.put('/api/admin/configs/batch', this.batchUpdateValues);
+                        if (response.data.success) {
+                            this.showBatchUpdateDialog = false;
+                            this.loadConfigs();
+                            this.selectedConfigs = [];
+                            this.$message.success('批量更新成功');
+                        } else {
+                            this.$message.error(response.data.message);
+                        }
+                    } catch (error) {
+                        this.$message.error('批量更新失败: ' + error.message);
+                    }
+                },
+                
+                async batchDelete() {
+                    if (this.selectedConfigs.length === 0) {
+                        this.$message.warning('请先选择要删除的配置');
+                        return;
+                    }
+                    
+                    try {
+                        await this.$confirm(`确定要删除选中的 ${this.selectedConfigs.length} 个配置吗？`, '提示', {
+                            confirmButtonText: '确定',
+                            cancelButtonText: '取消',
+                            type: 'warning'
+                        });
+                        
+                        // 逐个删除
+                        for (const configId of this.selectedConfigs) {
+                            await axios.delete(`/api/admin/configs/${configId}`);
+                        }
+                        
+                        this.loadConfigs();
+                        this.selectedConfigs = [];
+                        this.$message.success('批量删除成功');
+                    } catch (error) {
+                        if (error !== 'cancel') {
+                            this.$message.error('批量删除失败: ' + error.message);
+                        }
+                    }
+                },
+                
+                async reloadConfigs() {
+                    try {
+                        const response = await axios.post('/api/admin/configs/reload');
+                        if (response.data.success) {
+                            this.loadConfigs();
+                            this.$message.success('配置缓存重新加载成功');
+                        } else {
+                            this.$message.error(response.data.message);
+                        }
+                    } catch (error) {
+                        this.$message.error('重新加载失败: ' + error.message);
+                    }
+                },
+                
+                getInputType(configType) {
+                    switch (configType) {
+                        case 'NUMBER':
+                            return 'number';
+                        case 'BOOLEAN':
+                            return 'text';
+                        default:
+                            return 'text';
+                    }
+                },
+                
+                getConfigKey(configId) {
+                    const config = this.configs.find(c => c.id === configId);
+                    return config ? config.configKey : '';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

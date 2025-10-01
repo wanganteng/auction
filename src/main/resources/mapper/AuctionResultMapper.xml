@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.auction.mapper.AuctionResultMapper">
+
+    <resultMap id="BaseResultMap" type="com.auction.entity.AuctionResult">
+        <id column="id" property="id" />
+        <result column="session_id" property="sessionId" />
+        <result column="item_id" property="itemId" />
+        <result column="winner_user_id" property="winnerUserId" />
+        <result column="final_price" property="finalPrice" />
+        <result column="highest_bid_id" property="highestBidId" />
+        <result column="result_status" property="resultStatus" />
+        <result column="order_id" property="orderId" />
+        <result column="commission_fee" property="commissionFee" />
+        <result column="deposit_used" property="depositUsed" />
+        <result column="settle_status" property="settleStatus" />
+        <result column="settle_time" property="settleTime" />
+        <result column="remark" property="remark" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <insert id="insert" parameterType="com.auction.entity.AuctionResult" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO auction_result
+        (session_id, item_id, winner_user_id, final_price, highest_bid_id, result_status, order_id,
+         commission_fee, deposit_used, settle_status, settle_time, remark, create_time, update_time)
+        VALUES
+        (#{sessionId}, #{itemId}, #{winnerUserId}, #{finalPrice}, #{highestBidId}, #{resultStatus}, #{orderId},
+         #{commissionFee}, #{depositUsed}, #{settleStatus}, #{settleTime}, #{remark}, NOW(), NOW())
+    </insert>
+
+    <update id="update" parameterType="com.auction.entity.AuctionResult">
+        UPDATE auction_result
+        SET winner_user_id=#{winnerUserId}, final_price=#{finalPrice}, highest_bid_id=#{highestBidId},
+            result_status=#{resultStatus}, order_id=#{orderId}, commission_fee=#{commissionFee},
+            deposit_used=#{depositUsed}, settle_status=#{settleStatus}, settle_time=#{settleTime},
+            remark=#{remark}, update_time=NOW()
+        WHERE id=#{id}
+    </update>
+
+    <select id="selectBySessionAndItem" resultMap="BaseResultMap">
+        SELECT * FROM auction_result WHERE session_id=#{param1} AND item_id=#{param2}
+    </select>
+
+    <select id="selectBySessionId" resultMap="BaseResultMap">
+        SELECT * FROM auction_result WHERE session_id=#{param1}
+    </select>
+
+</mapper>
+
+

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>混合模式 Token 管理测试</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>混合模式 Token 管理测试</h1>
+    
+    <div id="app">
+        <div>
+            <h2>登录测试</h2>
+            <button onclick="testLogin()">测试登录</button>
+            <div id="loginResult"></div>
+        </div>
+        
+        <div>
+            <h2>Token 信息</h2>
+            <div id="tokenInfo"></div>
+        </div>
+        
+        <div>
+            <h2>API 测试</h2>
+            <button onclick="testApi()">测试 API 调用</button>
+            <div id="apiResult"></div>
+        </div>
+        
+        <div>
+            <h2>Token 刷新测试</h2>
+            <button onclick="testRefresh()">测试 Token 刷新</button>
+            <div id="refreshResult"></div>
+        </div>
+        
+        <div>
+            <h2>登出测试</h2>
+            <button onclick="testLogout()">测试登出</button>
+            <div id="logoutResult"></div>
+        </div>
+    </div>
+
+    <script>
+        // 设置 axios 拦截器
+        axios.interceptors.request.use(config => {
+            const token = localStorage.getItem('accessToken');
+            if (token) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+            return config;
+        });
+
+        axios.interceptors.response.use(
+            response => response,
+            async error => {
+                if (error.response && error.response.status === 401) {
+                    console.log('收到 401 错误，尝试刷新 Token...');
+                    const refreshToken = localStorage.getItem('refreshToken');
+                    if (refreshToken) {
+                        try {
+                            const response = await axios.post('/api/auth/refresh', {
+                                refreshToken: refreshToken
+                            });
+                            
+                            if (response.data.code === 200) {
+                                console.log('Token 刷新成功');
+                                const newAccessToken = response.data.data.accessToken;
+                                localStorage.setItem('accessToken', newAccessToken);
+                                
+                                // 重新发起原请求
+                                error.config.headers.Authorization = `Bearer ${newAccessToken}`;
+                                return axios.request(error.config);
+                            }
+                        } catch (refreshError) {
+                            console.error('Token 刷新失败:', refreshError);
+                        }
+                    }
+                    
+                    // 刷新失败，清除所有 token
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('refreshToken');
+                    localStorage.removeItem('userInfo');
+                    alert('登录已过期，请重新登录');
+                }
+                return Promise.reject(error);
+            }
+        );
+
+        function updateTokenInfo() {
+            const accessToken = localStorage.getItem('accessToken');
+            const refreshToken = localStorage.getItem('refreshToken');
+            const userInfo = localStorage.getItem('userInfo');
+            
+            document.getElementById('tokenInfo').innerHTML = `
+                <p><strong>Access Token:</strong> ${accessToken ? accessToken.substring(0, 50) + '...' : '无'}</p>
+                <p><strong>Refresh Token:</strong> ${refreshToken ? refreshToken.substring(0, 50) + '...' : '无'}</p>
+                <p><strong>User Info:</strong> ${userInfo || '无'}</p>
+            `;
+        }
+
+        async function testLogin() {
+            try {
+                const response = await axios.post('/api/auth/login', {
+                    username: 'admin',
+                    password: 'admin123'
+                });
+                
+                if (response.data.code === 200) {
+                    const data = response.data.data;
+                    localStorage.setItem('accessToken', data.accessToken);
+                    localStorage.setItem('refreshToken', data.refreshToken);
+                    localStorage.setItem('userInfo', JSON.stringify(data.user));
+                    
+                    document.getElementById('loginResult').innerHTML = `
+                        <div style="color: green;">
+                            <p>登录成功！</p>
+                            <p>Access Token: ${data.accessToken.substring(0, 50)}...</p>
+                            <p>Refresh Token: ${data.refreshToken.substring(0, 50)}...</p>
+                            <p>用户类型: ${data.user.userType === 1 ? '管理员' : '用户'}</p>
+                        </div>
+                    `;
+                    
+                    updateTokenInfo();
+                } else {
+                    document.getElementById('loginResult').innerHTML = `
+                        <div style="color: red;">登录失败: ${response.data.message}</div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('loginResult').innerHTML = `
+                    <div style="color: red;">登录错误: ${error.message}</div>
+                `;
+            }
+        }
+
+        async function testApi() {
+            try {
+                const response = await axios.get('/api/admin/dashboard/overview');
+                document.getElementById('apiResult').innerHTML = `
+                    <div style="color: green;">
+                        <p>API 调用成功！</p>
+                        <pre>${JSON.stringify(response.data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('apiResult').innerHTML = `
+                    <div style="color: red;">API 调用失败: ${error.message}</div>
+                `;
+            }
+        }
+
+        async function testRefresh() {
+            try {
+                const refreshToken = localStorage.getItem('refreshToken');
+                if (!refreshToken) {
+                    document.getElementById('refreshResult').innerHTML = `
+                        <div style="color: red;">没有 Refresh Token</div>
+                    `;
+                    return;
+                }
+
+                const response = await axios.post('/api/auth/refresh', {
+                    refreshToken: refreshToken
+                });
+                
+                if (response.data.code === 200) {
+                    const newAccessToken = response.data.data.accessToken;
+                    localStorage.setItem('accessToken', newAccessToken);
+                    
+                    document.getElementById('refreshResult').innerHTML = `
+                        <div style="color: green;">
+                            <p>Token 刷新成功！</p>
+                            <p>新 Access Token: ${newAccessToken.substring(0, 50)}...</p>
+                        </div>
+                    `;
+                    
+                    updateTokenInfo();
+                } else {
+                    document.getElementById('refreshResult').innerHTML = `
+                        <div style="color: red;">Token 刷新失败: ${response.data.message}</div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('refreshResult').innerHTML = `
+                    <div style="color: red;">Token 刷新错误: ${error.message}</div>
+                `;
+            }
+        }
+
+        async function testLogout() {
+            try {
+                await axios.post('/api/auth/logout');
+                
+                localStorage.removeItem('accessToken');
+                localStorage.removeItem('refreshToken');
+                localStorage.removeItem('userInfo');
+                
+                document.getElementById('logoutResult').innerHTML = `
+                    <div style="color: green;">登出成功！</div>
+                `;
+                
+                updateTokenInfo();
+            } catch (error) {
+                document.getElementById('logoutResult').innerHTML = `
+                    <div style="color: red;">登出错误: ${error.message}</div>
+                `;
+            }
+        }
+
+        // 页面加载时更新 Token 信息
+        updateTokenInfo();
+    </script>
+</body>
+</html>
