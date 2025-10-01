@@ -25,6 +25,27 @@ CREATE TABLE `sys_user` (
   KEY `idx_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
+-- 用户地址表
+CREATE TABLE `user_address` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '地址ID',
+  `user_id` bigint(20) NOT NULL COMMENT '用户ID',
+  `receiver_name` varchar(50) NOT NULL COMMENT '收货人姓名',
+  `receiver_phone` varchar(20) NOT NULL COMMENT '收货人电话',
+  `province` varchar(50) DEFAULT NULL COMMENT '省份',
+  `city` varchar(50) DEFAULT NULL COMMENT '城市',
+  `district` varchar(50) DEFAULT NULL COMMENT '区县',
+  `detail_address` varchar(500) NOT NULL COMMENT '详细地址',
+  `full_address` varchar(600) NOT NULL COMMENT '完整地址（省市区+详细地址）',
+  `is_default` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否默认地址：0-否，1-是',
+  `tag` varchar(20) DEFAULT NULL COMMENT '地址标签：家、公司、学校等',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted` tinyint(1) NOT NULL DEFAULT '0' COMMENT '删除标志：0-未删除，1-已删除',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_is_default` (`is_default`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户地址表';
+
 -- 用户角色表
 CREATE TABLE `sys_role` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '角色ID',
@@ -84,6 +105,7 @@ CREATE TABLE `auction_item` (
   `commission_ratio` decimal(3,2) DEFAULT '0.05' COMMENT '佣金比例',
   `is_authentic` tinyint(1) DEFAULT '0' COMMENT '是否保真：0-否，1-是',
   `is_free_shipping` tinyint(1) DEFAULT '0' COMMENT '是否包邮：0-否，1-是',
+  `shipping_fee` decimal(10,2) DEFAULT '15.00' COMMENT '运费（元），is_free_shipping=1时此字段无效',
   `is_returnable` tinyint(1) DEFAULT '0' COMMENT '是否支持退货：0-否，1-是',
   `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '拍品状态：0-下架，1-上架',
   `uploader_id` bigint(20) NOT NULL COMMENT '上传人ID',
@@ -265,6 +287,12 @@ CREATE TABLE `auction_order` (
   `total_amount` decimal(10,2) NOT NULL COMMENT '订单总金额',
   `deposit_amount` decimal(10,2) NOT NULL COMMENT '保证金金额',
   `balance_amount` decimal(10,2) NOT NULL COMMENT '尾款金额',
+  `delivery_method` tinyint(1) DEFAULT '1' COMMENT '配送方式：1-物流配送，2-线下自提',
+  `shipping_fee` decimal(10,2) DEFAULT '0.00' COMMENT '物流费用（元）',
+  `receiver_name` varchar(50) DEFAULT NULL COMMENT '收货人姓名',
+  `receiver_phone` varchar(20) DEFAULT NULL COMMENT '收货人电话',
+  `receiver_address` varchar(500) DEFAULT NULL COMMENT '收货地址',
+  `pickup_address` varchar(500) DEFAULT NULL COMMENT '自提地址',
   `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '订单状态：1-待付款，2-已付款，3-已发货，4-已收货，5-已完成，6-已取消',
   `payment_time` datetime DEFAULT NULL COMMENT '付款时间',
   `ship_time` datetime DEFAULT NULL COMMENT '发货时间',

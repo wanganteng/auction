@@ -83,6 +83,12 @@ public class DepositController {
                 return Result.error("用户未登录");
             }
             
+            // 检查账户状态
+            UserDepositAccount account = depositAccountService.getAccountByUserId(userId);
+            if (account != null && account.getStatus() == 2) {
+                return Result.error("您的保证金账户已被冻结，无法进行充值操作，请联系管理员");
+            }
+            
             // 直接使用元为单位
             BigDecimal amount = BigDecimal.valueOf(request.getAmount());
             
@@ -120,6 +126,12 @@ public class DepositController {
             Long userId = getCurrentUserId();
             if (userId == null) {
                 return Result.error("用户未登录");
+            }
+            
+            // 检查账户状态
+            UserDepositAccount account = depositAccountService.getAccountByUserId(userId);
+            if (account != null && account.getStatus() == 2) {
+                return Result.error("您的保证金账户已被冻结，无法进行提现操作，请联系管理员");
             }
             
             // 直接使用元为单位

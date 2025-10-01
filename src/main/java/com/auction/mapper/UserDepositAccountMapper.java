@@ -54,4 +54,9 @@ public interface UserDepositAccountMapper {
                     @Param("availableAmount") java.math.BigDecimal availableAmount,
                     @Param("frozenAmount") java.math.BigDecimal frozenAmount,
                     @Param("refundedAmount") java.math.BigDecimal refundedAmount);
+    
+    /**
+     * 更新账户状态
+     */
+    int updateStatus(@Param("id") Long id, @Param("status") Integer status);
 }

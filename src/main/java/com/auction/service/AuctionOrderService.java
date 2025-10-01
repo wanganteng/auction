@@ -26,6 +26,16 @@ public interface AuctionOrderService {
     boolean payOrder(Long orderId);
 
     /**
+     * 支付订单（带物流费）
+     */
+    boolean payOrder(Long orderId, java.math.BigDecimal shippingFee);
+
+    /**
+     * 更新订单
+     */
+    boolean updateOrder(AuctionOrder order);
+
+    /**
      * 发货
      */
     boolean shipOrder(Long orderId);

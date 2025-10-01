@@ -62,6 +62,36 @@ public class AuctionOrder {
     private BigDecimal balanceAmount;
 
     /**
+     * 配送方式：1-物流配送，2-线下自提
+     */
+    private Integer deliveryMethod;
+
+    /**
+     * 物流费用
+     */
+    private BigDecimal shippingFee;
+
+    /**
+     * 收货人姓名
+     */
+    private String receiverName;
+
+    /**
+     * 收货人电话
+     */
+    private String receiverPhone;
+
+    /**
+     * 收货地址
+     */
+    private String receiverAddress;
+
+    /**
+     * 自提地址
+     */
+    private String pickupAddress;
+
+    /**
      * 订单状态：1-待付款，2-已付款，3-已发货，4-已收货，5-已完成，6-已取消
      */
     private Integer status;

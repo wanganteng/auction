@@ -31,12 +31,39 @@ public class UserNotificationService {
      */
     @Transactional
     public boolean createWinNotification(Long userId, Long orderId, Long itemId, String itemName, String orderNo) {
+        return createWinNotification(userId, orderId, itemId, itemName, orderNo, null, false, null);
+    }
+    
+    /**
+     * 创建中标通知（带余额检查）
+     */
+    @Transactional
+    public boolean createWinNotification(Long userId, Long orderId, Long itemId, String itemName, String orderNo,
+                                        java.math.BigDecimal balanceAmount, boolean needRecharge, java.math.BigDecimal rechargeAmount) {
         try {
             UserNotification notification = new UserNotification();
             notification.setUserId(userId);
             notification.setNotificationType(1); // 中标通知
-            notification.setTitle("恭喜您中标了！");
-            notification.setContent(String.format("恭喜您成功竞得拍品【%s】，请尽快完成支付。订单号：%s", itemName, orderNo));
+            notification.setTitle("🎉 恭喜您中标了！");
+            
+            // 构建通知内容
+            StringBuilder content = new StringBuilder();
+            content.append(String.format("恭喜您成功竞得拍品【%s】！\n\n", itemName));
+            content.append(String.format("订单号：%s\n", orderNo));
+            
+            if (balanceAmount != null) {
+                content.append(String.format("需支付尾款：¥%.2f\n", balanceAmount));
+            }
+            
+            if (needRecharge && rechargeAmount != null && rechargeAmount.compareTo(java.math.BigDecimal.ZERO) > 0) {
+                content.append(String.format("\n⚠️ 温馨提示：\n"));
+                content.append(String.format("您的保证金余额不足，还需充值 ¥%.2f 才能完成支付。\n", rechargeAmount));
+                content.append("请尽快前往【保证金管理】页面充值，以免超时未付款导致订单取消。");
+            } else {
+                content.append("\n您的保证金余额充足，请前往【我的订单】完成支付。");
+            }
+            
+            notification.setContent(content.toString());
             notification.setRelatedId(orderId);
             notification.setRelatedType("order");
             notification.setLinkUrl("/user/orders/" + orderId);
@@ -44,7 +71,7 @@ public class UserNotificationService {
             
             int result = notificationMapper.insert(notification);
             if (result > 0) {
-                log.info("中标通知创建成功: userId={}, orderId={}", userId, orderId);
+                log.info("中标通知创建成功: userId={}, orderId={}, needRecharge={}", userId, orderId, needRecharge);
                 return true;
             }
             return false;

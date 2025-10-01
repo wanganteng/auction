@@ -171,17 +171,28 @@ public class AuctionSettlementService {
             result.setCommissionFee(commissionCents);
             result.setDepositUsed(winnerDepositCents);
 
-            // 发送中标通知
+            // 发送中标通知（包含充值提醒）
             if (orderId != null) {
                 try {
+                    // 检查用户保证金余额是否足够支付尾款
+                    com.auction.entity.UserDepositAccount account = 
+                        userDepositAccountService.getAccountByUserId(winnerUserId);
+                    BigDecimal userAvailable = account != null ? account.getAvailableAmount() : BigDecimal.ZERO;
+                    boolean needRecharge = userAvailable.compareTo(balanceYuan) < 0;
+                    BigDecimal rechargeAmount = needRecharge ? balanceYuan.subtract(userAvailable) : BigDecimal.ZERO;
+                    
                     userNotificationService.createWinNotification(
                         winnerUserId, 
                         orderId, 
                         itemId, 
                         item.getItemName(), 
-                        order.getOrderNo()
+                        order.getOrderNo(),
+                        balanceYuan,
+                        needRecharge,
+                        rechargeAmount
                     );
-                    log.info("中标通知已发送: userId={}, orderId={}, itemId={}", winnerUserId, orderId, itemId);
+                    log.info("中标通知已发送: userId={}, orderId={}, itemId={}, needRecharge={}", 
+                        winnerUserId, orderId, itemId, needRecharge);
                 } catch (Exception e) {
                     log.error("发送中标通知失败: userId={}, orderId={}, error={}", winnerUserId, orderId, e.getMessage());
                 }

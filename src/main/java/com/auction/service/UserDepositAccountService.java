@@ -615,4 +615,76 @@ public class UserDepositAccountService {
             return new ArrayList<>();
         }
     }
+
+    /**
+     * 冻结保证金账户（管理员操作）
+     * 
+     * @param accountId 账户ID
+     * @param reason 冻结原因
+     * @return 是否成功
+     */
+    @Transactional
+    public boolean freezeAccount(Long accountId, String reason) {
+        try {
+            UserDepositAccount account = userDepositAccountMapper.selectById(accountId);
+            if (account == null) {
+                throw new RuntimeException("保证金账户不存在");
+            }
+            
+            if (account.getStatus() == 2) {
+                throw new RuntimeException("该账户已被冻结");
+            }
+            
+            // 更新账户状态为冻结（2）
+            int result = userDepositAccountMapper.updateStatus(accountId, 2);
+            
+            if (result > 0) {
+                log.info("保证金账户已冻结: 账户ID={}, 用户ID={}, 原因={}", 
+                    accountId, account.getUserId(), reason);
+                return true;
+            }
+            
+            return false;
+            
+        } catch (Exception e) {
+            log.error("冻结保证金账户失败: 账户ID={}, 错误: {}", accountId, e.getMessage(), e);
+            throw new RuntimeException("冻结账户失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 解冻保证金账户（管理员操作）
+     * 
+     * @param accountId 账户ID
+     * @param reason 解冻原因
+     * @return 是否成功
+     */
+    @Transactional
+    public boolean unfreezeAccount(Long accountId, String reason) {
+        try {
+            UserDepositAccount account = userDepositAccountMapper.selectById(accountId);
+            if (account == null) {
+                throw new RuntimeException("保证金账户不存在");
+            }
+            
+            if (account.getStatus() == 1) {
+                throw new RuntimeException("该账户未被冻结");
+            }
+            
+            // 更新账户状态为正常（1）
+            int result = userDepositAccountMapper.updateStatus(accountId, 1);
+            
+            if (result > 0) {
+                log.info("保证金账户已解冻: 账户ID={}, 用户ID={}, 原因={}", 
+                    accountId, account.getUserId(), reason);
+                return true;
+            }
+            
+            return false;
+            
+        } catch (Exception e) {
+            log.error("解冻保证金账户失败: 账户ID={}, 错误: {}", accountId, e.getMessage(), e);
+            throw new RuntimeException("解冻账户失败: " + e.getMessage());
+        }
+    }
 }

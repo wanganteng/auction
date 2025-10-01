@@ -90,6 +90,14 @@ public class PageController {
     }
 
     /**
+     * 用户地址管理页
+     */
+    @GetMapping("/auction/user/addresses")
+    public String userAddresses() {
+        return "user/addresses";
+    }
+
+    /**
      * 用户登录页（重定向到统一登录页）
      */
     @GetMapping("/auction/user/login")

@@ -286,13 +286,21 @@
                         <el-menu-item index="sessions/add" @click="goToPage('sessions/add')">创建拍卖会</el-menu-item>
                     </el-sub-menu>
                     
-                    <el-sub-menu index="user-management">
+                    <el-sub-menu index="data-management">
                         <template #title>
                             <i class="el-icon-data-analysis"></i>
                             <span>数据管理</span>
                         </template>
-                        <el-menu-item index="deposits" @click="goToPage('deposits')">保证金管理</el-menu-item>
+                        <el-menu-item index="deposits" @click="goToPage('deposits')">保证金审核</el-menu-item>
                         <el-menu-item index="orders-ship" @click="goToPage('orders-ship')">订单发货</el-menu-item>
+                    </el-sub-menu>
+                    
+                    <el-sub-menu index="risk-management">
+                        <template #title>
+                            <i class="el-icon-warning"></i>
+                            <span>风控管理</span>
+                        </template>
+                        <el-menu-item index="deposit-accounts" @click="goToPage('deposit-accounts')">保证金账户</el-menu-item>
                     </el-sub-menu>
                     
                     <el-sub-menu index="system-management">
@@ -476,24 +484,28 @@
                     <div v-else-if="activeMenu === 'deposits'" class="deposits-page">
                         <div class="page-header">
                             <h1>保证金审核管理</h1>
-                            <el-button @click="loadPendingDeposits" icon="el-icon-refresh">刷新</el-button>
+                            <el-button @click="refreshDepositAudit" icon="el-icon-refresh">刷新</el-button>
                         </div>
 
                         <el-card>
-                            <!-- 筛选 -->
-                            <div style="margin-bottom: 20px;">
-                                <el-radio-group v-model="depositTypeFilter" @change="loadPendingDeposits">
-                                    <el-radio-button :label="null">全部</el-radio-button>
-                                    <el-radio-button :label="1">充值申请</el-radio-button>
-                                    <el-radio-button :label="6">提现申请</el-radio-button>
-                                </el-radio-group>
-                                
-                                <el-tag v-if="pendingDeposits.length > 0" type="warning" style="margin-left: 15px;">
-                                    待审核: {{ pendingDeposits.length }} 条
-                                </el-tag>
-                            </div>
+                            <!-- 标签页切换 -->
+                            <el-tabs v-model="depositAuditTab" @tab-change="onDepositAuditTabChange">
+                                <!-- 待审核标签页 -->
+                                <el-tab-pane label="待审核" name="pending">
+                                    <!-- 筛选 -->
+                                    <div style="margin-bottom: 20px;">
+                                        <el-radio-group v-model="depositTypeFilter" @change="loadPendingDeposits">
+                                            <el-radio-button :label="null">全部</el-radio-button>
+                                            <el-radio-button :label="1">充值申请</el-radio-button>
+                                            <el-radio-button :label="6">提现申请</el-radio-button>
+                                        </el-radio-group>
+                                        
+                                        <el-tag v-if="pendingDeposits.length > 0" type="warning" style="margin-left: 15px;">
+                                            待审核: {{ pendingDeposits.length }} 条
+                                        </el-tag>
+                                    </div>
 
-                            <!-- 待审核列表 -->
+                                    <!-- 待审核列表 -->
                             <el-table 
                                 :data="pendingDeposits" 
                                 v-loading="depositsLoading"
@@ -544,11 +556,89 @@
                                 </el-table-column>
                             </el-table>
 
-                            <!-- 空状态 -->
-                            <div v-if="!depositsLoading && pendingDeposits.length === 0" style="text-align: center; padding: 40px; color: #909399;">
-                                <i class="el-icon-finished" style="font-size: 48px; display: block; margin-bottom: 10px;"></i>
-                                <p>暂无待审核的申请</p>
-                            </div>
+                                    <!-- 空状态 -->
+                                    <div v-if="!depositsLoading && pendingDeposits.length === 0" style="text-align: center; padding: 40px; color: #909399;">
+                                        <i class="el-icon-finished" style="font-size: 48px; display: block; margin-bottom: 10px;"></i>
+                                        <p>暂无待审核的申请</p>
+                                    </div>
+                                </el-tab-pane>
+
+                                <!-- 已审核标签页 -->
+                                <el-tab-pane label="已审核" name="audited">
+                                    <!-- 筛选 -->
+                                    <div style="margin-bottom: 20px;">
+                                        <el-radio-group v-model="auditedTypeFilter" @change="loadAuditedDeposits">
+                                            <el-radio-button :label="null">全部</el-radio-button>
+                                            <el-radio-button :label="1">充值</el-radio-button>
+                                            <el-radio-button :label="6">提现</el-radio-button>
+                                        </el-radio-group>
+                                        
+                                        <el-radio-group v-model="auditedStatusFilter" @change="loadAuditedDeposits" style="margin-left: 15px;">
+                                            <el-radio-button :label="null">全部状态</el-radio-button>
+                                            <el-radio-button :label="1">审核通过</el-radio-button>
+                                            <el-radio-button :label="2">已拒绝</el-radio-button>
+                                        </el-radio-group>
+                                        
+                                        <el-tag v-if="auditedDeposits.length > 0" type="info" style="margin-left: 15px;">
+                                            记录: {{ auditedDeposits.length }} 条
+                                        </el-tag>
+                                    </div>
+
+                                    <!-- 已审核列表 -->
+                                    <el-table 
+                                        :data="auditedDeposits" 
+                                        v-loading="auditedDepositsLoading"
+                                        stripe
+                                        border>
+                                        <el-table-column prop="transactionNo" label="流水号" width="200"></el-table-column>
+                                        <el-table-column label="类型" width="100">
+                                            <template #default="scope">
+                                                <el-tag :type="scope.row.transactionType === 1 ? 'success' : 'warning'">
+                                                    {{ scope.row.transactionType === 1 ? '充值' : '提现' }}
+                                                </el-tag>
+                                            </template>
+                                        </el-table-column>
+                                        <el-table-column label="用户ID" prop="userId" width="100"></el-table-column>
+                                        <el-table-column label="金额" width="120">
+                                            <template #default="scope">
+                                                <span style="color: #F56C6C; font-weight: bold;">
+                                                    ¥{{ Number(scope.row.amount || 0).toFixed(2) }}
+                                                </span>
+                                            </template>
+                                        </el-table-column>
+                                        <el-table-column prop="description" label="说明" min-width="150" show-overflow-tooltip></el-table-column>
+                                        <el-table-column label="申请时间" width="160">
+                                            <template #default="scope">
+                                                {{ formatDateTime(scope.row.createTime) }}
+                                            </template>
+                                        </el-table-column>
+                                        <el-table-column label="审核状态" width="100">
+                                            <template #default="scope">
+                                                <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
+                                                    {{ scope.row.status === 1 ? '已通过' : '已拒绝' }}
+                                                </el-tag>
+                                            </template>
+                                        </el-table-column>
+                                        <el-table-column label="审核人ID" prop="reviewerId" width="100"></el-table-column>
+                                        <el-table-column label="审核时间" width="160">
+                                            <template #default="scope">
+                                                {{ formatDateTime(scope.row.reviewTime) }}
+                                            </template>
+                                        </el-table-column>
+                                        <el-table-column label="审核备注" min-width="150" show-overflow-tooltip>
+                                            <template #default="scope">
+                                                {{ scope.row.reviewRemark || '-' }}
+                                            </template>
+                                        </el-table-column>
+                                    </el-table>
+
+                                    <!-- 空状态 -->
+                                    <div v-if="!auditedDepositsLoading && auditedDeposits.length === 0" style="text-align: center; padding: 40px; color: #909399;">
+                                        <i class="el-icon-document" style="font-size: 48px; display: block; margin-bottom: 10px;"></i>
+                                        <p>暂无审核记录</p>
+                                    </div>
+                                </el-tab-pane>
+                            </el-tabs>
                         </el-card>
 
                         <!-- 拒绝原因对话框 -->
@@ -567,6 +657,166 @@
                                 <el-button @click="showRejectDialog = false">取消</el-button>
                                 <el-button type="danger" @click="confirmReject" :loading="rejecting">确定拒绝</el-button>
                             </template>
+                        </el-dialog>
+                    </div>
+
+                    <!-- 保证金账户列表 -->
+                    <div v-else-if="activeMenu === 'deposit-accounts'" class="deposit-accounts-page">
+                        <div class="page-header">
+                            <h1>保证金账户管理（风控）</h1>
+                            <div>
+                                <el-button @click="loadDepositAccounts" icon="el-icon-refresh">刷新</el-button>
+                            </div>
+                        </div>
+
+                        <el-card>
+                            <!-- 筛选器 -->
+                            <div style="margin-bottom: 20px;">
+                                <el-radio-group v-model="accountStatusFilter" @change="loadDepositAccounts">
+                                    <el-radio-button :label="null">全部账户</el-radio-button>
+                                    <el-radio-button :label="1">正常账户</el-radio-button>
+                                    <el-radio-button :label="2" style="--el-button-text-color: #F56C6C; --el-button-active-text-color: #FFF;">
+                                        🚫 黑名单
+                                    </el-radio-button>
+                                </el-radio-group>
+                            </div>
+                            
+                            <!-- 统计信息 -->
+                            <el-row :gutter="20" style="margin-bottom: 20px;">
+                                <el-col :span="6">
+                                    <el-statistic title="账户总数" :value="depositStats.totalAccounts"></el-statistic>
+                                </el-col>
+                                <el-col :span="6">
+                                    <el-statistic title="总保证金（元）" :value="depositStats.totalAmount" :precision="2"></el-statistic>
+                                </el-col>
+                                <el-col :span="6">
+                                    <el-statistic title="可用保证金（元）" :value="depositStats.availableAmount" :precision="2"></el-statistic>
+                                </el-col>
+                                <el-col :span="6">
+                                    <el-statistic title="冻结保证金（元）" :value="depositStats.frozenAmount" :precision="2"></el-statistic>
+                                </el-col>
+                            </el-row>
+
+                            <!-- 保证金账户列表 -->
+                            <el-table 
+                                :data="depositAccounts" 
+                                v-loading="depositAccountsLoading"
+                                stripe
+                                border>
+                                <el-table-column prop="id" label="账户ID" width="100"></el-table-column>
+                                <el-table-column prop="userId" label="用户ID" width="100"></el-table-column>
+                                <el-table-column label="总保证金" width="150">
+                                    <template #default="scope">
+                                        <span style="font-weight: bold;">
+                                            ¥{{ Number(scope.row.totalAmount || 0).toFixed(2) }}
+                                        </span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="可用保证金" width="150">
+                                    <template #default="scope">
+                                        <span style="color: #67C23A; font-weight: bold;">
+                                            ¥{{ Number(scope.row.availableAmount || 0).toFixed(2) }}
+                                        </span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="冻结保证金" width="150">
+                                    <template #default="scope">
+                                        <span style="color: #E6A23C; font-weight: bold;">
+                                            ¥{{ Number(scope.row.frozenAmount || 0).toFixed(2) }}
+                                        </span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="已退保证金" width="150">
+                                    <template #default="scope">
+                                        <span style="color: #909399;">
+                                            ¥{{ Number(scope.row.refundedAmount || 0).toFixed(2) }}
+                                        </span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="状态" width="100">
+                                    <template #default="scope">
+                                        <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
+                                            {{ scope.row.status === 1 ? '正常' : '冻结' }}
+                                        </el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="创建时间" width="180">
+                                    <template #default="scope">
+                                        {{ formatDateTime(scope.row.createTime) }}
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="操作" width="280" fixed="right">
+                                    <template #default="scope">
+                                        <el-button size="small" type="primary" @click="viewUserTransactions(scope.row)">
+                                            查看记录
+                                        </el-button>
+                                        <el-button 
+                                            v-if="scope.row.status === 1"
+                                            size="small" 
+                                            type="warning" 
+                                            @click="freezeAccount(scope.row)">
+                                            冻结账户
+                                        </el-button>
+                                        <el-button 
+                                            v-if="scope.row.status === 2"
+                                            size="small" 
+                                            type="success" 
+                                            @click="unfreezeAccount(scope.row)">
+                                            解冻账户
+                                        </el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                        </el-card>
+
+                        <!-- 用户交易记录对话框 -->
+                        <el-dialog 
+                            v-model="showUserTransactionsDialog" 
+                            :title="`用户${currentAccountUserId}的交易记录`"
+                            width="80%">
+                            <el-table 
+                                :data="userTransactions" 
+                                v-loading="userTransactionsLoading"
+                                max-height="500">
+                                <el-table-column prop="transactionNo" label="流水号" width="220"></el-table-column>
+                                <el-table-column label="交易类型" width="100">
+                                    <template #default="scope">
+                                        <el-tag :type="getTransactionTypeTag(scope.row.transactionType)">
+                                            {{ getTransactionTypeName(scope.row.transactionType) }}
+                                        </el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="交易金额" width="150">
+                                    <template #default="scope">
+                                        <span :style="{color: scope.row.transactionType === 1 || scope.row.transactionType === 3 || scope.row.transactionType === 5 ? '#67C23A' : '#F56C6C', fontWeight: 'bold'}">
+                                            {{ scope.row.transactionType === 1 || scope.row.transactionType === 3 || scope.row.transactionType === 5 ? '+' : '-' }}¥{{ Number(scope.row.amount || 0).toFixed(2) }}
+                                        </span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="交易前余额" width="130">
+                                    <template #default="scope">
+                                        ¥{{ Number(scope.row.balanceBefore || 0).toFixed(2) }}
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="交易后余额" width="130">
+                                    <template #default="scope">
+                                        ¥{{ Number(scope.row.balanceAfter || 0).toFixed(2) }}
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="description" label="说明" min-width="200" show-overflow-tooltip></el-table-column>
+                                <el-table-column label="状态" width="100">
+                                    <template #default="scope">
+                                        <el-tag :type="scope.row.status === 1 ? 'success' : scope.row.status === 0 ? 'warning' : 'danger'">
+                                            {{ scope.row.status === 1 ? '成功' : scope.row.status === 0 ? '待审核' : '失败' }}
+                                        </el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="交易时间" width="180">
+                                    <template #default="scope">
+                                        {{ formatDateTime(scope.row.createTime) }}
+                                    </template>
+                                </el-table-column>
+                            </el-table>
                         </el-dialog>
                     </div>
 
@@ -2213,13 +2463,33 @@
                         endTime: null
                     },
                     // 保证金审核管理
+                    depositAuditTab: 'pending',
                     pendingDeposits: [],
                     depositsLoading: false,
                     depositTypeFilter: null,
+                    auditedDeposits: [],
+                    auditedDepositsLoading: false,
+                    auditedTypeFilter: null,
+                    auditedStatusFilter: null,
                     showRejectDialog: false,
                     currentRejectTransaction: null,
                     rejectRemark: '',
                     rejecting: false,
+                    
+                    // 保证金账户列表
+                    depositAccounts: [],
+                    depositAccountsLoading: false,
+                    accountStatusFilter: null,
+                    depositStats: {
+                        totalAccounts: 0,
+                        totalAmount: 0,
+                        availableAmount: 0,
+                        frozenAmount: 0
+                    },
+                    showUserTransactionsDialog: false,
+                    userTransactions: [],
+                    userTransactionsLoading: false,
+                    currentAccountUserId: null,
                     
                     // 订单发货管理
                     pendingShipOrders: [],
@@ -2763,6 +3033,10 @@
                         if (response.data.code === 200) {
                             ElMessage.success('审核通过');
                             this.loadPendingDeposits();
+                            // 如果当前在已审核标签页，也刷新已审核列表
+                            if (this.depositAuditTab === 'audited') {
+                                this.loadAuditedDeposits();
+                            }
                         } else {
                             ElMessage.error(response.data.message || '审核失败');
                         }
@@ -2797,6 +3071,10 @@
                             ElMessage.success('已拒绝该申请');
                             this.showRejectDialog = false;
                             this.loadPendingDeposits();
+                            // 如果当前在已审核标签页，也刷新已审核列表
+                            if (this.depositAuditTab === 'audited') {
+                                this.loadAuditedDeposits();
+                            }
                         } else {
                             ElMessage.error(response.data.message || '操作失败');
                         }
@@ -2805,6 +3083,223 @@
                         ElMessage.error('操作失败');
                     } finally {
                         this.rejecting = false;
+                    }
+                },
+                
+                // 刷新保证金审核（根据当前标签页加载对应数据）
+                refreshDepositAudit() {
+                    if (this.depositAuditTab === 'pending') {
+                        this.loadPendingDeposits();
+                    } else {
+                        this.loadAuditedDeposits();
+                    }
+                },
+                
+                // 标签页切换
+                onDepositAuditTabChange(tab) {
+                    if (tab === 'pending') {
+                        this.loadPendingDeposits();
+                    } else if (tab === 'audited') {
+                        this.loadAuditedDeposits();
+                    }
+                },
+                
+                // 加载已审核的记录
+                async loadAuditedDeposits() {
+                    this.auditedDepositsLoading = true;
+                    try {
+                        const params = {};
+                        if (this.auditedTypeFilter !== null) {
+                            params.transactionType = this.auditedTypeFilter;
+                        }
+                        if (this.auditedStatusFilter !== null) {
+                            params.status = this.auditedStatusFilter;
+                        } else {
+                            // 只查询已审核的（状态1成功或2失败）
+                            // 如果要同时查询两个状态，需要在后端支持
+                            // 这里我们分别查询然后合并
+                        }
+                        
+                        const response = await axios.get('/api/admin/deposit/transactions', { params });
+                        if (response.data.code === 200) {
+                            let allTransactions = response.data.data || [];
+                            // 过滤出已审核的（状态1或2），排除待审核（0）和处理中（3）
+                            this.auditedDeposits = allTransactions.filter(t => {
+                                // 只显示充值(1)和提现(6)
+                                const isDepositOrWithdraw = t.transactionType === 1 || t.transactionType === 6;
+                                // 只显示已审核的状态（1成功或2失败）
+                                const isAudited = t.status === 1 || t.status === 2;
+                                
+                                let matchType = true;
+                                if (this.auditedTypeFilter !== null) {
+                                    matchType = t.transactionType === this.auditedTypeFilter;
+                                }
+                                
+                                let matchStatus = true;
+                                if (this.auditedStatusFilter !== null) {
+                                    matchStatus = t.status === this.auditedStatusFilter;
+                                }
+                                
+                                return isDepositOrWithdraw && isAudited && matchType && matchStatus;
+                            });
+                        } else {
+                            ElMessage.error(response.data.message || '加载失败');
+                        }
+                    } catch (error) {
+                        console.error('加载已审核记录失败:', error);
+                        ElMessage.error('加载失败');
+                    } finally {
+                        this.auditedDepositsLoading = false;
+                    }
+                },
+                
+                // ========== 保证金账户列表 ==========
+                async loadDepositAccounts() {
+                    this.depositAccountsLoading = true;
+                    try {
+                        const params = {};
+                        if (this.accountStatusFilter !== null) {
+                            params.status = this.accountStatusFilter;
+                        }
+                        
+                        const response = await axios.get('/api/admin/deposit/accounts', { params });
+                        if (response.data.code === 200) {
+                            this.depositAccounts = response.data.data || [];
+                            
+                            // 计算统计数据
+                            this.depositStats.totalAccounts = this.depositAccounts.length;
+                            this.depositStats.totalAmount = this.depositAccounts.reduce((sum, acc) => 
+                                sum + Number(acc.totalAmount || 0), 0);
+                            this.depositStats.availableAmount = this.depositAccounts.reduce((sum, acc) => 
+                                sum + Number(acc.availableAmount || 0), 0);
+                            this.depositStats.frozenAmount = this.depositAccounts.reduce((sum, acc) => 
+                                sum + Number(acc.frozenAmount || 0), 0);
+                        } else {
+                            ElMessage.error(response.data.message || '加载失败');
+                        }
+                    } catch (error) {
+                        console.error('加载保证金账户列表失败:', error);
+                        ElMessage.error('加载失败');
+                    } finally {
+                        this.depositAccountsLoading = false;
+                    }
+                },
+                
+                async viewUserTransactions(account) {
+                    this.currentAccountUserId = account.userId;
+                    this.showUserTransactionsDialog = true;
+                    this.userTransactionsLoading = true;
+                    
+                    try {
+                        const response = await axios.get('/api/admin/deposit/transactions', {
+                            params: { userId: account.userId }
+                        });
+                        if (response.data.code === 200) {
+                            this.userTransactions = response.data.data || [];
+                        } else {
+                            ElMessage.error(response.data.message || '加载失败');
+                        }
+                    } catch (error) {
+                        console.error('加载用户交易记录失败:', error);
+                        ElMessage.error('加载失败');
+                    } finally {
+                        this.userTransactionsLoading = false;
+                    }
+                },
+                
+                getTransactionTypeTag(type) {
+                    const tagMap = {
+                        1: 'success',  // 充值
+                        2: 'warning',  // 冻结
+                        3: 'info',     // 解冻
+                        4: 'danger',   // 扣除
+                        5: 'success',  // 退还
+                        6: 'warning'   // 提现
+                    };
+                    return tagMap[type] || 'info';
+                },
+                
+                getTransactionTypeName(type) {
+                    const nameMap = {
+                        1: '充值',
+                        2: '冻结',
+                        3: '解冻',
+                        4: '扣除',
+                        5: '退还',
+                        6: '提现'
+                    };
+                    return nameMap[type] || '未知';
+                },
+                
+                // 冻结保证金账户
+                async freezeAccount(account) {
+                    try {
+                        await ElMessageBox.confirm(
+                            `确定要冻结用户${account.userId}的保证金账户吗？<br><br>` +
+                            `冻结后该用户将无法：<br>` +
+                            `• 充值保证金<br>` +
+                            `• 提现保证金<br>` +
+                            `• 参与竞拍<br>` +
+                            `• 进行任何保证金操作<br><br>` +
+                            `<span style="color: #E6A23C; font-weight: bold;">此操作相当于将用户拉入黑名单！</span>`,
+                            '冻结账户确认',
+                            {
+                                confirmButtonText: '确定冻结',
+                                cancelButtonText: '取消',
+                                type: 'warning',
+                                dangerouslyUseHTMLString: true,
+                                confirmButtonClass: 'el-button--danger'
+                            }
+                        );
+                        
+                        const response = await axios.post(`/api/admin/risk/deposit-accounts/${account.id}/freeze`, {
+                            reason: '管理员手动冻结账户'
+                        });
+                        
+                        if (response.data.code === 200) {
+                            ElMessage.success('账户已冻结');
+                            this.loadDepositAccounts();
+                        } else {
+                            ElMessage.error(response.data.message || '冻结失败');
+                        }
+                    } catch (e) {
+                        if (e !== 'cancel') {
+                            console.error('冻结账户失败:', e);
+                            ElMessage.error('冻结失败：' + (e.message || '未知错误'));
+                        }
+                    }
+                },
+                
+                // 解冻保证金账户
+                async unfreezeAccount(account) {
+                    try {
+                        await ElMessageBox.confirm(
+                            `确定要解冻用户${account.userId}的保证金账户吗？<br><br>` +
+                            `解冻后该用户将恢复所有保证金操作权限。`,
+                            '解冻账户确认',
+                            {
+                                confirmButtonText: '确定解冻',
+                                cancelButtonText: '取消',
+                                type: 'info',
+                                dangerouslyUseHTMLString: true
+                            }
+                        );
+                        
+                        const response = await axios.post(`/api/admin/risk/deposit-accounts/${account.id}/unfreeze`, {
+                            reason: '管理员手动解冻账户'
+                        });
+                        
+                        if (response.data.code === 200) {
+                            ElMessage.success('账户已解冻');
+                            this.loadDepositAccounts();
+                        } else {
+                            ElMessage.error(response.data.message || '解冻失败');
+                        }
+                    } catch (e) {
+                        if (e !== 'cancel') {
+                            console.error('解冻账户失败:', e);
+                            ElMessage.error('解冻失败：' + (e.message || '未知错误'));
+                        }
                     }
                 },
                 
@@ -3246,6 +3741,7 @@
                     if (index === 'items') this.loadItems();
                     if (index === 'sessions') this.loadSessions();
                     if (index === 'deposits') this.loadPendingDeposits();
+                    if (index === 'deposit-accounts') this.loadDepositAccounts();
                     if (index === 'orders-ship') this.loadPendingShipOrders();
                     if (index === 'audit-logs') this.loadAuditLogs();
                     if (index === 'notices') this.loadNoticeCategories();
@@ -3259,7 +3755,8 @@
                         'items/add': [{ name: '首页', path: 'dashboard' }, { name: '拍品列表', path: 'items' }, { name: '上传拍品', path: 'items/add' }],
                         'sessions': [{ name: '首页', path: 'dashboard' }, { name: '拍卖会列表', path: 'sessions' }],
                         'sessions/add': [{ name: '首页', path: 'dashboard' }, { name: '拍卖会列表', path: 'sessions' }, { name: '创建拍卖会', path: 'sessions/add' }],
-                        'deposits': [{ name: '首页', path: 'dashboard' }, { name: '保证金管理', path: 'deposits' }],
+                        'deposits': [{ name: '首页', path: 'dashboard' }, { name: '保证金审核', path: 'deposits' }],
+                        'deposit-accounts': [{ name: '首页', path: 'dashboard' }, { name: '保证金账户', path: 'deposit-accounts' }],
                         'orders-ship': [{ name: '首页', path: 'dashboard' }, { name: '订单发货', path: 'orders-ship' }],
                         'audit-logs': [{ name: '首页', path: 'dashboard' }, { name: '审计日志', path: 'audit-logs' }],
                         'config': [{ name: '首页', path: 'dashboard' }, { name: '系统配置', path: 'config' }],
@@ -3283,6 +3780,8 @@
                         this.loadSessions();
                     } else if (path === 'deposits') {
                         this.loadPendingDeposits();
+                    } else if (path === 'deposit-accounts') {
+                        this.loadDepositAccounts();
                     } else if (path === 'orders-ship') {
                         this.loadPendingShipOrders();
                     } else if (path === 'audit-logs') {

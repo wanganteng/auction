@@ -78,6 +78,11 @@ public class AuctionItem {
     private Integer isFreeShipping;
 
     /**
+     * 运费（元），is_free_shipping=1时此字段无效
+     */
+    private BigDecimal shippingFee;
+
+    /**
      * 是否支持退货：0-否，1-是
      */
     private Integer isReturnable;

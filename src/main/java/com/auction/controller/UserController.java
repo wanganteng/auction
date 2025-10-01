@@ -1,20 +1,8 @@
 package com.auction.controller;
 
-import com.auction.entity.AuctionBid;
-import com.auction.entity.AuctionOrder;
-import com.auction.entity.AuctionSession;
-import com.auction.entity.UserDepositAccount;
-import com.auction.entity.UserDepositTransaction;
-import com.auction.entity.UserDepositRefund;
-import com.auction.entity.SysUser;
-import com.auction.service.AuctionBidService;
-import com.auction.service.AuctionOrderService;
+import com.auction.entity.*;
+import com.auction.service.*;
 import com.auction.websocket.AuctionWebSocketHandler;
-import com.auction.service.RedisService;
-import com.auction.service.AuctionSessionService;
-import com.auction.service.UserDepositAccountService;
-import com.auction.service.UserDepositTransactionService;
-import com.auction.service.UserDepositRefundService;
 import com.auction.common.Result;
 import com.github.pagehelper.PageInfo;
 import io.swagger.v3.oas.annotations.Operation;
@@ -74,6 +62,9 @@ public class UserController {
 
     @Autowired
     private RedisService redisService;
+
+    @Autowired
+    private AuctionItemService auctionItemService;
 
     // ==================== 拍卖会管理 ====================
 
@@ -249,6 +240,13 @@ public class UserController {
     public Result<String> placeBid(@PathVariable Long id, @RequestBody Map<String, Object> bidData) {
         try {
             SysUser currentUser = getCurrentUser();
+            
+            // 检查保证金账户状态
+            UserDepositAccount account = userDepositAccountService.getAccountByUserId(currentUser.getId());
+            if (account != null && account.getStatus() == 2) {
+                return Result.error("您的保证金账户已被冻结，无法参与竞拍，请联系管理员");
+            }
+            
             BigDecimal bidAmount = new BigDecimal(bidData.get("bidAmount").toString());
             // 读取拍品ID
             Object itemIdObj = bidData.get("itemId");
@@ -315,6 +313,18 @@ public class UserController {
             // 使用现有的方法获取用户订单列表
             PageInfo<AuctionOrder> pageInfo = auctionOrderService.getUserOrders(currentUser.getId(), page, size);
             
+            // 为每个订单关联拍品信息（获取运费和包邮信息）
+            for (AuctionOrder order : pageInfo.getList()) {
+                if (order.getItem() == null && order.getItemId() != null) {
+                    try {
+                        AuctionItem item = auctionItemService.getItemById(order.getItemId());
+                        order.setItem(item);
+                    } catch (Exception e) {
+                        log.warn("关联拍品信息失败: orderId={}, itemId={}", order.getId(), order.getItemId());
+                    }
+                }
+            }
+            
             Map<String, Object> result = new HashMap<>();
             result.put("data", pageInfo.getList());
             result.put("total", pageInfo.getTotal());
@@ -347,8 +357,32 @@ public class UserController {
                 return Result.error("订单不存在或无权限");
             }
             
-            // payOrder方法只接受一个参数（订单ID）
-            boolean success = auctionOrderService.payOrder(orderId);
+            // 提取配送信息
+            Integer deliveryMethod = paymentData.containsKey("deliveryMethod") ? 
+                Integer.valueOf(paymentData.get("deliveryMethod").toString()) : 1;
+            BigDecimal shippingFee = paymentData.containsKey("shippingFee") ? 
+                new BigDecimal(paymentData.get("shippingFee").toString()) : BigDecimal.ZERO;
+            String receiverName = paymentData.containsKey("receiverName") ? 
+                paymentData.get("receiverName").toString() : null;
+            String receiverPhone = paymentData.containsKey("receiverPhone") ? 
+                paymentData.get("receiverPhone").toString() : null;
+            String receiverAddress = paymentData.containsKey("receiverAddress") ? 
+                paymentData.get("receiverAddress").toString() : null;
+            
+            // 更新订单的配送信息
+            order.setDeliveryMethod(deliveryMethod);
+            order.setShippingFee(shippingFee);
+            order.setReceiverName(receiverName);
+            order.setReceiverPhone(receiverPhone);
+            order.setReceiverAddress(receiverAddress);
+            if (deliveryMethod == 2) {
+                // 线下自提时设置自提地址（可以从系统配置读取）
+                order.setPickupAddress("北京市朝阳区建国路XX号XX大厦10层");
+            }
+            auctionOrderService.updateOrder(order);
+            
+            // 执行支付（包含物流费）
+            boolean success = auctionOrderService.payOrder(orderId, shippingFee);
             
             if (success) {
                 return Result.success("支付成功");

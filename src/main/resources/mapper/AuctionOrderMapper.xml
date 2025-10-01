@@ -13,6 +13,12 @@
         <result column="total_amount" property="totalAmount" jdbcType="DECIMAL"/>
         <result column="deposit_amount" property="depositAmount" jdbcType="DECIMAL"/>
         <result column="balance_amount" property="balanceAmount" jdbcType="DECIMAL"/>
+        <result column="delivery_method" property="deliveryMethod" jdbcType="TINYINT"/>
+        <result column="shipping_fee" property="shippingFee" jdbcType="DECIMAL"/>
+        <result column="receiver_name" property="receiverName" jdbcType="VARCHAR"/>
+        <result column="receiver_phone" property="receiverPhone" jdbcType="VARCHAR"/>
+        <result column="receiver_address" property="receiverAddress" jdbcType="VARCHAR"/>
+        <result column="pickup_address" property="pickupAddress" jdbcType="VARCHAR"/>
         <result column="status" property="status" jdbcType="TINYINT"/>
         <result column="payment_time" property="paymentTime" jdbcType="TIMESTAMP"/>
         <result column="ship_time" property="shipTime" jdbcType="TIMESTAMP"/>
@@ -25,7 +31,9 @@
     <!-- 基础字段 -->
     <sql id="Base_Column_List">
         id, order_no, session_id, item_id, buyer_id, seller_id, total_amount,
-        deposit_amount, balance_amount, status, payment_time, ship_time, receive_time,
+        deposit_amount, balance_amount, delivery_method, shipping_fee, 
+        receiver_name, receiver_phone, receiver_address, pickup_address,
+        status, payment_time, ship_time, receive_time,
         create_time, update_time, deleted
     </sql>
 
@@ -33,11 +41,15 @@
     <insert id="insert" parameterType="com.auction.entity.AuctionOrder" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO auction_order (
             order_no, session_id, item_id, buyer_id, seller_id, total_amount,
-            deposit_amount, balance_amount, status, payment_time, ship_time, receive_time,
+            deposit_amount, balance_amount, delivery_method, shipping_fee,
+            receiver_name, receiver_phone, receiver_address, pickup_address,
+            status, payment_time, ship_time, receive_time,
             create_time, update_time, deleted
         ) VALUES (
             #{orderNo}, #{sessionId}, #{itemId}, #{buyerId}, #{sellerId}, #{totalAmount},
-            #{depositAmount}, #{balanceAmount}, #{status}, #{paymentTime}, #{shipTime}, #{receiveTime},
+            #{depositAmount}, #{balanceAmount}, #{deliveryMethod}, #{shippingFee},
+            #{receiverName}, #{receiverPhone}, #{receiverAddress}, #{pickupAddress},
+            #{status}, #{paymentTime}, #{shipTime}, #{receiveTime},
             #{createTime}, #{updateTime}, #{deleted}
         )
     </insert>
@@ -54,6 +66,12 @@
             <if test="totalAmount != null">total_amount = #{totalAmount},</if>
             <if test="depositAmount != null">deposit_amount = #{depositAmount},</if>
             <if test="balanceAmount != null">balance_amount = #{balanceAmount},</if>
+            <if test="deliveryMethod != null">delivery_method = #{deliveryMethod},</if>
+            <if test="shippingFee != null">shipping_fee = #{shippingFee},</if>
+            <if test="receiverName != null">receiver_name = #{receiverName},</if>
+            <if test="receiverPhone != null">receiver_phone = #{receiverPhone},</if>
+            <if test="receiverAddress != null">receiver_address = #{receiverAddress},</if>
+            <if test="pickupAddress != null">pickup_address = #{pickupAddress},</if>
             <if test="status != null">status = #{status},</if>
             <if test="paymentTime != null">payment_time = #{paymentTime},</if>
             <if test="shipTime != null">ship_time = #{shipTime},</if>

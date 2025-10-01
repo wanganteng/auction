@@ -76,24 +76,7 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
         }
     }
 
-    public boolean updateOrder(AuctionOrder order) {
-        log.debug("更新订单: {}", order.getId());
-        
-        try {
-            order.setUpdateTime(LocalDateTime.now());
-            int result = orderMapper.update(order);
-            if (result > 0) {
-                log.info("订单更新成功: {}", order.getId());
-                return true;
-            } else {
-                log.error("订单更新失败: {}", order.getId());
-                return false;
-            }
-        } catch (Exception e) {
-            log.error("更新订单时发生错误: {}", e.getMessage());
-            return false;
-        }
-    }
+    
 
     @Override
     public AuctionOrder getOrderById(Long orderId) {
@@ -136,7 +119,12 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
 
     @Override
     public boolean payOrder(Long orderId) {
-        log.debug("支付订单: {}", orderId);
+        return payOrder(orderId, BigDecimal.ZERO);
+    }
+    
+    @Override
+    public boolean payOrder(Long orderId, BigDecimal shippingFee) {
+        log.debug("支付订单: orderId={}, shippingFee={}", orderId, shippingFee);
         
         try {
             AuctionOrder order = orderMapper.selectById(orderId);
@@ -154,15 +142,19 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
             BigDecimal depositAmount = order.getDepositAmount();
             BigDecimal balanceAmount = order.getBalanceAmount();
             
-            // 1. 从可用余额中扣除尾款
-            if (balanceAmount != null && balanceAmount.compareTo(BigDecimal.ZERO) > 0) {
-                String desc = "支付订单尾款，订单号:" + order.getOrderNo();
-                boolean deducted = depositAccountService.deductFromAvailable(buyerId, balanceAmount, orderId, "order", desc);
+            // 计算总支付金额（尾款 + 物流费）
+            BigDecimal totalPayAmount = balanceAmount.add(shippingFee != null ? shippingFee : BigDecimal.ZERO);
+            
+            // 1. 从可用余额中扣除尾款和物流费
+            if (totalPayAmount.compareTo(BigDecimal.ZERO) > 0) {
+                String desc = String.format("支付订单（尾款¥%.2f + 物流费¥%.2f），订单号:%s", 
+                    balanceAmount, shippingFee, order.getOrderNo());
+                boolean deducted = depositAccountService.deductFromAvailable(buyerId, totalPayAmount, orderId, "order", desc);
                 if (!deducted) {
-                    log.error("扣除尾款失败: orderId={}, amount={}", orderId, balanceAmount);
+                    log.error("扣除支付金额失败: orderId={}, amount={}", orderId, totalPayAmount);
                     return false;
                 }
-                log.info("扣除尾款成功: userId={}, amount={}", buyerId, balanceAmount);
+                log.info("扣除支付金额成功: userId={}, amount={}", buyerId, totalPayAmount);
             }
             
             // 2. 从冻结金额中扣除保证金（抵扣订单）
@@ -184,8 +176,8 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
             
             int result = orderMapper.update(order);
             if (result > 0) {
-                log.info("订单支付成功: orderId={}, 尾款={}, 保证金={}", 
-                    orderId, balanceAmount, depositAmount);
+                log.info("订单支付成功: orderId={}, 尾款={}, 物流费={}, 保证金={}", 
+                    orderId, balanceAmount, shippingFee, depositAmount);
                 return true;
             } else {
                 log.error("更新订单状态失败: {}", orderId);
@@ -193,6 +185,18 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
             }
         } catch (Exception e) {
             log.error("支付订单时发生错误: orderId={}, error={}", orderId, e.getMessage(), e);
+            return false;
+        }
+    }
+    
+    @Override
+    public boolean updateOrder(AuctionOrder order) {
+        try {
+            order.setUpdateTime(LocalDateTime.now());
+            int result = orderMapper.update(order);
+            return result > 0;
+        } catch (Exception e) {
+            log.error("更新订单失败: orderId={}, error={}", order.getId(), e.getMessage(), e);
             return false;
         }
     }
