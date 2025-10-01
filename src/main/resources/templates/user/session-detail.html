@@ -14,7 +14,16 @@
         .main { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
         .session-hero { display: grid; grid-template-columns: 360px 1fr; gap: 20px; margin-bottom: 20px; }
         .hero-card { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden; }
-        .hero-image { width: 100%; height: 240px; object-fit: cover; }
+        .hero-image-container { position: relative; width: 100%; height: 240px; overflow: hidden; background: #f5f5f5; }
+        .hero-image { width: 100%; height: 240px; object-fit: cover; display: none; }
+        .hero-image.active { display: block; }
+        .session-carousel-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0, 0, 0, 0.5); color: white; border: none; font-size: 30px; width: 40px; height: 40px; cursor: pointer; z-index: 10; transition: background 0.3s; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
+        .session-carousel-arrow:hover { background: rgba(0, 0, 0, 0.8); }
+        .session-carousel-arrow.left { left: 5px; }
+        .session-carousel-arrow.right { right: 5px; }
+        .session-carousel-indicators { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 10; }
+        .session-carousel-indicator { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.5); cursor: pointer; transition: background 0.3s; }
+        .session-carousel-indicator.active { background: rgba(255, 255, 255, 1); }
         .hero-content { padding: 20px; }
         .hero-title { margin: 0 0 8px 0; font-size: 22px; color: #303133; }
         .hero-desc { margin: 0 0 12px 0; color: #606266; line-height: 1.6; }
@@ -65,7 +74,27 @@
             <!-- 会场信息 -->
             <div class="session-hero">
                 <div class="hero-card">
-                    <img :src="session.coverImage || '/images/default-session.jpg'" class="hero-image" :alt="session.sessionName">
+                    <!-- 拍卖会图片轮播 -->
+                    <div class="hero-image-container">
+                        <img 
+                            v-for="(img, index) in sessionImages" 
+                            :key="index"
+                            :src="img" 
+                            :alt="session.sessionName" 
+                            class="hero-image"
+                            :class="{ active: index === sessionImageIndex }">
+                        <button class="session-carousel-arrow left" @click="previousSessionImage" v-if="sessionImages.length > 1">‹</button>
+                        <button class="session-carousel-arrow right" @click="nextSessionImage" v-if="sessionImages.length > 1">›</button>
+                        <div class="session-carousel-indicators" v-if="sessionImages.length > 1">
+                            <div 
+                                v-for="(img, index) in sessionImages" 
+                                :key="index"
+                                class="session-carousel-indicator"
+                                :class="{ active: index === sessionImageIndex }"
+                                @click="goToSessionImage(index)">
+                            </div>
+                        </div>
+                    </div>
                     <div class="hero-content">
                         <h2 class="hero-title">{{ session.sessionName }}</h2>
                         <p class="hero-desc">{{ session.description }}</p>
@@ -196,7 +225,9 @@
                     // 搜索与排序
                     searchCode: '',
                     sortField: 'itemCode',
-                    sortOrder: 'asc'
+                    sortOrder: 'asc',
+                    // 轮播图
+                    sessionImageIndex: 0
                 }
             },
             mounted() {
@@ -375,11 +406,48 @@
                         return (va - vb) * order;
                     });
                     return list;
+                },
+                
+                // 拍卖会轮播图控制方法
+                nextSessionImage() {
+                    if (this.sessionImages.length > 0) {
+                        this.sessionImageIndex = (this.sessionImageIndex + 1) % this.sessionImages.length;
+                    }
+                },
+                
+                previousSessionImage() {
+                    if (this.sessionImages.length > 0) {
+                        this.sessionImageIndex = (this.sessionImageIndex - 1 + this.sessionImages.length) % this.sessionImages.length;
+                    }
+                },
+                
+                goToSessionImage(index) {
+                    this.sessionImageIndex = index;
                 }
             },
             computed: {
                 filteredSortedItems() {
                     return this.filteredSorted((this.session && this.session.items) ? this.session.items : []);
+                },
+                // 拍卖会图片数组
+                sessionImages() {
+                    // 优先使用 images 字段（JSON数组）
+                    if (this.session && this.session.images) {
+                        try {
+                            const arr = JSON.parse(this.session.images);
+                            if (Array.isArray(arr) && arr.length > 0) {
+                                return arr;
+                            }
+                        } catch (e) {
+                            console.error('解析拍卖会图片失败:', e);
+                        }
+                    }
+                    // 其次使用 coverImage 字段
+                    if (this.session && this.session.coverImage) {
+                        return [this.session.coverImage];
+                    }
+                    // 最后使用默认图片
+                    return ['/images/default-session.jpg'];
                 }
             }
         }).use(ElementPlus);

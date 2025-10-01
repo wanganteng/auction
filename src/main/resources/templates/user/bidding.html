@@ -77,10 +77,77 @@
             overflow: hidden;
         }
         
+        .item-image-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            overflow: hidden;
+            background: #fff;
+        }
+        
         .item-image {
             width: 100%;
             height: 400px;
             object-fit: cover;
+            display: none;
+        }
+        
+        .item-image.active {
+            display: block;
+        }
+        
+        .carousel-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            font-size: 40px;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            z-index: 10;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+        }
+        
+        .carousel-arrow:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+        
+        .carousel-arrow.left {
+            left: 10px;
+        }
+        
+        .carousel-arrow.right {
+            right: 10px;
+        }
+        
+        .carousel-indicators {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+        }
+        
+        .carousel-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .carousel-indicator.active {
+            background: rgba(255, 255, 255, 1);
         }
         
         .item-content {
@@ -406,7 +473,27 @@
                     <div class="status-indicator" :class="getStatusClass()">
                         {{ getStatusText() }}
                     </div>
-                    <img :src="currentItemImage || '/images/default-item.jpg'" :alt="selectedItem?.itemName || session.sessionName" class="item-image">
+                    <!-- 拍品图片轮播 -->
+                    <div class="item-image-container">
+                        <img 
+                            v-for="(img, index) in currentItemImages" 
+                            :key="index"
+                            :src="img" 
+                            :alt="selectedItem?.itemName || session.sessionName" 
+                            class="item-image"
+                            :class="{ active: index === currentImageIndex }">
+                        <button class="carousel-arrow left" @click="previousImage" v-if="currentItemImages.length > 1">‹</button>
+                        <button class="carousel-arrow right" @click="nextImage" v-if="currentItemImages.length > 1">›</button>
+                        <div class="carousel-indicators" v-if="currentItemImages.length > 1">
+                            <div 
+                                v-for="(img, index) in currentItemImages" 
+                                :key="index"
+                                class="carousel-indicator"
+                                :class="{ active: index === currentImageIndex }"
+                                @click="goToImage(index)">
+                            </div>
+                        </div>
+                    </div>
                     
                     <div class="item-content">
                         <!-- 当前拍品信息（优先展示） -->
@@ -604,7 +691,9 @@
                         availableAmount: 0,
                         frozenAmount: 0,
                         totalAmount: 0
-                    }
+                    },
+                    // 轮播图
+                    currentImageIndex: 0
                 }
             },
             computed: {
@@ -613,14 +702,16 @@
                     if (!this.session || !this.session.items) return null;
                     return this.session.items.find(i => i.id === this.currentItemId) || null;
                 },
-                // 当前拍品首图
-                currentItemImage() {
-                    if (!this.selectedItem || !this.selectedItem.images) return '';
+                // 当前拍品所有图片
+                currentItemImages() {
+                    if (!this.selectedItem || !this.selectedItem.images) {
+                        return ['/images/default-item.jpg'];
+                    }
                     try {
                         const arr = JSON.parse(this.selectedItem.images || '[]');
-                        return Array.isArray(arr) && arr.length > 0 ? arr[0] : '';
+                        return Array.isArray(arr) && arr.length > 0 ? arr : ['/images/default-item.jpg'];
                     } catch (e) {
-                        return '';
+                        return ['/images/default-item.jpg'];
                     }
                 },
                 canBid() {
@@ -788,6 +879,25 @@
                     if (it) {
                         this.currentPrice = Math.max(0, (it.currentPrice || 0));
                     }
+                    // 重置轮播图索引
+                    this.currentImageIndex = 0;
+                },
+                
+                // 轮播图控制方法
+                nextImage() {
+                    if (this.currentItemImages.length > 0) {
+                        this.currentImageIndex = (this.currentImageIndex + 1) % this.currentItemImages.length;
+                    }
+                },
+                
+                previousImage() {
+                    if (this.currentItemImages.length > 0) {
+                        this.currentImageIndex = (this.currentImageIndex - 1 + this.currentItemImages.length) % this.currentItemImages.length;
+                    }
+                },
+                
+                goToImage(index) {
+                    this.currentImageIndex = index;
                 },
                 
                 // 加载保证金信息
