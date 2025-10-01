@@ -2470,6 +2470,7 @@
                 }
             },
             mounted() {
+                this.setupAxiosInterceptors();
                 this.checkLoginStatus();
                 // 初始化激活菜单：优先使用 URL Hash（如 #/items），否则默认仪表盘
                 const hash = window.location.hash?.replace('#/', '') || 'dashboard';
@@ -2554,6 +2555,62 @@
                     window.location.href = '/auction/admin/sessions';
                 },
                 
+                // 设置 axios 拦截器
+                setupAxiosInterceptors() {
+                    // 请求拦截器 - 在每次请求前添加 token
+                    axios.interceptors.request.use(
+                        config => {
+                            const token = localStorage.getItem('accessToken');
+                            if (token) {
+                                config.headers.Authorization = `Bearer ${token}`;
+                            }
+                            return config;
+                        },
+                        error => {
+                            return Promise.reject(error);
+                        }
+                    );
+                    
+                    // 响应拦截器 - 处理 401 错误和 token 刷新
+                    axios.interceptors.response.use(
+                        response => response,
+                        async error => {
+                            const originalRequest = error.config;
+                            
+                            // 如果是 401 错误且还没有重试过
+                            if (error.response && error.response.status === 401 && !originalRequest._retry) {
+                                originalRequest._retry = true;
+                                
+                                const refreshToken = localStorage.getItem('refreshToken');
+                                if (refreshToken) {
+                                    try {
+                                        // 尝试刷新 token
+                                        const response = await axios.post('/api/auth/refresh', { refreshToken });
+                                        if (response.data.code === 200) {
+                                            const newAccessToken = response.data.data.accessToken;
+                                            localStorage.setItem('accessToken', newAccessToken);
+                                            
+                                            // 重新设置请求头并重试原请求
+                                            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+                                            return axios.request(originalRequest);
+                                        }
+                                    } catch (e) {
+                                        console.error('Token 刷新失败:', e);
+                                    }
+                                }
+                                
+                                // 刷新失败，清除 token 并跳转登录页
+                                localStorage.removeItem('accessToken');
+                                localStorage.removeItem('refreshToken');
+                                ElMessage.error('登录已过期，请重新登录');
+                                window.location.href = '/auction/login';
+                            }
+                            
+                            return Promise.reject(error);
+                        }
+                    );
+                },
+                
                 // 检查登录状态（混合模式）
                 checkLoginStatus() {
                     const accessToken = localStorage.getItem('accessToken');
@@ -2564,9 +2621,6 @@
                         window.location.href = '/auction/login';
                         return;
                     }
-                    
-                    // 设置axios默认请求头
-                    axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
                 },
                 
                 // 加载统计数据（仪表盘总览）
@@ -2989,14 +3043,32 @@
                 },
                 async deleteCategory(row) {
                     try {
+                        // 添加删除确认提示
+                        await ElMessageBox.confirm(
+                            `确定要删除分类"${row.name}"吗？删除后该分类下的所有内容将被清空，此操作不可恢复！`,
+                            '删除确认',
+                            {
+                                confirmButtonText: '确定删除',
+                                cancelButtonText: '取消',
+                                type: 'warning',
+                                confirmButtonClass: 'el-button--danger'
+                            }
+                        );
+                        
+                        // 用户确认后执行删除
                         await axios.delete(`/api/admin/notices/categories/${row.id}`);
                         if (this.currentCategory && this.currentCategory.id === row.id) {
                             this.currentCategory = null;
                             this.noticeItems = [];
                         }
+                        ElMessage.success('分类已删除');
                         this.loadNoticeCategories();
                     } catch (e) {
-                        console.error('删除分类失败', e);
+                        // 如果用户点击取消，会抛出'cancel'，不需要显示错误
+                        if (e !== 'cancel') {
+                            console.error('删除分类失败', e);
+                            ElMessage.error('删除失败：' + (e.message || '未知错误'));
+                        }
                     }
                 },
                 async saveCategoryContent() {

@@ -154,18 +154,18 @@ public class NotificationController {
     /**
      * 获取当前用户
      */
+    /**
+     * 获取当前用户
+     * @deprecated 使用 SecurityUtils.getCurrentUser() 代替
+     */
+    @Deprecated
     private SysUser getCurrentUser() {
         try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetailsService.CustomUserPrincipal) {
-                CustomUserDetailsService.CustomUserPrincipal principal = 
-                    (CustomUserDetailsService.CustomUserPrincipal) authentication.getPrincipal();
-                return principal.getUser();
-            }
+            return com.auction.util.SecurityUtils.getCurrentUser();
         } catch (Exception e) {
             log.error("获取当前用户失败: {}", e.getMessage());
+            return null;
         }
-        return null;
     }
 }
 

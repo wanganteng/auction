@@ -739,23 +739,12 @@ public class UserController {
     /**
      * 获取当前用户
      */
+    /**
+     * 获取当前用户
+     * @deprecated 使用 SecurityUtils.getCurrentUser() 代替
+     */
+    @Deprecated
     private SysUser getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null) {
-            throw new RuntimeException("用户未登录");
-        }
-
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof CustomUserDetailsService.CustomUserPrincipal) {
-            return ((CustomUserDetailsService.CustomUserPrincipal) principal).getUser();
-        }
-        if (principal instanceof SysUser) {
-            return (SysUser) principal;
-        }
-        if (principal instanceof UserDetails) {
-            // 仅兜底：尽量从 UserDetails 还原用户名并报更清晰错误
-            throw new RuntimeException("用户未登录");
-        }
-        throw new RuntimeException("用户未登录");
+        return com.auction.util.SecurityUtils.getCurrentUser();
     }
 }

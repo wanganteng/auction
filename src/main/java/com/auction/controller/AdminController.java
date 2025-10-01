@@ -9,6 +9,7 @@ import com.auction.entity.UserDepositTransaction;
 import com.auction.entity.UserDepositRefund;
 import com.auction.entity.SysUser;
 import com.auction.entity.SysConfig;
+import com.auction.util.SecurityUtils;
 import com.auction.service.AuctionItemService;
 import com.auction.service.AuctionSessionService;
 import com.auction.service.AuctionOrderService;
@@ -25,8 +26,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -1055,13 +1054,11 @@ public class AdminController {
 
     /**
      * 获取当前用户
+     * @deprecated 使用 SecurityUtils.getCurrentUser() 代替
      */
+    @Deprecated
     private SysUser getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof SysUser) {
-            return (SysUser) authentication.getPrincipal();
-        }
-        throw new RuntimeException("用户未登录");
+        return SecurityUtils.getCurrentUser();
     }
 
     /**

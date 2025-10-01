@@ -395,18 +395,18 @@ public class AuctionController {
      * 
      * @return 用户ID
      */
+    /**
+     * 获取当前用户ID
+     * @deprecated 使用 SecurityUtils.getCurrentUserId() 代替
+     */
+    @Deprecated
     private Long getCurrentUserId() {
         try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetailsService.CustomUserPrincipal) {
-                CustomUserDetailsService.CustomUserPrincipal principal = 
-                    (CustomUserDetailsService.CustomUserPrincipal) authentication.getPrincipal();
-                return principal.getUser().getId();
-            }
+            return com.auction.util.SecurityUtils.getCurrentUserId();
         } catch (Exception e) {
             log.error("获取当前用户ID失败: {}", e.getMessage());
+            return null;
         }
-        return null;
     }
 
     /**
