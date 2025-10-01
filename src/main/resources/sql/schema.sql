@@ -179,12 +179,15 @@ CREATE TABLE `user_deposit_transaction` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '交易ID',
   `account_id` bigint(20) NOT NULL COMMENT '保证金账户ID',
   `user_id` bigint(20) NOT NULL COMMENT '用户ID',
+  `transaction_no` varchar(50) DEFAULT NULL COMMENT '交易流水号',
   `transaction_type` tinyint(1) NOT NULL COMMENT '交易类型：1-充值，2-提现，3-冻结，4-解冻，5-扣除，6-退还',
   `amount` bigint(20) NOT NULL COMMENT '交易金额(分)',
   `balance_before` bigint(20) NOT NULL COMMENT '交易前余额(分)',
   `balance_after` bigint(20) NOT NULL COMMENT '交易后余额(分)',
+  `related_id` bigint(20) DEFAULT NULL COMMENT '关联ID（拍卖会ID、订单ID等）',
+  `related_type` varchar(50) DEFAULT NULL COMMENT '关联类型：auction_session、order等',
   `description` varchar(500) DEFAULT NULL COMMENT '交易描述',
-  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '交易状态：1-成功，2-失败，3-处理中',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '交易状态：0-待审核，1-成功，2-失败，3-处理中',
   `reviewer_id` bigint(20) DEFAULT NULL COMMENT '审核人ID',
   `review_time` datetime DEFAULT NULL COMMENT '审核时间',
   `review_remark` varchar(500) DEFAULT NULL COMMENT '审核备注',
@@ -192,12 +195,12 @@ CREATE TABLE `user_deposit_transaction` (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` tinyint(1) NOT NULL DEFAULT '0' COMMENT '删除标志：0-未删除，1-已删除',
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_transaction_no` (`transaction_no`),
   KEY `idx_account_id` (`account_id`),
   KEY `idx_user_id` (`user_id`),
   KEY `idx_transaction_type` (`transaction_type`),
-  KEY `idx_status` (`status`)
+  KEY `idx_status` (`status`),
   KEY `idx_reviewer` (`reviewer_id`)
-  KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='保证金交易流水表';
 
 -- 保证金退款申请表
