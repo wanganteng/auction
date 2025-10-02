@@ -807,9 +807,9 @@
                         endTime: session.endTime,
                         depositRatio: session.depositRatio || 0.1,
                         commissionRatio: session.commissionRatio || 0.05,
-                        minDepositAmount: (session.minDepositAmount || 100) / 100,
-                        maxBidAmount: (session.maxBidAmount || 1000000) / 100,
-                        minIncrementAmount: (session.minIncrementAmount || 10) / 100,
+                        minDepositAmount: session.minDepositAmount || 100,
+                        maxBidAmount: session.maxBidAmount || 1000000,
+                        minIncrementAmount: session.minIncrementAmount || 10,
                         isAuthentic: session.isAuthentic !== false,
                         isFreeShipping: session.isFreeShipping !== false,
                         isReturnable: session.isReturnable !== false,
@@ -835,9 +835,9 @@
                             ...this.sessionForm,
                             itemIds: this.selectedItems.map(item => item.id),
                             // 将元转换为分（后端存储的是分）
-                            minDepositAmount: Math.round(this.sessionForm.minDepositAmount * 100),
-                            maxBidAmount: Math.round(this.sessionForm.maxBidAmount * 100),
-                            minIncrementAmount: Math.round(this.sessionForm.minIncrementAmount * 100)
+                            minDepositAmount: this.sessionForm.minDepositAmount,
+                            maxBidAmount: this.sessionForm.maxBidAmount,
+                            minIncrementAmount: this.sessionForm.minIncrementAmount
                         };
                         
                         if (this.isEdit) {

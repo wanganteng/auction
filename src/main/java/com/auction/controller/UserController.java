@@ -4,6 +4,7 @@ import com.auction.entity.*;
 import com.auction.service.*;
 import com.auction.websocket.AuctionWebSocketHandler;
 import com.auction.common.Result;
+import com.auction.util.SecurityUtils;
 import com.github.pagehelper.PageInfo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -219,8 +220,7 @@ public class UserController {
             for (AuctionBid bid : bids) {
                 Map<String, Object> bidMap = new HashMap<>();
                 bidMap.put("id", bid.getId());
-                bidMap.put("bidAmount", bid.getBidAmount());
-                bidMap.put("bidAmountYuan", bid.getBidAmountYuan());
+                bidMap.put("bidAmount", bid.getBidAmountYuan());
                 bidMap.put("bidTime", bid.getBidTime());
                 
                 // 获取用户真实信息
@@ -246,33 +246,6 @@ public class UserController {
         }
     }
 
-    /**
-     * 获取用户保证金账户信息
-     */
-    @GetMapping("/deposit/account")
-    @Operation(summary = "获取用户保证金账户信息", description = "获取当前用户的保证金账户信息")
-    public Result<Map<String, Object>> getDepositAccount() {
-        try {
-            SysUser currentUser = getCurrentUser();
-            UserDepositAccount account = userDepositAccountService.getAccountByUserId(currentUser.getId());
-            
-            if (account == null) {
-                // 如果账户不存在，创建一个
-                Long accountId = userDepositAccountService.createAccount(currentUser.getId());
-                account = userDepositAccountService.getAccountByUserId(currentUser.getId());
-            }
-            
-            Map<String, Object> result = new HashMap<>();
-            result.put("availableAmount", account.getAvailableAmount()); // 可用余额（元）
-            result.put("frozenAmount", account.getFrozenAmount()); // 冻结金额（元）
-            result.put("totalAmount", account.getTotalAmount()); // 总余额（元）
-            
-            return Result.success(result);
-        } catch (Exception e) {
-            log.error("获取保证金账户信息失败: {}", e.getMessage(), e);
-            return Result.error("获取保证金账户信息失败: " + e.getMessage());
-        }
-    }
 
     /**
      * 参与竞拍
@@ -281,7 +254,7 @@ public class UserController {
     @Operation(summary = "参与竞拍", description = "用户参与拍卖会竞拍")
     public Result<String> placeBid(@PathVariable Long id, @RequestBody Map<String, Object> bidData) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             
             // 检查保证金账户状态
             UserDepositAccount account = userDepositAccountService.getAccountByUserId(currentUser.getId());
@@ -307,9 +280,13 @@ public class UserController {
             bid.setSessionId(id);
             bid.setItemId(itemId);
             bid.setUserId(currentUser.getId());
-            // 转换BigDecimal到Long（分）
-            bid.setBidAmount(bidAmount.multiply(new BigDecimal("100")).longValue());
-            bid.setBidAmountYuan(bidAmount); // 设置元金额
+            // 验证出价金额为整数
+            if (bidAmount.scale() > 0) {
+                return Result.error("出价金额必须为整数元");
+            }
+            
+            // 直接设置出价金额（元）
+            bid.setBidAmountYuan(bidAmount);
             bid.setBidTime(LocalDateTime.now());
             bid.setClientIp("127.0.0.1"); // 使用正确的字段名
             bid.setSource(1); // 1-手动出价
@@ -351,7 +328,7 @@ public class UserController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             // 使用现有的方法获取用户订单列表
             PageInfo<AuctionOrder> pageInfo = auctionOrderService.getUserOrders(currentUser.getId(), page, size);
             
@@ -392,7 +369,7 @@ public class UserController {
             Long orderId = Long.valueOf(paymentData.get("orderId").toString());
             String paymentMethod = paymentData.get("paymentMethod").toString();
             
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             // 先验证订单是否属于当前用户
             AuctionOrder order = auctionOrderService.getOrderById(orderId);
             if (order == null || !order.getBuyerId().equals(currentUser.getId())) {
@@ -445,7 +422,7 @@ public class UserController {
     @Operation(summary = "取消订单", description = "用户取消订单")
     public Result<String> cancelOrder(@PathVariable Long id) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             // 先验证订单是否属于当前用户
             AuctionOrder order = auctionOrderService.getOrderById(id);
             if (order == null || !order.getBuyerId().equals(currentUser.getId())) {
@@ -473,7 +450,7 @@ public class UserController {
     @Operation(summary = "确认收货", description = "用户确认收货")
     public Result<String> confirmReceive(@PathVariable Long id) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             // 先验证订单是否属于当前用户
             AuctionOrder order = auctionOrderService.getOrderById(id);
             if (order == null || !order.getBuyerId().equals(currentUser.getId())) {
@@ -504,7 +481,7 @@ public class UserController {
     @Operation(summary = "获取保证金状态", description = "检查用户是否有足够的保证金")
     public Result<Map<String, Object>> getDepositStatus() {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             UserDepositAccount account = userDepositAccountService.getAccountByUserId(currentUser.getId());
             
             Map<String, Object> result = new HashMap<>();
@@ -526,7 +503,7 @@ public class UserController {
     @Operation(summary = "获取保证金交易记录", description = "获取用户的保证金交易记录")
     public Result<List<Map<String, Object>>> getDepositTransactions() {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             // 获取交易记录列表
             List<UserDepositTransaction> transactionList = userDepositTransactionService.getTransactionsByUserId(currentUser.getId());
             
@@ -568,7 +545,7 @@ public class UserController {
                 return Result.error("充值金额必须大于0");
             }
 
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             
             boolean success = userDepositAccountService.recharge(
                 currentUser.getId(), 
@@ -604,7 +581,7 @@ public class UserController {
                 return Result.error("提现金额必须大于0");
             }
 
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             
             // 简化处理：暂时不支持提现功能
             // 实际项目中应该实现完整的提现流程
@@ -632,7 +609,7 @@ public class UserController {
     @Operation(summary = "查询交易流水", description = "查询当前用户的保证金交易流水")
     public Result<List<UserDepositTransaction>> getDepositTransactions(@RequestParam(required = false) Integer transactionType) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             
             UserDepositTransaction transaction = new UserDepositTransaction();
             transaction.setUserId(currentUser.getId());
@@ -661,7 +638,7 @@ public class UserController {
                 return Result.error("退款金额必须大于0");
             }
 
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             
             Long refundId = userDepositRefundService.createRefundApplication(
                 currentUser.getId(), 
@@ -687,7 +664,7 @@ public class UserController {
     @Operation(summary = "查询退款申请列表", description = "查询当前用户的退款申请列表")
     public Result<List<UserDepositRefund>> getDepositRefunds(@RequestParam(required = false) Integer status) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             
             UserDepositRefund refund = new UserDepositRefund();
             refund.setUserId(currentUser.getId());
@@ -706,74 +683,8 @@ public class UserController {
 
     // ==================== 竞拍功能 ====================
 
-    /**
-     * 出价
-     */
-    @PostMapping("/bids")
-    @Operation(summary = "出价", description = "对拍品进行出价")
-    public Result<Map<String, Object>> placeBid(
-            @RequestParam Long sessionId,
-            @RequestParam Long itemId,
-            @RequestParam BigDecimal bidAmount) {
-        try {
-            SysUser currentUser = getCurrentUser();
-            
-            AuctionBid bid = new AuctionBid();
-            bid.setSessionId(sessionId);
-            bid.setItemId(itemId);
-            bid.setUserId(currentUser.getId());
-            bid.setBidAmountYuan(bidAmount);
-            bid.setBidAmount(bidAmount.multiply(new BigDecimal("100")).longValue()); // 转换为分
-            bid.setSource(1); // 手动出价
-            bid.setIsAuto(0);
-            
-            Long bidId = auctionBidService.placeBid(bid);
 
-            Map<String, Object> data = new HashMap<>();
-            data.put("bidId", bidId);
 
-            return Result.success("出价成功", data);
-
-        } catch (Exception e) {
-            log.error("出价失败: {}", e.getMessage(), e);
-            return Result.error("出价失败: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 查询出价记录
-     */
-    @GetMapping("/bids")
-    @Operation(summary = "查询出价记录", description = "查询当前用户的出价记录")
-    public Result<List<AuctionBid>> getBidList(AuctionBid bid) {
-        try {
-            SysUser currentUser = getCurrentUser();
-            bid.setUserId(currentUser.getId());
-            
-            List<AuctionBid> bids = auctionBidService.getBidList(bid);
-            return Result.success("查询成功", bids);
-
-        } catch (Exception e) {
-            log.error("查询出价记录失败: {}", e.getMessage(), e);
-            return Result.error("查询失败: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 查询拍品出价记录
-     */
-    @GetMapping("/items/{itemId}/bids")
-    @Operation(summary = "查询拍品出价记录", description = "查询指定拍品的出价记录")
-    public Result<List<AuctionBid>> getItemBidList(@PathVariable Long itemId) {
-        try {
-            List<AuctionBid> bids = auctionBidService.getItemBidList(itemId);
-            return Result.success("查询成功", bids);
-
-        } catch (Exception e) {
-            log.error("查询拍品出价记录失败: itemId={}, 错误: {}", itemId, e.getMessage(), e);
-            return Result.error("查询失败: " + e.getMessage());
-        }
-    }
 
     /**
      * 获取拍卖会统计信息
@@ -803,7 +714,7 @@ public class UserController {
     @Operation(summary = "获取我的出价统计", description = "获取当前用户在指定拍卖会的出价统计信息")
     public Result<Map<String, Object>> getMyBidStatistics(@PathVariable Long sessionId) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             Map<String, Object> statistics = auctionSessionService.getUserBidStatistics(currentUser.getId(), sessionId);
             return Result.success("获取我的出价统计成功", statistics);
         } catch (Exception e) {
@@ -812,15 +723,4 @@ public class UserController {
         }
     }
 
-    /**
-     * 获取当前用户
-     */
-    /**
-     * 获取当前用户
-     * @deprecated 使用 SecurityUtils.getCurrentUser() 代替
-     */
-    @Deprecated
-    private SysUser getCurrentUser() {
-        return com.auction.util.SecurityUtils.getCurrentUser();
-    }
 }

@@ -4,6 +4,7 @@ import com.auction.entity.AuditLog;
 import com.auction.entity.SysUser;
 import com.auction.security.CustomUserDetailsService;
 import com.auction.service.AuditLogService;
+import com.auction.util.SecurityUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -62,7 +63,12 @@ public class AuditLogAspect {
         
         // 获取请求信息
         HttpServletRequest request = getRequest();
-        SysUser currentUser = getCurrentUser();
+        SysUser currentUser = null;
+        try {
+            currentUser = SecurityUtils.getCurrentUser();
+        } catch (Exception e) {
+            log.debug("获取当前用户失败: {}", e.getMessage());
+        }
         
         // 获取方法信息
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
@@ -188,22 +194,6 @@ public class AuditLogAspect {
                 .toArray();
     }
 
-    /**
-     * 获取当前用户
-     */
-    private SysUser getCurrentUser() {
-        try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetailsService.CustomUserPrincipal) {
-                CustomUserDetailsService.CustomUserPrincipal principal = 
-                    (CustomUserDetailsService.CustomUserPrincipal) authentication.getPrincipal();
-                return principal.getUser();
-            }
-        } catch (Exception e) {
-            log.debug("获取当前用户失败: {}", e.getMessage());
-        }
-        return null;
-    }
 
     /**
      * 获取HttpServletRequest

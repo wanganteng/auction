@@ -193,7 +193,7 @@ public class AuctionServiceImpl implements AuctionService {
                 targetStatus = 5; // 5-已成交
                 // 更新当前价格为最高出价
                 AuctionBid highestBid = bids.get(0); // 假设已按价格排序
-                item.setCurrentPrice(new BigDecimal(highestBid.getBidAmount()).divide(new BigDecimal("100"))); // 转换为元
+                item.setCurrentPrice(highestBid.getBidAmountYuan()); // 直接使用元单位
             } else {
                 // 无出价，标记为流拍
                 targetStatus = 6; // 6-流拍
@@ -206,11 +206,11 @@ public class AuctionServiceImpl implements AuctionService {
                     log.info("拍卖结束成功: {}, 结果: {}", itemId, targetStatus);
                     // 记录拍卖结果
                     Long winnerId = null;
-                    Long finalPrice = null;
+                    BigDecimal finalPrice = null;
                     Long highestBidId = null;
                     if (bids != null && !bids.isEmpty()) {
                         winnerId = bids.get(0).getUserId();
-                        finalPrice = bids.get(0).getBidAmount();
+                        finalPrice = bids.get(0).getBidAmountYuan();
                         highestBidId = bids.get(0).getId();
                     }
                     persistAuctionResult(item, winnerId, finalPrice, highestBidId, targetStatus);
@@ -229,7 +229,7 @@ public class AuctionServiceImpl implements AuctionService {
         }
     }
 
-    private void persistAuctionResult(AuctionItem item, Long winnerId, Long finalPrice, Long highestBidId, Integer targetStatus) {
+    private void persistAuctionResult(AuctionItem item, Long winnerId, BigDecimal finalPrice, Long highestBidId, Integer targetStatus) {
         try {
             // sessionId 若与 item 绑定关系存在，请按你的结构获取；此处兼容为空
             Long sessionId = null;
@@ -237,7 +237,7 @@ public class AuctionServiceImpl implements AuctionService {
             result.setSessionId(sessionId);
             result.setItemId(item.getId());
             result.setWinnerUserId(winnerId);
-            result.setFinalPrice(finalPrice == null ? 0L : finalPrice);
+            result.setFinalPrice(finalPrice == null ? BigDecimal.ZERO : finalPrice);
             result.setHighestBidId(highestBidId);
             result.setResultStatus(targetStatus == 5 ? 1 : 0); // 5=已成交 -> 1 成交；6=流拍 -> 0 流拍
             result.setSettleStatus(0);
@@ -420,9 +420,9 @@ public class AuctionServiceImpl implements AuctionService {
             
             // 检查是否满足拍卖会的最小保证金要求
             // 这里需要从拍卖会获取最小保证金要求，暂时使用系统默认值
-            Long minDepositAmount = 10000L; // 默认最小保证金100元
-            if (depositAmountCents < minDepositAmount) {
-                log.warn("保证金金额 {} 小于最小要求 {}", depositAmountCents, minDepositAmount);
+            BigDecimal minDepositAmount = new BigDecimal("100"); // 默认最小保证金100元
+            if (depositAmount.compareTo(minDepositAmount) < 0) {
+                log.warn("保证金金额 {} 小于最小要求 {}", depositAmount, minDepositAmount);
                 return false;
             }
             
@@ -455,17 +455,16 @@ public class AuctionServiceImpl implements AuctionService {
             
             // 检查是否超过拍卖会的最大出价限制
             // 这里需要从拍卖会获取最大出价限制，暂时使用系统默认值
-            Long maxBidAmount = 100000000L; // 默认最大出价100万元
-            if (bidAmount > maxBidAmount) {
-                log.warn("出价金额 {} 超过最大限制 {}", bidAmount, maxBidAmount);
+            BigDecimal maxBidAmount = new BigDecimal("1000000"); // 默认最大出价100万元
+            if (bidAmountYuan.compareTo(maxBidAmount) > 0) {
+                log.warn("出价金额 {} 超过最大限制 {}", bidAmountYuan, maxBidAmount);
                 return false;
             }
             
             // 检查出价是否满足拍卖会的最小加价幅度
             // 这里需要从拍卖会获取最小加价幅度，暂时使用系统默认值
-            Long minIncrementAmount = 100L; // 默认最小加价1元
-            BigDecimal incrementAmount = new BigDecimal(minIncrementAmount).divide(new BigDecimal("100")); // 转换为元
-            if (bidAmountYuan.compareTo(item.getCurrentPrice().add(incrementAmount)) < 0) {
+            BigDecimal minIncrementAmount = new BigDecimal("1"); // 默认最小加价1元
+            if (bidAmountYuan.compareTo(item.getCurrentPrice().add(minIncrementAmount)) < 0) {
                 return false;
             }
             
@@ -529,7 +528,7 @@ public class AuctionServiceImpl implements AuctionService {
     /**
      * 发送拍卖结束消息
      */
-    private void sendAuctionEndMessage(Long itemId, AuctionItem item, Long winnerId, Long finalPrice) {
+    private void sendAuctionEndMessage(Long itemId, AuctionItem item, Long winnerId, BigDecimal finalPrice) {
         try {
             Map<String, Object> message = new HashMap<>();
             message.put("type", "AUCTION_END");
@@ -541,8 +540,7 @@ public class AuctionServiceImpl implements AuctionService {
             data.put("itemName", item.getItemName());
             data.put("winnerId", winnerId);
             data.put("finalPrice", finalPrice);
-            data.put("finalPriceYuan", finalPrice != null ? 
-                new BigDecimal(finalPrice).divide(new BigDecimal("100")) : BigDecimal.ZERO);
+            data.put("finalPriceYuan", finalPrice != null ? finalPrice : BigDecimal.ZERO);
             
             // 获取中拍者信息
             if (winnerId != null) {

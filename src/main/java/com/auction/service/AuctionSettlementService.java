@@ -95,23 +95,23 @@ public class AuctionSettlementService {
         List<AuctionBid> bids = auctionBidService.getItemBidList(itemId);
         if (bids == null) bids = Collections.emptyList();
 
-        // 计算每个用户的最高出价（分）
-        Map<Long, Long> userMaxBidCents = new HashMap<>();
+        // 计算每个用户的最高出价（元）
+        Map<Long, BigDecimal> userMaxBidYuan = new HashMap<>();
         for (AuctionBid b : bids) {
-            if (b.getStatus() != null && b.getStatus() == 0 && b.getBidAmount() != null) {
-                long cents = b.getBidAmount();
-                userMaxBidCents.merge(b.getUserId(), cents, Math::max);
+            if (b.getStatus() != null && b.getStatus() == 0 && b.getBidAmountYuan() != null) {
+                BigDecimal yuan = b.getBidAmountYuan();
+                userMaxBidYuan.merge(b.getUserId(), yuan, BigDecimal::max);
             }
         }
 
         // 找到最高出价及中标者
         Long winnerUserId = null;
-        Long finalPriceCents = 0L;
+        BigDecimal finalPriceYuan = BigDecimal.ZERO;
         Long highestBidId = null;
         for (AuctionBid b : bids) {
-            if (b.getStatus() != null && b.getStatus() == 0 && b.getBidAmount() != null) {
-                if (b.getBidAmount() > finalPriceCents) {
-                    finalPriceCents = b.getBidAmount();
+            if (b.getStatus() != null && b.getStatus() == 0 && b.getBidAmountYuan() != null) {
+                if (b.getBidAmountYuan().compareTo(finalPriceYuan) > 0) {
+                    finalPriceYuan = b.getBidAmountYuan();
                     winnerUserId = b.getUserId();
                     highestBidId = b.getId();
                 }
@@ -120,11 +120,10 @@ public class AuctionSettlementService {
 
         // 判断是否流拍（无人出价或不满足保留价）
         boolean sold;
-        if (finalPriceCents == 0L) {
+        if (finalPriceYuan.compareTo(BigDecimal.ZERO) == 0) {
             sold = false;
         } else if (item.getReservePrice() != null) {
-            sold = BigDecimal.valueOf(finalPriceCents).divide(new BigDecimal("100"))
-                    .compareTo(item.getReservePrice()) >= 0;
+            sold = finalPriceYuan.compareTo(item.getReservePrice()) >= 0;
         } else {
             sold = true;
         }
@@ -133,7 +132,7 @@ public class AuctionSettlementService {
         result.setSessionId(sessionId);
         result.setItemId(itemId);
         result.setWinnerUserId(sold ? winnerUserId : null);
-        result.setFinalPrice(finalPriceCents);
+        result.setFinalPrice(finalPriceYuan);
         result.setHighestBidId(highestBidId);
         result.setResultStatus(sold ? 1 : 0);
         result.setSettleStatus(0);
@@ -143,19 +142,16 @@ public class AuctionSettlementService {
         Long orderId = null;
 
         if (sold && winnerUserId != null) {
-            // 佣金（分）= 成交价 * 佣金比例，四舍五入到分
-            long commissionCents = commissionRatio.multiply(BigDecimal.valueOf(finalPriceCents))
-                    .setScale(0, BigDecimal.ROUND_HALF_UP).longValue();
+            // 佣金（元）= 成交价 * 佣金比例，四舍五入到元
+            BigDecimal commissionYuan = commissionRatio.multiply(finalPriceYuan)
+                    .setScale(0, BigDecimal.ROUND_HALF_UP);
 
-            // 中标者需冻结的保证金（分）= 最高出价 * 保证金比例（向上取整到分，保持与出价阶段一致）
-            long winnerDepositCents = depositRatio.multiply(BigDecimal.valueOf(finalPriceCents))
-                    .setScale(0, BigDecimal.ROUND_CEILING).longValue();
+            // 中标者需冻结的保证金（元）= 最高出价 * 保证金比例（向上取整到元，保持与出价阶段一致）
+            BigDecimal winnerDepositYuan = depositRatio.multiply(finalPriceYuan)
+                    .setScale(0, BigDecimal.ROUND_CEILING);
 
             // 创建订单（金额单位：元）
-            BigDecimal finalPriceYuan = BigDecimal.valueOf(finalPriceCents).divide(new BigDecimal("100"));
-            BigDecimal commissionYuan = BigDecimal.valueOf(commissionCents).divide(new BigDecimal("100"));
-            BigDecimal depositYuan = BigDecimal.valueOf(winnerDepositCents).divide(new BigDecimal("100"));
-            BigDecimal balanceYuan = finalPriceYuan.add(commissionYuan).subtract(depositYuan);
+            BigDecimal balanceYuan = finalPriceYuan.add(commissionYuan).subtract(winnerDepositYuan);
             if (balanceYuan.compareTo(BigDecimal.ZERO) < 0) balanceYuan = BigDecimal.ZERO;
 
             AuctionOrder order = new AuctionOrder();
@@ -164,7 +160,7 @@ public class AuctionSettlementService {
             order.setBuyerId(winnerUserId);
             order.setSellerId(1L); // 超级管理员/平台
             order.setTotalAmount(finalPriceYuan);
-            order.setDepositAmount(depositYuan);
+            order.setDepositAmount(winnerDepositYuan);
             order.setBalanceAmount(balanceYuan);
             order.setStatus(1); // 待付款
             order.setCreateTime(LocalDateTime.now());
@@ -174,8 +170,8 @@ public class AuctionSettlementService {
 
             // 记录到结果
             result.setOrderId(orderId);
-            result.setCommissionFee(commissionCents);
-            result.setDepositUsed(winnerDepositCents);
+            result.setCommissionFee(commissionYuan);
+            result.setDepositUsed(winnerDepositYuan);
 
             // 发送中标通知（包含充值提醒）
             if (orderId != null) {
@@ -205,12 +201,12 @@ public class AuctionSettlementService {
             }
 
             // 未中标者解冻保证金
-            for (Map.Entry<Long, Long> entry : userMaxBidCents.entrySet()) {
+            for (Map.Entry<Long, BigDecimal> entry : userMaxBidYuan.entrySet()) {
                 Long userId = entry.getKey();
                 if (!userId.equals(winnerUserId)) {
-                    long userDepositCents = depositRatio.multiply(BigDecimal.valueOf(entry.getValue()))
-                            .setScale(0, BigDecimal.ROUND_CEILING).longValue();
-                    BigDecimal unfreezeYuan = BigDecimal.valueOf(userDepositCents).divide(new BigDecimal("100"));
+                    BigDecimal userDepositYuan = depositRatio.multiply(entry.getValue())
+                            .setScale(0, BigDecimal.ROUND_CEILING);
+                    BigDecimal unfreezeYuan = userDepositYuan;
                     try {
                         userDepositAccountService.unfreezeAmount(userId, unfreezeYuan, itemId, "item", "未中标解冻");
                     } catch (Exception e) {
@@ -220,11 +216,11 @@ public class AuctionSettlementService {
             }
         } else {
             // 流拍：所有参与者解冻保证金
-            for (Map.Entry<Long, Long> entry : userMaxBidCents.entrySet()) {
+            for (Map.Entry<Long, BigDecimal> entry : userMaxBidYuan.entrySet()) {
                 Long userId = entry.getKey();
-                long userDepositCents = depositRatio.multiply(BigDecimal.valueOf(entry.getValue()))
-                        .setScale(0, BigDecimal.ROUND_CEILING).longValue();
-                BigDecimal unfreezeYuan = BigDecimal.valueOf(userDepositCents).divide(new BigDecimal("100"));
+                BigDecimal userDepositYuan = depositRatio.multiply(entry.getValue())
+                        .setScale(0, BigDecimal.ROUND_CEILING);
+                BigDecimal unfreezeYuan = userDepositYuan;
                 try {
                     userDepositAccountService.unfreezeAmount(userId, unfreezeYuan, itemId, "item", "流拍解冻");
                 } catch (Exception e) {
@@ -243,13 +239,13 @@ public class AuctionSettlementService {
         auctionItemMapper.update(update);
 
         // 发送拍卖结束消息到竞价房间
-        sendAuctionEndMessage(sessionId, itemId, item, winnerUserId, finalPriceCents);
+        sendAuctionEndMessage(sessionId, itemId, item, winnerUserId, finalPriceYuan);
     }
 
     /**
      * 发送拍卖结束消息到竞价房间
      */
-    private void sendAuctionEndMessage(Long sessionId, Long itemId, AuctionItem item, Long winnerUserId, Long finalPriceCents) {
+    private void sendAuctionEndMessage(Long sessionId, Long itemId, AuctionItem item, Long winnerUserId, BigDecimal finalPriceYuan) {
         try {
             Map<String, Object> message = new HashMap<>();
             message.put("type", "AUCTION_END");
@@ -260,9 +256,8 @@ public class AuctionSettlementService {
             data.put("itemId", itemId);
             data.put("itemName", item.getItemName());
             data.put("winnerId", winnerUserId);
-            data.put("finalPrice", finalPriceCents);
-            data.put("finalPriceYuan", finalPriceCents != null ? 
-                new BigDecimal(finalPriceCents).divide(new BigDecimal("100")) : BigDecimal.ZERO);
+            data.put("finalPrice", finalPriceYuan);
+            data.put("finalPriceYuan", finalPriceYuan);
             
             // 获取中拍者信息
             if (winnerUserId != null) {
@@ -285,7 +280,7 @@ public class AuctionSettlementService {
             webSocketHandler.broadcastToAuction(sessionId, message, null);
             
             log.info("拍卖结束消息已发送: sessionId={}, itemId={}, winnerId={}, finalPrice={}", 
-                sessionId, itemId, winnerUserId, finalPriceCents);
+                sessionId, itemId, winnerUserId, finalPriceYuan);
                 
         } catch (Exception e) {
             log.error("发送拍卖结束消息失败: sessionId={}, itemId={}, error={}", sessionId, itemId, e.getMessage(), e);

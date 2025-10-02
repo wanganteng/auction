@@ -37,12 +37,7 @@ public class AuctionBid {
     private Long userId;
 
     /**
-     * 出价金额（分）
-     */
-    private Long bidAmount;
-
-    /**
-     * 出价金额（元）
+     * 出价金额（元，整数）
      */
     private BigDecimal bidAmountYuan;
 

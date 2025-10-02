@@ -374,9 +374,9 @@ public class AdminController {
             session.setDepositRatio(depositRatio);
             session.setCommissionRatio(commissionRatio);
             // 转换BigDecimal到Long（分）
-            session.setMinDepositAmount(minDepositAmount.multiply(new BigDecimal("100")).longValue());
-            session.setMaxBidAmount(maxBidAmount.multiply(new BigDecimal("100")).longValue());
-            session.setMinIncrementAmount(minIncrementAmount.multiply(new BigDecimal("100")).longValue());
+            session.setMinDepositAmount(minDepositAmount);
+            session.setMaxBidAmount(maxBidAmount);
+            session.setMinIncrementAmount(minIncrementAmount);
             
             // 设置默认值
             session.setStatus(1); // 1-待开始

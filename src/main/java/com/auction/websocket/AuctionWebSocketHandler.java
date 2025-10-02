@@ -293,7 +293,6 @@ public class AuctionWebSocketHandler implements WebSocketHandler {
             bid.setSessionId(auctionId);
             bid.setItemId(itemId);
             bid.setUserId(userId);
-            bid.setBidAmount(bidAmount.multiply(new BigDecimal("100")).longValue()); // 转换为分
             bid.setBidAmountYuan(bidAmount);
             bid.setSource("websocket".equals(source) ? 1 : 2); // 1-手动出价，2-自动出价
             bid.setIsAuto((isAuto != null && isAuto) ? 1 : 0); // 0-否，1-是
@@ -574,8 +573,7 @@ public class AuctionWebSocketHandler implements WebSocketHandler {
             data.put("bidId", bid.getId());
             data.put("userId", bid.getUserId());
             data.put("username", displayName); // 添加用户真实名称
-            data.put("bidAmount", bid.getBidAmount());
-            data.put("bidAmountYuan", bid.getBidAmountYuan());
+            data.put("bidAmount", bid.getBidAmountYuan());
             data.put("bidTime", bid.getBidTime());
             data.put("bidSource", bid.getSource());
             data.put("isAutoBid", bid.getIsAuto());

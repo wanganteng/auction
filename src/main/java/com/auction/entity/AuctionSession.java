@@ -104,19 +104,19 @@ public class AuctionSession {
     private Integer isReturnable;
 
     /**
-     * 最小保证金金额（分）
+     * 最小保证金金额（元）
      */
-    private Long minDepositAmount;
+    private BigDecimal minDepositAmount;
 
     /**
-     * 最大出价金额（分）
+     * 最大出价金额（元）
      */
-    private Long maxBidAmount;
+    private BigDecimal maxBidAmount;
 
     /**
-     * 最小加价幅度（分）
+     * 最小加价幅度（元）
      */
-    private Long minIncrementAmount;
+    private BigDecimal minIncrementAmount;
 
     /**
      * 拍卖会封面图片

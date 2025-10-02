@@ -9,6 +9,7 @@ import com.auction.mapper.AuctionSessionMapper;
 import com.auction.service.RedisService;
 import com.auction.service.UserDepositAccountService;
 import com.auction.entity.UserDepositAccount;
+import com.auction.monitor.DepositFreezeMonitor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,9 @@ public class AuctionBidService {
     @Autowired
     private UserDepositAccountService depositAccountService;
 
+    @Autowired
+    private DepositFreezeMonitor depositFreezeMonitor;
+
 
     /**
      * 出价
@@ -63,6 +67,9 @@ public class AuctionBidService {
             bid.setCreateTime(LocalDateTime.now());
             bid.setUpdateTime(LocalDateTime.now());
 
+            // 在插入出价记录之前，先计算历史最高出价（避免包含当前出价）
+            BigDecimal oldRequiredDeposit = calculateHistoricalDepositRequirement(bid);
+
             // 插入出价记录
             auctionBidMapper.insert(bid);
 
@@ -70,53 +77,7 @@ public class AuctionBidService {
             updateItemCurrentPrice(bid);
 
             // 冻结保证金：按会场比例，仅冻结相较于该用户历史最高有效出价的差额
-            try {
-                AuctionSession session = auctionSessionMapper.selectById(bid.getSessionId());
-                if (session != null) {
-                    java.math.BigDecimal ratio = session.getDepositRatio() != null ? session.getDepositRatio() : new java.math.BigDecimal("0.10");
-                    // 新出价所需保证金（分）
-                    long newRequiredCents = java.math.BigDecimal.valueOf(bid.getBidAmount())
-                            .multiply(ratio)
-                            .setScale(0, java.math.RoundingMode.CEILING)
-                            .longValue();
-
-                    // 找到该用户在该拍品（同一会场）下历史最高有效出价
-                    long oldRequiredCents = 0L;
-                    try {
-                        AuctionBid query = new AuctionBid();
-                        query.setItemId(bid.getItemId());
-                        query.setSessionId(bid.getSessionId());
-                        query.setUserId(bid.getUserId());
-                        query.setStatus(0);
-                        List<AuctionBid> userBids = auctionBidMapper.selectList(query);
-                        long maxCents = 0L;
-                        if (userBids != null) {
-                            for (AuctionBid b : userBids) {
-                                if (b.getBidAmount() != null && b.getBidAmount() > maxCents) {
-                                    maxCents = b.getBidAmount();
-                                }
-                            }
-                        }
-                        if (maxCents > 0) {
-                            oldRequiredCents = java.math.BigDecimal.valueOf(maxCents)
-                                    .multiply(ratio)
-                                    .setScale(0, java.math.RoundingMode.CEILING)
-                                    .longValue();
-                        }
-                    } catch (Exception ignore) {}
-
-                    long deltaFreeze = Math.max(0L, newRequiredCents - oldRequiredCents);
-
-                    UserDepositAccount account = depositAccountService.getAccountByUserId(bid.getUserId());
-                    if (account != null && deltaFreeze > 0) {
-                        BigDecimal freezeAmount = BigDecimal.valueOf(deltaFreeze).divide(new BigDecimal("100"));
-                        depositAccountService.freezeAmount(bid.getUserId(), freezeAmount, bid.getId(), "bid", "出价冻结保证金");
-                    }
-                }
-            } catch (Exception e) {
-                log.error("冻结保证金失败: {}", e.getMessage(), e);
-                throw new RuntimeException("冻结保证金失败: " + e.getMessage());
-            }
+            freezeDepositAmount(bid, oldRequiredDeposit);
 
             // 延时拍卖：在结束前阈值内出价则顺延结束时间
             try {
@@ -228,13 +189,11 @@ public class AuctionBidService {
             throw new RuntimeException("拍卖会不存在");
         }
         java.math.BigDecimal ratio = session.getDepositRatio() != null ? session.getDepositRatio() : new java.math.BigDecimal("0.10");
-        // 差额校验：只校验新增冻结部分所需
-        long newRequiredCents = java.math.BigDecimal.valueOf(bid.getBidAmount())
-                .multiply(ratio)
-                .setScale(0, java.math.RoundingMode.CEILING)
-                .longValue();
+        // 差额校验：只校验新增冻结部分所需（向上取整到元）
+        BigDecimal newRequiredDeposit = bid.getBidAmountYuan().multiply(ratio)
+                .setScale(0, java.math.RoundingMode.CEILING);
 
-        long oldRequiredCents = 0L;
+        BigDecimal oldRequiredDeposit = BigDecimal.ZERO;
         try {
             AuctionBid query = new AuctionBid();
             query.setItemId(bid.getItemId());
@@ -242,32 +201,166 @@ public class AuctionBidService {
             query.setUserId(bid.getUserId());
             query.setStatus(0);
             List<AuctionBid> userBids = auctionBidMapper.selectList(query);
-            long maxCents = 0L;
+            BigDecimal maxBidAmount = BigDecimal.ZERO;
             if (userBids != null) {
                 for (AuctionBid b : userBids) {
-                    if (b.getBidAmount() != null && b.getBidAmount() > maxCents) {
-                        maxCents = b.getBidAmount();
+                    if (b.getBidAmountYuan() != null && b.getBidAmountYuan().compareTo(maxBidAmount) > 0) {
+                        maxBidAmount = b.getBidAmountYuan();
                     }
                 }
             }
-            if (maxCents > 0) {
-                oldRequiredCents = java.math.BigDecimal.valueOf(maxCents)
-                        .multiply(ratio)
-                        .setScale(0, java.math.RoundingMode.CEILING)
-                        .longValue();
+            if (maxBidAmount.compareTo(BigDecimal.ZERO) > 0) {
+                oldRequiredDeposit = maxBidAmount.multiply(ratio)
+                        .setScale(0, java.math.RoundingMode.CEILING);
             }
         } catch (Exception ignore) {}
 
-        long deltaFreeze = Math.max(0L, newRequiredCents - oldRequiredCents);
+        BigDecimal deltaFreeze = newRequiredDeposit.subtract(oldRequiredDeposit);
+        if (deltaFreeze.compareTo(BigDecimal.ZERO) < 0) {
+            deltaFreeze = BigDecimal.ZERO;
+        }
 
         UserDepositAccount account = depositAccountService.getAccountByUserId(bid.getUserId());
         if (account == null) {
             throw new RuntimeException("保证金账户不存在，请先充值");
         }
         BigDecimal available = account.getAvailableAmount();
-        BigDecimal deltaFreezeYuan = BigDecimal.valueOf(deltaFreeze).divide(new BigDecimal("100"));
-        if (available.compareTo(deltaFreezeYuan) < 0) {
-            throw new RuntimeException("可用保证金不足，需新增：" + deltaFreezeYuan + " 元");
+        if (available.compareTo(deltaFreeze) < 0) {
+            throw new RuntimeException("可用保证金不足，需新增：" + deltaFreeze + " 元");
+        }
+    }
+
+    /**
+     * 计算历史最高出价所需的保证金（不包含当前出价）
+     * 
+     * @param bid 当前出价
+     * @return 历史最高出价所需保证金（元）
+     */
+    private BigDecimal calculateHistoricalDepositRequirement(AuctionBid bid) {
+        try {
+            AuctionSession session = auctionSessionMapper.selectById(bid.getSessionId());
+            if (session == null) {
+                log.warn("拍卖会不存在: sessionId={}", bid.getSessionId());
+                return BigDecimal.ZERO;
+            }
+            
+            java.math.BigDecimal ratio = session.getDepositRatio() != null ? 
+                session.getDepositRatio() : new java.math.BigDecimal("0.10");
+            
+            // 查询该用户在该拍品（同一会场）下的历史最高有效出价（不包含当前出价）
+            AuctionBid query = new AuctionBid();
+            query.setItemId(bid.getItemId());
+            query.setSessionId(bid.getSessionId());
+            query.setUserId(bid.getUserId());
+            query.setStatus(0);
+            List<AuctionBid> userBids = auctionBidMapper.selectList(query);
+            
+            BigDecimal maxBidAmount = BigDecimal.ZERO;
+            if (userBids != null) {
+                for (AuctionBid b : userBids) {
+                    if (b.getBidAmountYuan() != null && b.getBidAmountYuan().compareTo(maxBidAmount) > 0) {
+                        maxBidAmount = b.getBidAmountYuan();
+                    }
+                }
+            }
+            
+            if (maxBidAmount.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal oldRequiredDeposit = maxBidAmount.multiply(ratio)
+                        .setScale(0, java.math.RoundingMode.CEILING);
+                
+                log.debug("历史最高出价: {}元, 所需保证金: {}元", maxBidAmount, oldRequiredDeposit);
+                return oldRequiredDeposit;
+            }
+            
+            log.debug("用户无历史出价记录");
+            return BigDecimal.ZERO;
+            
+        } catch (Exception e) {
+            log.error("计算历史保证金需求失败: userId={}, itemId={}, sessionId={}, error={}", 
+                bid.getUserId(), bid.getItemId(), bid.getSessionId(), e.getMessage(), e);
+            return BigDecimal.ZERO; // 出错时返回0，确保不会过度冻结
+        }
+    }
+
+    /**
+     * 冻结保证金金额
+     * 
+     * @param bid 出价记录
+     * @param oldRequiredDeposit 历史最高出价所需保证金（元）
+     */
+    private void freezeDepositAmount(AuctionBid bid, BigDecimal oldRequiredDeposit) {
+        try {
+            AuctionSession session = auctionSessionMapper.selectById(bid.getSessionId());
+            if (session == null) {
+                log.error("拍卖会不存在，无法冻结保证金: sessionId={}", bid.getSessionId());
+                throw new RuntimeException("拍卖会不存在");
+            }
+            
+            java.math.BigDecimal ratio = session.getDepositRatio() != null ? 
+                session.getDepositRatio() : new java.math.BigDecimal("0.10");
+            
+            // 新出价所需保证金（元，向上取整）
+            BigDecimal newRequiredDeposit = bid.getBidAmountYuan().multiply(ratio)
+                    .setScale(0, java.math.RoundingMode.CEILING);
+
+            BigDecimal deltaFreeze = newRequiredDeposit.subtract(oldRequiredDeposit);
+            if (deltaFreeze.compareTo(BigDecimal.ZERO) < 0) {
+                deltaFreeze = BigDecimal.ZERO;
+            }
+            
+            // 记录详细的冻结信息
+            log.info("保证金冻结计算: 用户ID={}, 拍品ID={}, 出价={}元, 新需保证金={}元, 历史需保证金={}元, 差额冻结={}元", 
+                bid.getUserId(), bid.getItemId(), bid.getBidAmountYuan(), newRequiredDeposit, oldRequiredDeposit, deltaFreeze);
+            
+            // 冻结金额（元）
+            BigDecimal freezeAmount = deltaFreeze;
+            
+            // 记录监控数据
+            depositFreezeMonitor.recordFreezeOperation(
+                bid.getUserId(), bid.getItemId(), bid.getSessionId(),
+                bid.getBidAmountYuan(), freezeAmount, oldRequiredDeposit, newRequiredDeposit
+            );
+
+            // 安全检查：如果差额为0但新出价大于历史最高出价，说明计算有误
+            if (deltaFreeze.compareTo(BigDecimal.ZERO) == 0 && newRequiredDeposit.compareTo(oldRequiredDeposit) > 0) {
+                log.error("保证金计算异常: 新出价大于历史最高出价但差额为0, userId={}, itemId={}, newRequired={}, oldRequired={}", 
+                    bid.getUserId(), bid.getItemId(), newRequiredDeposit, oldRequiredDeposit);
+                throw new RuntimeException("保证金计算异常，请检查历史出价记录");
+            }
+
+            UserDepositAccount account = depositAccountService.getAccountByUserId(bid.getUserId());
+            if (account == null) {
+                log.error("用户保证金账户不存在: userId={}", bid.getUserId());
+                throw new RuntimeException("保证金账户不存在");
+            }
+            
+            if (deltaFreeze.compareTo(BigDecimal.ZERO) > 0) {
+                
+                // 再次验证可用余额
+                if (account.getAvailableAmount().compareTo(freezeAmount) < 0) {
+                    log.error("可用保证金不足: userId={}, 需要={}, 可用={}", 
+                        bid.getUserId(), freezeAmount, account.getAvailableAmount());
+                    throw new RuntimeException("可用保证金不足，需新增：" + freezeAmount + " 元");
+                }
+                
+                boolean success = depositAccountService.freezeAmount(
+                    bid.getUserId(), freezeAmount, bid.getId(), "bid", "出价冻结保证金");
+                
+                if (!success) {
+                    throw new RuntimeException("保证金冻结操作失败");
+                }
+                
+                log.info("保证金冻结成功: 用户ID={}, 金额={}元, 出价ID={}", 
+                    bid.getUserId(), freezeAmount, bid.getId());
+            } else {
+                log.info("无需冻结保证金: 用户ID={}, 出价ID={}, 差额={}元", 
+                    bid.getUserId(), bid.getId(), deltaFreeze);
+            }
+            
+        } catch (Exception e) {
+            log.error("冻结保证金失败: userId={}, itemId={}, sessionId={}, error={}", 
+                bid.getUserId(), bid.getItemId(), bid.getSessionId(), e.getMessage(), e);
+            throw new RuntimeException("冻结保证金失败: " + e.getMessage());
         }
     }
 

@@ -8,7 +8,6 @@
         <result column="session_id" property="sessionId" jdbcType="BIGINT"/>
         <result column="item_id" property="itemId" jdbcType="BIGINT"/>
         <result column="user_id" property="userId" jdbcType="BIGINT"/>
-        <result column="bid_amount" property="bidAmount" jdbcType="BIGINT"/>
         <result column="bid_amount_yuan" property="bidAmountYuan" jdbcType="DECIMAL"/>
         <result column="bid_time" property="bidTime" jdbcType="TIMESTAMP"/>
         <result column="source" property="source" jdbcType="TINYINT"/>
@@ -30,10 +29,10 @@
     <!-- 插入出价记录 -->
     <insert id="insert" parameterType="com.auction.entity.AuctionBid" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO auction_bid (
-            session_id, item_id, user_id, bid_amount, bid_amount_yuan, bid_time,
+            session_id, item_id, user_id, bid_amount_yuan, bid_time,
             source, is_auto, status, client_ip, user_agent, create_time, update_time, deleted
         ) VALUES (
-            #{sessionId}, #{itemId}, #{userId}, #{bidAmount}, #{bidAmountYuan}, #{bidTime},
+            #{sessionId}, #{itemId}, #{userId}, #{bidAmountYuan}, #{bidTime},
             #{source}, #{isAuto}, #{status}, #{clientIp}, #{userAgent}, #{createTime}, #{updateTime}, #{deleted}
         )
     </insert>
@@ -45,7 +44,6 @@
             <if test="sessionId != null">session_id = #{sessionId},</if>
             <if test="itemId != null">item_id = #{itemId},</if>
             <if test="userId != null">user_id = #{userId},</if>
-            <if test="bidAmount != null">bid_amount = #{bidAmount},</if>
             <if test="bidAmountYuan != null">bid_amount_yuan = #{bidAmountYuan},</if>
             <if test="bidTime != null">bid_time = #{bidTime},</if>
             <if test="source != null">source = #{source},</if>

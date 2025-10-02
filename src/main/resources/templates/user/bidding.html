@@ -632,9 +632,12 @@
                         <div class="bid-input-group">
                             <el-input 
                                 v-model="bidAmount" 
-                                placeholder="请输入出价金额"
+                                placeholder="请输入出价金额（整数元）"
                                 class="bid-input"
-                                type="number">
+                                type="number"
+                                step="1"
+                                min="1"
+                                @input="validateBidAmount">
                             </el-input>
                             <el-button 
                                 type="primary" 
@@ -653,6 +656,11 @@
                                 @click="setBidAmount(amount)">
                                 +¥{{ amount }}
                             </div>
+                        </div>
+                        
+                        <!-- 出价提示 -->
+                        <div class="bid-tips" style="margin-top: 10px; font-size: 12px; color: #909399;">
+                            <p style="margin: 0;">💡 出价金额必须为整数元，如：100、500、1000</p>
                         </div>
                     </div>
                     
@@ -776,16 +784,18 @@
                 },
                 isValidBid() {
                     const bid = parseFloat(this.bidAmount);
-                    const inc = (this.session && this.session.minIncrementAmount ? this.session.minIncrementAmount : 0) / 100;
-                    return bid > this.currentPrice && bid >= this.currentPrice + inc;
+                    const inc = (this.session && this.session.minIncrementAmount ? this.session.minIncrementAmount : 0);
+                    // 验证为有效数字、正数、整数
+                    return !isNaN(bid) && bid > 0 && Number.isInteger(bid) && 
+                           bid > this.currentPrice && bid >= this.currentPrice + inc;
                 },
                 // 计算本次出价所需保证金
                 requiredDepositAmount() {
                     if (!this.session || !this.bidAmount) return 0;
                     const bidAmount = parseFloat(this.bidAmount);
-                    if (isNaN(bidAmount) || bidAmount <= 0) return 0;
+                    if (isNaN(bidAmount) || bidAmount <= 0 || !Number.isInteger(bidAmount)) return 0;
                     const ratio = this.session.depositRatio || 0.1;
-                    return Math.ceil(bidAmount * ratio * 100) / 100; // 向上取整到分，再转回元
+                    return Math.ceil(bidAmount * ratio); // 向上取整到元
                 },
                 // 检查保证金是否足够
                 hasEnoughDeposit() {
@@ -1170,16 +1180,41 @@
                     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
                 },
                 
+                // 验证出价金额输入
+                validateBidAmount() {
+                    // 只允许输入整数
+                    if (this.bidAmount && this.bidAmount.includes('.')) {
+                        this.bidAmount = this.bidAmount.split('.')[0];
+                        ElMessage.warning('出价金额必须为整数元');
+                    }
+                    // 确保为正数
+                    if (this.bidAmount && parseFloat(this.bidAmount) < 0) {
+                        this.bidAmount = '';
+                        ElMessage.warning('出价金额必须为正数');
+                    }
+                },
+                
                 // 设置出价金额（可叠加）：在当前输入金额基础上累加所选加价
                 setBidAmount(amount) {
                     const currentInput = parseFloat(this.bidAmount);
                     const base = isNaN(currentInput) ? this.currentPrice : currentInput;
-                    const next = base + amount;
+                    const next = Math.floor(base + amount); // 确保为整数
                     this.bidAmount = next.toString();
                 },
                 
                 // 提交出价
                 submitBid() {
+                    // 验证出价金额为整数
+                    const bidAmount = parseFloat(this.bidAmount);
+                    if (isNaN(bidAmount) || bidAmount <= 0) {
+                        ElMessage.error('请输入有效的出价金额');
+                        return;
+                    }
+                    if (!Number.isInteger(bidAmount)) {
+                        ElMessage.error('出价金额必须为整数元');
+                        return;
+                    }
+                    
                     if (!this.isValidBid) {
                         ElMessage.error('出价金额无效');
                         return;
@@ -1198,7 +1233,7 @@
                     const bidData = {
                         sessionId: parseInt(sessionId),
                         itemId: this.currentItemId,
-                        bidAmount: parseFloat(this.bidAmount)
+                        bidAmount: bidAmount // 确保为整数
                     };
                     
                     axios.post(`/api/user/sessions/${sessionId}/bid`, bidData)
