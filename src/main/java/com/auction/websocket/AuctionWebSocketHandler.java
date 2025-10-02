@@ -558,11 +558,22 @@ public class AuctionWebSocketHandler implements WebSocketHandler {
             message.put("content", "有新的出价");
             message.put("timestamp", System.currentTimeMillis());
             
+            // 获取用户真实信息
+            SysUser user = sysUserService.getById(bid.getUserId());
+            String displayName = "未知用户";
+            if (user != null) {
+                // 优先使用昵称，如果没有昵称则使用用户名
+                displayName = (user.getNickname() != null && !user.getNickname().trim().isEmpty()) 
+                    ? user.getNickname() 
+                    : user.getUsername();
+            }
+            
             Map<String, Object> data = new java.util.HashMap<>();
             data.put("auctionId", bid.getSessionId());
             data.put("itemId", bid.getItemId());
             data.put("bidId", bid.getId());
             data.put("userId", bid.getUserId());
+            data.put("username", displayName); // 添加用户真实名称
             data.put("bidAmount", bid.getBidAmount());
             data.put("bidAmountYuan", bid.getBidAmountYuan());
             data.put("bidTime", bid.getBidTime());

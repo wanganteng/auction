@@ -66,6 +66,9 @@ public class UserController {
     @Autowired
     private AuctionItemService auctionItemService;
 
+    @Autowired
+    private SysUserService sysUserService;
+
     // ==================== 拍卖会管理 ====================
 
     /**
@@ -190,7 +193,17 @@ public class UserController {
                 bidMap.put("bidAmount", bid.getBidAmount());
                 bidMap.put("bidAmountYuan", bid.getBidAmountYuan());
                 bidMap.put("bidTime", bid.getBidTime());
-                bidMap.put("username", "用户" + bid.getUserId()); // 简化处理
+                
+                // 获取用户真实信息
+                SysUser user = sysUserService.getById(bid.getUserId());
+                String displayName = "未知用户";
+                if (user != null) {
+                    // 优先使用昵称，如果没有昵称则使用用户名
+                    displayName = (user.getNickname() != null && !user.getNickname().trim().isEmpty()) 
+                        ? user.getNickname() 
+                        : user.getUsername();
+                }
+                bidMap.put("username", displayName);
                 bidMap.put("source", bid.getSource());
                 bidMap.put("isAuto", bid.getIsAuto());
                 bidList.add(bidMap);

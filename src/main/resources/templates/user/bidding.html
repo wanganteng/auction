@@ -281,20 +281,59 @@
             align-items: center;
             padding: 8px 0;
             border-bottom: 1px solid #f0f0f0;
+            transition: all 0.3s ease;
         }
         
         .bid-item:last-child {
             border-bottom: none;
         }
         
+        .bid-leading {
+            background: linear-gradient(135deg, #e8f5e8 0%, #f0f9ff 100%);
+            border-left: 4px solid #67c23a;
+            padding-left: 12px;
+            margin: 2px 0;
+            border-radius: 4px;
+        }
+        
+        .bid-overtaken {
+            background: #fafafa;
+            opacity: 0.8;
+        }
+        
         .bid-user {
             font-weight: bold;
             color: #303133;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .bid-status {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+        
+        .bid-leading .bid-status {
+            background: #67c23a;
+            color: white;
+        }
+        
+        .bid-overtaken .bid-status {
+            background: #e6a23c;
+            color: white;
         }
         
         .bid-amount {
             color: #f56c6c;
             font-weight: bold;
+        }
+        
+        .bid-leading .bid-amount {
+            color: #67c23a;
+            font-size: 16px;
         }
         
         .bid-time {
@@ -625,11 +664,16 @@
                         </div>
                         <div v-else>
                             <div 
-                                v-for="bid in bidHistory" 
+                                v-for="(bid, index) in bidHistory" 
                                 :key="bid.id" 
-                                class="bid-item">
+                                class="bid-item"
+                                :class="{ 'bid-leading': index === 0, 'bid-overtaken': index > 0 }">
                                 <div>
-                                    <div class="bid-user">{{ bid.username }}</div>
+                                    <div class="bid-user">
+                                        {{ bid.username }}
+                                        <span class="bid-status" v-if="index === 0">领先</span>
+                                        <span class="bid-status" v-else>被超越</span>
+                                    </div>
                                     <div class="bid-time">{{ formatTime(bid.bidTime) }}</div>
                                 </div>
                                 <div class="bid-amount">¥{{ bid.bidAmountYuan != null ? bid.bidAmountYuan : bid.bidAmount }}</div>
@@ -865,7 +909,13 @@
                     axios.get(`/api/user/sessions/${sessionId}/bids`)
                         .then(response => {
                             if (response.data.code === 200) {
-                                this.bidHistory = response.data.data || [];
+                                const bids = response.data.data || [];
+                                // 按照出价金额从高到低排序，确保第一名是当前最高出价
+                                this.bidHistory = bids.sort((a, b) => {
+                                    const amountA = Number(a.bidAmountYuan || a.bidAmount || 0);
+                                    const amountB = Number(b.bidAmountYuan || b.bidAmount || 0);
+                                    return amountB - amountA;
+                                });
                             }
                         })
                         .catch(error => {
@@ -1001,20 +1051,41 @@
                             if (bucket && bucket.bidAmountYuan != null) {
                                 this.currentPrice = Number(bucket.bidAmountYuan);
                             }
-                            this.bidHistory.unshift({
+                            // 添加新出价记录
+                            const newBid = {
                                 id: bucket.bidId,
-                                username: `用户${bucket.userId || ''}`,
+                                username: bucket.username || `用户${bucket.userId || ''}`,
                                 bidTime: bucket.bidTime || Date.now(),
                                 bidAmountYuan: bucket.bidAmountYuan,
                                 bidAmount: bucket.bidAmount
+                            };
+                            
+                            // 将新出价添加到历史记录中
+                            this.bidHistory.unshift(newBid);
+                            
+                            // 重新排序，确保按出价金额从高到低排列
+                            this.bidHistory = this.bidHistory.sort((a, b) => {
+                                const amountA = Number(a.bidAmountYuan || a.bidAmount || 0);
+                                const amountB = Number(b.bidAmountYuan || b.bidAmount || 0);
+                                return amountB - amountA;
                             });
+                            
                             if (this.bidHistory.length > 50) this.bidHistory = this.bidHistory.slice(0, 50);
                             break;
                         case 'BID_UPDATE':
                             if (currentPrice != null) this.currentPrice = currentPrice;
                             if (participantCount != null) this.participantCount = participantCount;
                             if (bid) {
+                                // 添加新出价记录
                                 this.bidHistory.unshift(bid);
+                                
+                                // 重新排序，确保按出价金额从高到低排列
+                                this.bidHistory = this.bidHistory.sort((a, b) => {
+                                    const amountA = Number(a.bidAmountYuan || a.bidAmount || 0);
+                                    const amountB = Number(b.bidAmountYuan || b.bidAmount || 0);
+                                    return amountB - amountA;
+                                });
+                                
                                 if (this.bidHistory.length > 50) this.bidHistory = this.bidHistory.slice(0, 50);
                             }
                             break;
@@ -1033,7 +1104,16 @@
                                 if (currentPrice != null) this.currentPrice = currentPrice;
                                 if (participantCount != null) this.participantCount = participantCount;
                                 if (bid) {
+                                    // 添加新出价记录
                                     this.bidHistory.unshift(bid);
+                                    
+                                    // 重新排序，确保按出价金额从高到低排列
+                                    this.bidHistory = this.bidHistory.sort((a, b) => {
+                                        const amountA = Number(a.bidAmountYuan || a.bidAmount || 0);
+                                        const amountB = Number(b.bidAmountYuan || b.bidAmount || 0);
+                                        return amountB - amountA;
+                                    });
+                                    
                                     if (this.bidHistory.length > 50) this.bidHistory = this.bidHistory.slice(0, 50);
                                 }
                             }
