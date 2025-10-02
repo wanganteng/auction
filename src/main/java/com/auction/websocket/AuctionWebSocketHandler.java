@@ -5,6 +5,9 @@ import com.auction.service.AuctionBidService;
 import com.auction.service.SysUserService;
 import com.auction.entity.SysUser;
 import com.auction.service.RedisService;
+import com.auction.service.BidIncrementService;
+import com.auction.entity.BidIncrementConfig;
+import com.auction.entity.BidIncrementRule;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -58,6 +61,9 @@ public class AuctionWebSocketHandler implements WebSocketHandler {
 
     @Autowired
     private JwtTokenProvider tokenProvider;
+
+    @Autowired
+    private BidIncrementService bidIncrementService;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -202,6 +208,9 @@ public class AuctionWebSocketHandler implements WebSocketHandler {
         joinData.put("auctionId", auctionId);
         joinData.put("viewCount", viewCount);
         sendMessage(session, createMessage("JOINED_AUCTION", "成功加入拍卖", joinData));
+
+        // 推送加价规则
+        pushBidIncrementRules(session, auctionId);
         
         // 通知其他用户有新用户加入
         Map<String, Object> userJoinData = new java.util.HashMap<>();
@@ -319,7 +328,10 @@ public class AuctionWebSocketHandler implements WebSocketHandler {
             
             // 广播出价消息到拍卖会
             sendBidMessage(auctionId, bid, userBidCount, auctionBidCount);
-            
+
+            // 推送下一次最低出价金额
+            pushNextMinimumBid(auctionId, bid.getItemId(), bid.getBidAmountYuan());
+
             sendMessage(session, createMessage("BID_SUCCESS", "出价成功", responseData));
             
             // 广播出价信息给所有参与拍卖的用户
@@ -545,6 +557,59 @@ public class AuctionWebSocketHandler implements WebSocketHandler {
      */
     public int getTotalConnectionCount() {
         return userSessions.size();
+    }
+
+    /**
+     * 推送加价规则给用户
+     *
+     * @param session WebSocket连接
+     * @param auctionId 拍卖ID
+     */
+    private void pushBidIncrementRules(WebSocketSession session, Long auctionId) {
+        try {
+            // 获取拍卖会加价规则配置
+            BidIncrementConfig config = bidIncrementService.getConfigBySessionId(auctionId);
+            if (config != null && config.getRules() != null && !config.getRules().isEmpty()) {
+                Map<String, Object> rulesData = new java.util.HashMap<>();
+                rulesData.put("auctionId", auctionId);
+                rulesData.put("configId", config.getId());
+                rulesData.put("configName", config.getConfigName());
+                rulesData.put("rules", config.getRules());
+
+                sendMessage(session, createMessage("BID_INCREMENT_RULES", "加价规则", rulesData));
+                log.debug("推送加价规则成功: auctionId={}, configId={}", auctionId, config.getId());
+            }
+        } catch (Exception e) {
+            log.error("推送加价规则失败: auctionId={}", auctionId, e);
+        }
+    }
+
+    /**
+     * 推送下一次最低出价金额
+     *
+     * @param auctionId 拍卖ID
+     * @param itemId 拍品ID
+     * @param currentPrice 当前价格
+     */
+    private void pushNextMinimumBid(Long auctionId, Long itemId, java.math.BigDecimal currentPrice) {
+        try {
+            // 获取拍卖会加价规则配置
+            BidIncrementConfig config = bidIncrementService.getConfigBySessionId(auctionId);
+            if (config != null) {
+                java.math.BigDecimal nextBid = bidIncrementService.getNextMinimumBid(currentPrice, config.getId());
+
+                Map<String, Object> nextBidData = new java.util.HashMap<>();
+                nextBidData.put("auctionId", auctionId);
+                nextBidData.put("itemId", itemId);
+                nextBidData.put("currentPrice", currentPrice);
+                nextBidData.put("nextMinimumBid", nextBid);
+
+                broadcastToAuction(auctionId, createMessage("NEXT_MINIMUM_BID", "下一次最低出价", nextBidData), null);
+                log.debug("推送下一次最低出价成功: auctionId={}, itemId={}, nextBid={}", auctionId, itemId, nextBid);
+            }
+        } catch (Exception e) {
+            log.error("推送下一次最低出价失败: auctionId={}, itemId={}", auctionId, itemId, e);
+        }
     }
 
     /**

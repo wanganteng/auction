@@ -2,6 +2,7 @@ package com.auction.service;
 
 import com.auction.entity.AuctionItem;
 import com.auction.entity.AuctionSession;
+import com.auction.entity.BidIncrementConfig;
 import com.auction.mapper.AuctionItemMapper;
 import com.auction.mapper.AuctionSessionItemMapper;
 import com.auction.mapper.AuctionSessionMapper;
@@ -54,6 +55,9 @@ public class AuctionSessionService {
 
     @Autowired
     private CommonImageService commonImageService;
+
+    @Autowired
+    private BidIncrementService bidIncrementService;
 
     /**
      * 创建拍卖会
@@ -250,6 +254,8 @@ public class AuctionSessionService {
                 recalculateSessionStatus(session);
                 // 加载拍品列表
                 loadSessionItems(session);
+                // 加载加价阶梯配置
+                loadBidIncrementConfig(session);
             }
             return session;
         } catch (Exception e) {
@@ -264,10 +270,11 @@ public class AuctionSessionService {
     public List<AuctionSession> getSessionList(AuctionSession session) {
         try {
             List<AuctionSession> sessions = auctionSessionMapper.selectList(session);
-            // 动态纠正状态并加载拍品列表
+            // 动态纠正状态并加载拍品列表和加价阶梯配置
             for (AuctionSession s : sessions) {
                 recalculateSessionStatus(s);
                 loadSessionItems(s);
+                loadBidIncrementConfig(s);
             }
             return sessions;
         } catch (Exception e) {
@@ -329,6 +336,46 @@ public class AuctionSessionService {
             return auctionItemMapper.selectAvailableForAssignment();
         } catch (Exception e) {
             log.error("查询可用拍品失败: {}", e.getMessage(), e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 检查拍卖会是否已开始（进行中状态）
+     *
+     * @param sessionId 拍卖会ID
+     * @return 是否已开始
+     */
+    public boolean isSessionStarted(Long sessionId) {
+        try {
+            AuctionSession session = auctionSessionMapper.selectById(sessionId);
+            if (session == null) {
+                return false;
+            }
+
+            // 动态纠正状态
+            recalculateSessionStatus(session);
+
+            // 检查是否为进行中状态（2）
+            return session.getStatus() != null && session.getStatus() == 2;
+
+        } catch (Exception e) {
+            log.error("检查拍卖会状态失败: sessionId={}, 错误: {}", sessionId, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * 查询使用指定加价阶梯配置的拍卖会列表
+     *
+     * @param configId 加价阶梯配置ID
+     * @return 使用该配置的拍卖会列表
+     */
+    public List<AuctionSession> getSessionsByBidIncrementConfigId(Long configId) {
+        try {
+            return auctionSessionMapper.selectSessionsByBidIncrementConfigId(configId);
+        } catch (Exception e) {
+            log.error("查询使用加价阶梯配置的拍卖会失败: configId={}, 错误: {}", configId, e.getMessage(), e);
             return new ArrayList<>();
         }
     }
@@ -399,6 +446,20 @@ public class AuctionSessionService {
             session.setItems(new ArrayList<>());
         } catch (Exception e) {
             log.warn("加载拍卖会拍品失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 加载拍卖会加价阶梯配置
+     */
+    private void loadBidIncrementConfig(AuctionSession session) {
+        try {
+            if (session.getBidIncrementConfigId() != null) {
+                BidIncrementConfig config = bidIncrementService.getConfigById(session.getBidIncrementConfigId());
+                session.setBidIncrementConfig(config);
+            }
+        } catch (Exception e) {
+            log.warn("加载拍卖会加价阶梯配置失败: {}", e.getMessage());
         }
     }
 

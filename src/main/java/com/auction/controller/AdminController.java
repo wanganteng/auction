@@ -376,7 +376,7 @@ public class AdminController {
             // 转换BigDecimal到Long（分）
             session.setMinDepositAmount(minDepositAmount);
             session.setMaxBidAmount(maxBidAmount);
-            session.setMinIncrementAmount(minIncrementAmount);
+            session.setBidIncrementConfigId(minIncrementAmount != null ? minIncrementAmount.longValue() : null);
             
             // 设置默认值
             session.setStatus(1); // 1-待开始

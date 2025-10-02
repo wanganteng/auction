@@ -2,6 +2,7 @@ package com.auction.mapper;
 
 import com.auction.entity.AuctionSession;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -31,6 +32,11 @@ public interface AuctionSessionMapper {
     AuctionSession selectById(Long id);
 
     /**
+     * 根据ID查询拍卖会（包含加价阶梯配置）
+     */
+    AuctionSession selectByIdWithBidIncrement(Long id);
+
+    /**
      * 查询拍卖会列表
      */
     List<AuctionSession> selectList(AuctionSession session);
@@ -54,4 +60,9 @@ public interface AuctionSessionMapper {
      * 根据拍品ID查询关联的拍卖会
      */
     List<AuctionSession> selectSessionsByItemId(Long itemId);
+
+    /**
+     * 根据加价阶梯配置ID查询使用该配置的拍卖会列表
+     */
+    List<AuctionSession> selectSessionsByBidIncrementConfigId(@Param("configId") Long configId);
 }

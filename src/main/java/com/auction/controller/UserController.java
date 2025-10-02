@@ -155,7 +155,7 @@ public class UserController {
             sessionDetail.put("commissionRatio", session.getCommissionRatio());
             sessionDetail.put("minDepositAmount", session.getMinDepositAmount());
             sessionDetail.put("maxBidAmount", session.getMaxBidAmount());
-            sessionDetail.put("minIncrementAmount", session.getMinIncrementAmount());
+            sessionDetail.put("minIncrementAmount", session.getBidIncrementConfigId());
             sessionDetail.put("totalItems", session.getTotalItems());
             sessionDetail.put("soldItems", session.getSoldItems());
             sessionDetail.put("viewCount", session.getViewCount());

@@ -51,6 +51,9 @@ public class AuctionBidService {
     @Autowired
     private DepositFreezeMonitor depositFreezeMonitor;
 
+    @Autowired
+    private BidIncrementService bidIncrementService;
+
 
     /**
      * 出价
@@ -169,6 +172,20 @@ public class AuctionBidService {
         // 检查出价金额
         if (bid.getBidAmountYuan().compareTo(item.getCurrentPrice()) <= 0) {
             throw new RuntimeException("出价必须高于当前价格");
+        }
+
+        // 获取拍卖会信息进行加价阶梯校验
+        AuctionSession auctionSession = auctionSessionMapper.selectById(bid.getSessionId());
+        if (auctionSession != null && auctionSession.getBidIncrementConfigId() != null) {
+            boolean isValidBid = bidIncrementService.validateBidAmount(
+                item.getCurrentPrice(),
+                bid.getBidAmountYuan(),
+                auctionSession.getBidIncrementConfigId()
+            );
+
+            if (!isValidBid) {
+                throw new RuntimeException("出价不符合加价阶梯规则，请按照规定加价");
+            }
         }
 
         // 检查起拍价

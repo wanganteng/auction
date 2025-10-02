@@ -114,9 +114,14 @@ public class AuctionSession {
     private BigDecimal maxBidAmount;
 
     /**
-     * 最小加价幅度（元）
+     * 加价阶梯配置ID
      */
-    private BigDecimal minIncrementAmount;
+    private Long bidIncrementConfigId;
+
+    /**
+     * 加价阶梯配置信息（非数据库字段）
+     */
+    private BidIncrementConfig bidIncrementConfig;
 
     /**
      * 拍卖会封面图片
