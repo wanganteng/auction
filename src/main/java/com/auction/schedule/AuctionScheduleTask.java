@@ -44,6 +44,9 @@ public class AuctionScheduleTask {
     @Autowired
     private com.auction.service.AuctionSettlementService auctionSettlementService;
 
+    @Autowired
+    private com.auction.service.AuctionSessionService auctionSessionService;
+
     /**
      * 每分钟检查拍卖状态
      * 自动开始和结束拍卖
@@ -175,21 +178,30 @@ public class AuctionScheduleTask {
      */
     private void checkAndEndAuctions() {
         try {
-            // 获取正在进行的拍卖
-            PageInfo<AuctionItem> allAuctionsPageInfo = auctionService.getAuctionItems(1, 1000);
-            List<AuctionItem> allAuctions = allAuctionsPageInfo.getList();
-            List<AuctionItem> activeAuctions = new java.util.ArrayList<>();
-            for (AuctionItem auction : allAuctions) {
-                if (auction.getStatus().equals(4)) { // 4-拍卖中
-                    activeAuctions.add(auction);
-                }
-            }
+            // 获取所有拍卖会
+            PageInfo<AuctionSession> allSessionsPageInfo = auctionService.getAuctionSessions(1, 1000);
+            List<AuctionSession> allSessions = allSessionsPageInfo.getList();
             
-            for (AuctionItem auction : activeAuctions) {
-                // 检查是否到了结束时间
-                if (shouldEndAuction(auction)) {
-                    log.info("自动结束拍卖: {}", auction.getId());
-                    auctionService.endAuction(auction.getId());
+            for (AuctionSession session : allSessions) {
+                // 检查拍卖会是否应该结束
+                if (shouldEndSession(session)) {
+                    log.info("拍卖会时间已到，开始结束拍卖会: {}", session.getId());
+                    
+                    // 结束拍卖会
+                    if (auctionService.endAuctionSession(session.getId())) {
+                        log.info("拍卖会结束成功: {}", session.getId());
+                        
+                        // 立即进行结算
+                        try {
+                            log.info("开始结算拍卖会: {}", session.getId());
+                            auctionSettlementService.settleSession(session.getId());
+                            log.info("拍卖会结算完成: {}", session.getId());
+                        } catch (Exception e) {
+                            log.error("拍卖会结算失败: sessionId={}, error={}", session.getId(), e.getMessage(), e);
+                        }
+                    } else {
+                        log.error("拍卖会结束失败: {}", session.getId());
+                    }
                 }
             }
             
@@ -253,14 +265,19 @@ public class AuctionScheduleTask {
     }
 
     /**
-     * 判断拍卖是否应该结束
+     * 判断拍卖会是否应该结束
      * 
-     * @param auction 拍卖商品
+     * @param session 拍卖会
      * @return 是否应该结束
      */
-    private boolean shouldEndAuction(AuctionItem auction) {
-        // 这里可以根据拍卖的配置时间来判断
-        // 简化处理，返回false表示不自动结束
+    private boolean shouldEndSession(AuctionSession session) {
+        // 检查拍卖会是否已结束
+        if (session.getEndTime() != null && 
+            session.getEndTime().isBefore(LocalDateTime.now()) &&
+            session.getStatus() != null && session.getStatus() == 2) { // 2-进行中
+            return true;
+        }
+        
         return false;
     }
 
@@ -275,16 +292,6 @@ public class AuctionScheduleTask {
                session.getStartTime().isBefore(LocalDateTime.now());
     }
 
-    /**
-     * 判断拍卖会是否应该结束
-     * 
-     * @param session 拍卖会
-     * @return 是否应该结束
-     */
-    private boolean shouldEndSession(AuctionSession session) {
-        return session.getEndTime() != null && 
-               session.getEndTime().isBefore(LocalDateTime.now());
-    }
 
     /**
      * 清理过期的拍卖数据

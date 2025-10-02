@@ -375,12 +375,8 @@
                                 <div class="stat-label">拍品数量</div>
                             </div>
                             <div class="stat-item">
-                                <div class="stat-value">{{ (session.minDepositAmount || 0) / 100 }}</div>
-                                <div class="stat-label">最小保证金(元)</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-value">{{ (session.minIncrementAmount || 0) / 100 }}</div>
-                                <div class="stat-label">最小加价(元)</div>
+                                <div class="stat-value">{{ session.viewCount || 0 }}</div>
+                                <div class="stat-label">围观人数</div>
                             </div>
                         </div>
                         

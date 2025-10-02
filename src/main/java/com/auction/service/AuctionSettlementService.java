@@ -45,6 +45,12 @@ public class AuctionSettlementService {
     @Autowired
     private UserNotificationService userNotificationService;
 
+    @Autowired
+    private com.auction.websocket.AuctionWebSocketHandler webSocketHandler;
+
+    @Autowired
+    private com.auction.service.SysUserService sysUserService;
+
     /**
      * 结算指定拍卖会
      */
@@ -235,6 +241,55 @@ public class AuctionSettlementService {
         update.setStatus(sold ? 5 : 6); // 5-已成交 6-流拍
         update.setUpdateTime(LocalDateTime.now());
         auctionItemMapper.update(update);
+
+        // 发送拍卖结束消息到竞价房间
+        sendAuctionEndMessage(sessionId, itemId, item, winnerUserId, finalPriceCents);
+    }
+
+    /**
+     * 发送拍卖结束消息到竞价房间
+     */
+    private void sendAuctionEndMessage(Long sessionId, Long itemId, AuctionItem item, Long winnerUserId, Long finalPriceCents) {
+        try {
+            Map<String, Object> message = new HashMap<>();
+            message.put("type", "AUCTION_END");
+            message.put("content", "拍卖结束");
+            message.put("timestamp", System.currentTimeMillis());
+            
+            Map<String, Object> data = new HashMap<>();
+            data.put("itemId", itemId);
+            data.put("itemName", item.getItemName());
+            data.put("winnerId", winnerUserId);
+            data.put("finalPrice", finalPriceCents);
+            data.put("finalPriceYuan", finalPriceCents != null ? 
+                new BigDecimal(finalPriceCents).divide(new BigDecimal("100")) : BigDecimal.ZERO);
+            
+            // 获取中拍者信息
+            if (winnerUserId != null) {
+                try {
+                    SysUser winner = sysUserService.getById(winnerUserId);
+                    if (winner != null) {
+                        String winnerName = (winner.getNickname() != null && !winner.getNickname().trim().isEmpty()) 
+                            ? winner.getNickname() 
+                            : winner.getUsername();
+                        data.put("winnerName", winnerName);
+                    }
+                } catch (Exception e) {
+                    log.warn("获取中拍者信息失败: winnerId={}, error={}", winnerUserId, e.getMessage());
+                }
+            }
+            
+            message.put("data", data);
+            
+            // 广播到拍卖会
+            webSocketHandler.broadcastToAuction(sessionId, message, null);
+            
+            log.info("拍卖结束消息已发送: sessionId={}, itemId={}, winnerId={}, finalPrice={}", 
+                sessionId, itemId, winnerUserId, finalPriceCents);
+                
+        } catch (Exception e) {
+            log.error("发送拍卖结束消息失败: sessionId={}, itemId={}, error={}", sessionId, itemId, e.getMessage(), e);
+        }
     }
 }
 

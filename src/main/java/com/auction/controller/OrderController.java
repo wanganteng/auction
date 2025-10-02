@@ -5,6 +5,7 @@ import com.auction.entity.SysUser;
 import com.auction.service.AuctionOrderService;
 import com.auction.common.Result;
 import com.auction.util.SecurityUtils;
+import com.github.pagehelper.PageInfo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
@@ -63,13 +64,26 @@ public class OrderController {
      */
     @GetMapping
     @Operation(summary = "查询订单列表", description = "查询当前用户的订单列表")
-    public Result<List<AuctionOrder>> getOrderList(AuctionOrder order) {
+    public Result<Map<String, Object>> getOrderList(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
         try {
             SysUser currentUser = getCurrentUser();
+            
+            // 创建查询条件
+            AuctionOrder order = new AuctionOrder();
             order.setBuyerId(currentUser.getId());
             
-            List<AuctionOrder> orders = auctionOrderService.getOrderList(order);
-            return Result.success("查询成功", orders);
+            // 获取分页数据
+            PageInfo<AuctionOrder> pageInfo = auctionOrderService.getUserOrders(currentUser.getId(), page, size);
+            
+            Map<String, Object> data = new HashMap<>();
+            data.put("data", pageInfo.getList());
+            data.put("total", pageInfo.getTotal());
+            data.put("pageNum", pageInfo.getPageNum());
+            data.put("pageSize", pageInfo.getPageSize());
+            
+            return Result.success("查询成功", data);
 
         } catch (Exception e) {
             log.error("查询订单列表失败: {}", e.getMessage(), e);

@@ -51,13 +51,6 @@ public interface AuctionService {
      */
     boolean endAuction(Long itemId);
 
-    /**
-     * 出价
-     * 
-     * @param bid 出价信息
-     * @return 是否成功
-     */
-    boolean placeBid(AuctionBid bid);
 
     /**
      * 获取拍卖商品详情

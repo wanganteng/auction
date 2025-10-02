@@ -738,7 +738,15 @@
                         totalAmount: 0
                     },
                     // 轮播图
-                    currentImageIndex: 0
+                    currentImageIndex: 0,
+                    // 拍卖结束信息
+                    auctionEndInfo: {
+                        isEnded: false,
+                        hasWinner: false,
+                        winnerName: '',
+                        finalPrice: 0,
+                        isNoBid: false
+                    }
                 }
             },
             computed: {
@@ -1096,7 +1104,7 @@
                             if (participantCount != null) this.participantCount = participantCount;
                             break;
                         case 'AUCTION_END':
-                            ElMessage.info('拍卖已结束');
+                            this.handleAuctionEnd(data);
                             break;
                         default:
                             // 兼容旧版本（小写）
@@ -1296,6 +1304,56 @@
                             window.location.href = '/auction/login';
                         });
                     });
+                },
+                
+                // 处理拍卖结束
+                handleAuctionEnd(data) {
+                    this.auctionEndInfo.isEnded = true;
+                    
+                    const auctionData = data.data || {};
+                    const winnerId = auctionData.winnerId;
+                    const finalPrice = auctionData.finalPriceYuan || auctionData.finalPrice;
+                    const winnerName = auctionData.winnerName;
+                    
+                    if (winnerId && finalPrice > 0) {
+                        // 有人中拍
+                        this.auctionEndInfo.hasWinner = true;
+                        this.auctionEndInfo.finalPrice = finalPrice;
+                        this.auctionEndInfo.isNoBid = false;
+                        this.auctionEndInfo.winnerName = winnerName || '未知用户';
+                        
+                        ElMessageBox.alert(
+                            `🎉 拍卖结束！<br><br>` +
+                            `恭喜 <strong>${this.auctionEndInfo.winnerName}</strong> 成功竞得拍品！<br>` +
+                            `落槌价：<strong style="color: #f56c6c; font-size: 18px;">¥${finalPrice}</strong><br><br>` +
+                            `请中拍者前往【我的订单】完成支付。`,
+                            '拍卖结束',
+                            {
+                                dangerouslyUseHTMLString: true,
+                                confirmButtonText: '查看订单',
+                                type: 'success',
+                                showCancelButton: true,
+                                cancelButtonText: '继续浏览'
+                            }
+                        ).then(() => {
+                            // 跳转到订单页面
+                            window.location.href = '/auction/user/orders';
+                        });
+                    } else {
+                        // 流拍
+                        this.auctionEndInfo.hasWinner = false;
+                        this.auctionEndInfo.isNoBid = true;
+                        
+                        ElMessageBox.alert(
+                            '拍卖结束！<br><br>很遗憾，本次拍卖无人出价，拍品流拍。',
+                            '拍卖结束',
+                            {
+                                dangerouslyUseHTMLString: true,
+                                confirmButtonText: '确定',
+                                type: 'info'
+                            }
+                        );
+                    }
                 }
             }
         }).use(ElementPlus).mount('#app');

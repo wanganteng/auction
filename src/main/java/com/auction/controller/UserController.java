@@ -80,14 +80,43 @@ public class UserController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
         try {
-            // 仅返回“已展示”的拍卖会
+            // 仅返回"已展示"的拍卖会
             AuctionSession query = new AuctionSession();
             query.setIsVisible(1);
             List<AuctionSession> sessions = auctionSessionService.getSessionList(query);
             
+            // 为每个拍卖会添加拍品数量和围观人数
+            List<Map<String, Object>> sessionList = new ArrayList<>();
+            for (AuctionSession session : sessions) {
+                Map<String, Object> sessionData = new HashMap<>();
+                sessionData.put("id", session.getId());
+                sessionData.put("sessionName", session.getSessionName());
+                sessionData.put("description", session.getDescription());
+                sessionData.put("startTime", session.getStartTime());
+                sessionData.put("endTime", session.getEndTime());
+                sessionData.put("status", session.getStatus());
+                sessionData.put("coverImage", session.getCoverImage());
+                sessionData.put("sessionType", session.getSessionType());
+                
+                // 获取拍品数量
+                List<com.auction.entity.AuctionItem> items = auctionItemMapper.selectBySessionId(session.getId());
+                sessionData.put("totalItems", items != null ? items.size() : 0);
+                
+                // 获取围观人数（从Redis获取实时数据）
+                try {
+                    Long viewCount = redisService.getAuctionViewCount(session.getId());
+                    sessionData.put("viewCount", viewCount != null ? viewCount : 0);
+                } catch (Exception e) {
+                    log.warn("获取围观人数失败: sessionId={}, error={}", session.getId(), e.getMessage());
+                    sessionData.put("viewCount", 0);
+                }
+                
+                sessionList.add(sessionData);
+            }
+            
             Map<String, Object> result = new HashMap<>();
-            result.put("data", sessions);
-            result.put("total", sessions.size());
+            result.put("data", sessionList);
+            result.put("total", sessionList.size());
             
             return Result.success("查询成功", result);
 

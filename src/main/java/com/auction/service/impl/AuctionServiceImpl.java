@@ -3,13 +3,12 @@ package com.auction.service.impl;
 import com.auction.entity.AuctionBid;
 import com.auction.entity.AuctionItem;
 import com.auction.entity.AuctionSession;
+import com.auction.entity.SysUser;
+import com.auction.entity.UserDepositAccount;
 import com.auction.mapper.AuctionBidMapper;
 import com.auction.mapper.AuctionItemMapper;
 import com.auction.mapper.AuctionSessionMapper;
-import com.auction.service.UserDepositAccountService;
-import com.auction.service.AuctionService;
-import com.auction.service.SysConfigService;
-import com.auction.service.AuctionResultService;
+import com.auction.service.*;
 import com.auction.websocket.AuctionWebSocketHandler;
 import com.auction.state.AuctionStateMachine;
 import com.github.pagehelper.PageHelper;
@@ -61,6 +60,12 @@ public class AuctionServiceImpl implements AuctionService {
 
     @Autowired
     private AuctionResultService auctionResultService;
+
+    @Autowired
+    private SysUserService sysUserService;
+
+    @Autowired
+    private AuctionSessionService auctionSessionService;
 
     @Override
     public boolean createAuctionItem(AuctionItem item) {
@@ -242,58 +247,6 @@ public class AuctionServiceImpl implements AuctionService {
         }
     }
 
-    @Override
-    public boolean placeBid(AuctionBid bid) {
-        log.debug("为拍卖出价: {}, 用户: {}, 金额: {}", bid.getSessionId(), bid.getUserId(), bid.getBidAmount());
-        
-        try {
-            // 验证出价
-            if (bid.getBidAmount() <= 0) {
-                log.error("无效的出价: {}, 金额: {}", bid.getSessionId(), bid.getBidAmount());
-                return false;
-            }
-            
-            // 检查用户是否可以出价
-            if (!canBid(bid.getSessionId(), bid.getUserId())) {
-                log.error("用户无法为拍卖出价: {}, 用户: {}", bid.getSessionId(), bid.getUserId());
-                return false;
-            }
-            
-            // 检查出价是否有效
-            if (!isValidBid(bid.getSessionId(), bid.getBidAmount())) {
-                log.error("无效的出价: {}, 金额: {}", bid.getSessionId(), bid.getBidAmount());
-                return false;
-            }
-            // 设置出价记录的基本信息
-            bid.setBidTime(LocalDateTime.now());
-            bid.setClientIp("127.0.0.1"); // 实际应用中应该获取真实IP
-            bid.setSource(1); // 1-手动出价，2-自动出价
-            bid.setIsAuto(0); // 0-否，1-是
-            bid.setStatus(0); // 0-有效，1-无效，2-被超越
-            bid.setCreateTime(LocalDateTime.now());
-            bid.setUpdateTime(LocalDateTime.now());
-            
-            int result = auctionBidMapper.insert(bid);
-            if (result > 0) {
-                // 更新商品当前价格
-                AuctionItem item = auctionItemMapper.selectById(bid.getSessionId());
-                if (item != null) {
-                    item.setCurrentPrice(new BigDecimal(bid.getBidAmount()).divide(new BigDecimal("100"))); // 转换为元
-                    auctionItemMapper.update(item);
-                }
-                
-                // 发送新出价消息（AuctionBidService中已经处理）
-                log.info("出价成功: {}, 用户: {}, 金额: {}", bid.getSessionId(), bid.getUserId(), bid.getBidAmount());
-                return true;
-            } else {
-                log.error("出价失败: {}, 用户: {}", bid.getSessionId(), bid.getUserId());
-                return false;
-            }
-        } catch (Exception e) {
-            log.error("出价时发生错误: {}", e.getMessage());
-            return false;
-        }
-    }
 
     @Override
     public AuctionItem getAuctionItemDetail(Long itemId) {
@@ -591,13 +544,61 @@ public class AuctionServiceImpl implements AuctionService {
             data.put("finalPriceYuan", finalPrice != null ? 
                 new BigDecimal(finalPrice).divide(new BigDecimal("100")) : BigDecimal.ZERO);
             
+            // 获取中拍者信息
+            if (winnerId != null) {
+                try {
+                    SysUser winner = sysUserService.getById(winnerId);
+                    if (winner != null) {
+                        String winnerName = (winner.getNickname() != null && !winner.getNickname().trim().isEmpty()) 
+                            ? winner.getNickname() 
+                            : winner.getUsername();
+                        data.put("winnerName", winnerName);
+                    }
+                } catch (Exception e) {
+                    log.warn("获取中拍者信息失败: winnerId={}, error={}", winnerId, e.getMessage());
+                }
+            }
+            
             message.put("data", data);
             
-            // 广播到所有连接
-            webSocketHandler.broadcastToAll(message);
+            // 查找拍品所属的拍卖会ID
+            Long sessionId = findSessionIdByItemId(itemId);
+            if (sessionId != null) {
+                // 广播到拍卖会
+                webSocketHandler.broadcastToAuction(sessionId, message, null);
+            } else {
+                // 如果没有找到拍卖会ID，则广播到所有连接
+                webSocketHandler.broadcastToAll(message);
+            }
         } catch (Exception e) {
             log.error("发送拍卖结束消息失败: {}", e.getMessage(), e);
         }
+    }
+
+    /**
+     * 根据拍品ID查找所属的拍卖会ID
+     */
+    private Long findSessionIdByItemId(Long itemId) {
+        try {
+            // 获取所有拍卖会
+            PageInfo<AuctionSession> allSessionsPageInfo = getAuctionSessions(1, 1000);
+            List<AuctionSession> allSessions = allSessionsPageInfo.getList();
+            
+            for (AuctionSession session : allSessions) {
+                // 检查该拍品是否属于这个拍卖会
+                List<AuctionItem> sessionItems = auctionSessionService.getSessionItems(session.getId());
+                boolean belongsToSession = sessionItems.stream()
+                    .anyMatch(item -> item.getId().equals(itemId));
+                
+                if (belongsToSession) {
+                    return session.getId();
+                }
+            }
+        } catch (Exception e) {
+            log.warn("查找拍品所属拍卖会失败: itemId={}, error={}", itemId, e.getMessage());
+        }
+        
+        return null;
     }
 
     /**

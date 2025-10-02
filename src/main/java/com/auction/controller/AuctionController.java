@@ -7,6 +7,7 @@ import com.auction.dto.CreateAuctionSessionRequest;
 import com.auction.entity.AuctionBid;
 import com.auction.entity.AuctionItem;
 import com.auction.entity.AuctionSession;
+import com.auction.service.AuctionBidService;
 import com.github.pagehelper.PageInfo;
 import com.auction.security.CustomUserDetailsService;
 import com.auction.service.AuctionService;
@@ -43,6 +44,9 @@ public class AuctionController {
 
     @Autowired
     private AuctionService auctionService;
+
+    @Autowired
+    private AuctionBidService auctionBidService;
 
     @Autowired
     private SysConfigService sysConfigService;
@@ -188,7 +192,9 @@ public class AuctionController {
             bid.setIsAuto(0); // 0-否，1-是
             bid.setStatus(0); // 0-有效，1-无效，2-被超越
             
-            if (auctionService.placeBid(bid)) {
+            // 使用AuctionBidService进行出价，包含完整的保证金冻结逻辑
+            Long bidId = auctionBidService.placeBid(bid);
+            if (bidId != null) {
                 return Result.success("出价成功");
             } else {
                 return Result.error("出价失败，请检查出价金额和拍卖状态");
