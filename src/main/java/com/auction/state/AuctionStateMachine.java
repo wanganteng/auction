@@ -44,30 +44,31 @@ public class AuctionStateMachine {
      * 初始化商品状态转换规则
      */
     private static void initItemStateTransitions() {
-        // 待审核 -> 审核通过/已下架
+        // 待审核(1) -> 审核通过(2)/审核拒绝(3)
         Map<Integer, Integer> pendingTransitions = new HashMap<>();
-        pendingTransitions.put(2, 2); // 2-审核通过
-        pendingTransitions.put(7, 7); // 7-已下架
+        pendingTransitions.put(1, 2); // 1-待审核 -> 2-审核通过
+        pendingTransitions.put(1, 3); // 1-待审核 -> 3-审核拒绝
         ITEM_STATE_TRANSITIONS.put("APPROVE", pendingTransitions);
         ITEM_STATE_TRANSITIONS.put("REJECT", pendingTransitions);
 
-        // 审核通过 -> 拍卖中/已下架
+        // 审核通过(2) -> 拍卖中(4)/已下架(7)
         Map<Integer, Integer> approvedTransitions = new HashMap<>();
-        approvedTransitions.put(4, 4); // 4-拍卖中
-        approvedTransitions.put(7, 7); // 7-已下架
+        approvedTransitions.put(2, 4); // 2-审核通过 -> 4-拍卖中
+        approvedTransitions.put(2, 7); // 2-审核通过 -> 7-已下架
         ITEM_STATE_TRANSITIONS.put("START_AUCTION", approvedTransitions);
         ITEM_STATE_TRANSITIONS.put("OFFLINE", approvedTransitions);
 
-        // 拍卖中 -> 已成交/流拍
+        // 拍卖中(4) -> 已成交(5)/流拍(6)
         Map<Integer, Integer> auctioningTransitions = new HashMap<>();
-        auctioningTransitions.put(5, 5); // 5-已成交
-        auctioningTransitions.put(6, 6); // 6-流拍
+        auctioningTransitions.put(4, 5); // 4-拍卖中 -> 5-已成交
+        auctioningTransitions.put(4, 6); // 4-拍卖中 -> 6-流拍
         ITEM_STATE_TRANSITIONS.put("SOLD", auctioningTransitions);
         ITEM_STATE_TRANSITIONS.put("UNSOLD", auctioningTransitions);
 
-        // 已成交/流拍 -> 已下架
+        // 已成交(5)/流拍(6) -> 已下架(7)
         Map<Integer, Integer> finishedTransitions = new HashMap<>();
-        finishedTransitions.put(7, 7); // 7-已下架
+        finishedTransitions.put(5, 7); // 5-已成交 -> 7-已下架
+        finishedTransitions.put(6, 7); // 6-流拍 -> 7-已下架
         ITEM_STATE_TRANSITIONS.put("OFFLINE", finishedTransitions);
     }
 
@@ -75,17 +76,17 @@ public class AuctionStateMachine {
      * 初始化拍卖会状态转换规则
      */
     private static void initSessionStateTransitions() {
-        // 待开始 -> 进行中/已取消
+        // 待开始(1) -> 进行中(2)/已取消(4)
         Map<Integer, Integer> pendingTransitions = new HashMap<>();
-        pendingTransitions.put(2, 2); // 2-进行中
-        pendingTransitions.put(4, 4); // 4-已取消
+        pendingTransitions.put(1, 2); // 1-待开始 -> 2-进行中
+        pendingTransitions.put(1, 4); // 1-待开始 -> 4-已取消
         SESSION_STATE_TRANSITIONS.put("START", pendingTransitions);
         SESSION_STATE_TRANSITIONS.put("CANCEL", pendingTransitions);
 
-        // 进行中 -> 已结束/已取消
+        // 进行中(2) -> 已结束(3)/已取消(4)
         Map<Integer, Integer> inProgressTransitions = new HashMap<>();
-        inProgressTransitions.put(3, 3); // 3-已结束
-        inProgressTransitions.put(4, 4); // 4-已取消
+        inProgressTransitions.put(2, 3); // 2-进行中 -> 3-已结束
+        inProgressTransitions.put(2, 4); // 2-进行中 -> 4-已取消
         SESSION_STATE_TRANSITIONS.put("FINISH", inProgressTransitions);
         SESSION_STATE_TRANSITIONS.put("CANCEL", inProgressTransitions);
     }
