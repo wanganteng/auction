@@ -315,11 +315,13 @@ public class AuctionBidService {
             // 冻结金额（元）
             BigDecimal freezeAmount = deltaFreeze;
             
-            // 记录监控数据
-            depositFreezeMonitor.recordFreezeOperation(
-                bid.getUserId(), bid.getItemId(), bid.getSessionId(),
-                bid.getBidAmountYuan(), freezeAmount, oldRequiredDeposit, newRequiredDeposit
-            );
+            // 记录监控数据（如果监控器可用）
+            if (depositFreezeMonitor != null) {
+                depositFreezeMonitor.recordFreezeOperation(
+                    bid.getUserId(), bid.getItemId(), bid.getSessionId(),
+                    bid.getBidAmountYuan(), freezeAmount, oldRequiredDeposit, newRequiredDeposit
+                );
+            }
 
             // 安全检查：如果差额为0但新出价大于历史最高出价，说明计算有误
             if (deltaFreeze.compareTo(BigDecimal.ZERO) == 0 && newRequiredDeposit.compareTo(oldRequiredDeposit) > 0) {
@@ -374,7 +376,7 @@ public class AuctionBidService {
             item.setCurrentPrice(bid.getBidAmountYuan());
             item.setUpdateTime(LocalDateTime.now());
             
-            auctionItemMapper.update(item);
+            auctionItemMapper.updateById(item);
         } catch (Exception e) {
             log.error("更新拍品当前价格失败: {}", e.getMessage(), e);
         }

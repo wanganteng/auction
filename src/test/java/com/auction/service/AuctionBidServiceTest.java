@@ -7,6 +7,7 @@ import com.auction.entity.UserDepositAccount;
 import com.auction.mapper.AuctionBidMapper;
 import com.auction.mapper.AuctionItemMapper;
 import com.auction.mapper.AuctionSessionMapper;
+import com.auction.monitor.DepositFreezeMonitor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +45,9 @@ class AuctionBidServiceTest {
 
     @Mock
     private RedisService redisService;
+
+    @Mock
+    private DepositFreezeMonitor depositFreezeMonitor;
 
     @InjectMocks
     private AuctionBidService auctionBidService;
@@ -100,6 +104,9 @@ class AuctionBidServiceTest {
         
         // Mock 冻结保证金
         when(depositAccountService.freezeAmount(any(), any(), any(), any(), any())).thenReturn(true);
+        
+        // Mock 保证金监控
+        doNothing().when(depositFreezeMonitor).recordFreezeOperation(any(), any(), any(), any(), any(), any(), any());
 
         // 执行测试
         Long bidId = auctionBidService.placeBid(bid);
@@ -118,9 +125,51 @@ class AuctionBidServiceTest {
     }
 
     @Test
-    void testSecondBid_ShouldFreezeDeltaDeposit() {
-        // 准备测试数据：用户第二次出价
+    void testSecondBid_ShouldNotFreezeWhenDepositSame() {
+        // 准备测试数据：用户第二次出价，保证金需求相同
         AuctionBid bid = createTestBid(1L, 1L, 1L, 1500L); // 出价15元
+
+        // Mock 拍卖会查询
+        when(auctionSessionMapper.selectById(1L)).thenReturn(testSession);
+        
+        // Mock 拍品查询
+        when(auctionItemMapper.selectById(1L)).thenReturn(testItem);
+        
+        // Mock 历史出价查询（用户之前出价12元）
+        List<AuctionBid> historicalBids = new ArrayList<>();
+        AuctionBid historicalBid = createTestBid(1L, 1L, 1L, 1200L);
+        historicalBids.add(historicalBid);
+        when(auctionBidMapper.selectList(any())).thenReturn(historicalBids);
+        
+        // Mock 保证金账户查询
+        when(depositAccountService.getAccountByUserId(1L)).thenReturn(testAccount);
+        
+        // Mock 插入出价记录
+        when(auctionBidMapper.insert(any())).thenReturn(1);
+        
+        // Mock 更新拍品价格
+        when(auctionItemMapper.updateById(any())).thenReturn(1);
+        
+        // Mock 保证金监控
+        doNothing().when(depositFreezeMonitor).recordFreezeOperation(any(), any(), any(), any(), any(), any(), any());
+
+        // 执行测试
+        Long bidId = auctionBidService.placeBid(bid);
+
+        // 验证结果
+        assertNotNull(bidId);
+        
+        // 验证没有冻结保证金，因为：
+        // 15元需要保证金：15 * 10% = 1.5元，向上取整 = 2元
+        // 12元需要保证金：12 * 10% = 1.2元，向上取整 = 2元
+        // 差额 = 2 - 2 = 0元，所以不需要冻结
+        verify(depositAccountService, never()).freezeAmount(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void testSecondBid_ShouldFreezeDeltaDeposit() {
+        // 准备测试数据：用户第二次出价，需要冻结差额保证金
+        AuctionBid bid = createTestBid(1L, 1L, 1L, 2500L); // 出价25元
 
         // Mock 拍卖会查询
         when(auctionSessionMapper.selectById(1L)).thenReturn(testSession);
@@ -145,6 +194,9 @@ class AuctionBidServiceTest {
         
         // Mock 冻结保证金
         when(depositAccountService.freezeAmount(any(), any(), any(), any(), any())).thenReturn(true);
+        
+        // Mock 保证金监控
+        doNothing().when(depositFreezeMonitor).recordFreezeOperation(any(), any(), any(), any(), any(), any(), any());
 
         // 执行测试
         Long bidId = auctionBidService.placeBid(bid);
@@ -152,10 +204,13 @@ class AuctionBidServiceTest {
         // 验证结果
         assertNotNull(bidId);
         
-        // 验证只冻结了差额保证金：(15 - 12) * 10% = 0.3元，向上取整为1元
+        // 验证冻结了差额保证金：
+        // 25元需要保证金：25 * 10% = 2.5元，向上取整 = 3元
+        // 12元需要保证金：12 * 10% = 1.2元，向上取整 = 2元
+        // 差额 = 3 - 2 = 1元
         verify(depositAccountService).freezeAmount(
             eq(1L), 
-            eq(new BigDecimal("1")), // (15 - 12) * 0.10 = 0.3元，向上取整为1元
+            eq(new BigDecimal("1")), // 差额冻结1元
             eq(bidId), 
             eq("bid"), 
             eq("出价冻结保证金")
@@ -177,7 +232,7 @@ class AuctionBidServiceTest {
         when(auctionBidMapper.selectList(any())).thenReturn(new ArrayList<>());
         
         // Mock 保证金账户查询（可用余额不足）
-        testAccount.setAvailableAmount(new BigDecimal("100")); // 只有100元可用
+        testAccount.setAvailableAmount(new BigDecimal("1")); // 只有1元可用，需要2元
         when(depositAccountService.getAccountByUserId(1L)).thenReturn(testAccount);
 
         // 执行测试并验证异常
@@ -213,6 +268,9 @@ class AuctionBidServiceTest {
         
         // Mock 更新拍品价格
         when(auctionItemMapper.updateById(any())).thenReturn(1);
+        
+        // Mock 保证金监控
+        doNothing().when(depositFreezeMonitor).recordFreezeOperation(any(), any(), any(), any(), any(), any(), any());
 
         // 执行测试
         Long bidId = auctionBidService.placeBid(bid);
