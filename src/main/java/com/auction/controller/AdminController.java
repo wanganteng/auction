@@ -19,6 +19,9 @@ import com.auction.service.UserDepositTransactionService;
 import com.auction.service.UserDepositRefundService;
 import com.auction.service.SysConfigService;
 import com.auction.service.MinioService;
+import com.auction.service.BidIncrementService;
+import com.auction.entity.BidIncrementConfig;
+import com.auction.entity.BidIncrementRule;
 import com.auction.common.Result;
 import com.auction.service.impl.AuctionOrderServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -96,6 +99,9 @@ public class AdminController {
 
     @Autowired
     private SysConfigService sysConfigService;
+
+    @Autowired
+    private BidIncrementService bidIncrementService;
 
     // ==================== 拍品管理 ====================
 
@@ -354,7 +360,7 @@ public class AdminController {
             BigDecimal commissionRatio = new BigDecimal(sessionData.get("commissionRatio").toString());
             BigDecimal minDepositAmount = new BigDecimal(sessionData.get("minDepositAmount").toString());
             BigDecimal maxBidAmount = new BigDecimal(sessionData.get("maxBidAmount").toString());
-            BigDecimal minIncrementAmount = new BigDecimal(sessionData.get("minIncrementAmount").toString());
+            Long bidIncrementConfigId = sessionData.get("bidIncrementConfigId") == null ? null : Long.valueOf(sessionData.get("bidIncrementConfigId").toString());
             Integer depositRefundDays = Integer.valueOf(sessionData.get("depositRefundDays").toString());
             
             // 解析拍品ID列表
@@ -376,7 +382,7 @@ public class AdminController {
             // 转换BigDecimal到Long（分）
             session.setMinDepositAmount(minDepositAmount);
             session.setMaxBidAmount(maxBidAmount);
-            session.setBidIncrementConfigId(minIncrementAmount != null ? minIncrementAmount.longValue() : null);
+            session.setBidIncrementConfigId(bidIncrementConfigId);
             
             // 设置默认值
             session.setStatus(1); // 1-待开始
@@ -539,6 +545,7 @@ public class AdminController {
             @RequestParam(value = "extendSeconds", required = false) Integer extendSeconds,
             @RequestParam(value = "extendMaxTimes", required = false) Integer extendMaxTimes,
             @RequestParam(value = "rules", required = false) String rules,
+            @RequestParam(value = "bidIncrementConfigId", required = false) Long bidIncrementConfigId,
             @RequestParam(value = "currentImages", required = false) String currentImages,
             @RequestParam(value = "itemIds", required = false) String itemIds,
             @RequestParam(value = "coverImages", required = false) List<MultipartFile> coverImages
@@ -565,6 +572,7 @@ public class AdminController {
             session.setExtendSeconds(extendSeconds);
             session.setExtendMaxTimes(extendMaxTimes);
             session.setRules(rules);
+            if (bidIncrementConfigId != null) session.setBidIncrementConfigId(bidIncrementConfigId);
 
             // 解析拍品ID列表
             List<Long> itemIdList = null;
@@ -1276,6 +1284,172 @@ public class AdminController {
         } catch (Exception e) {
             log.error("重新加载配置缓存失败: 错误: {}", e.getMessage(), e);
             return Result.error("重新加载配置缓存失败: " + e.getMessage());
+        }
+    }
+
+    // ==================== 加价阶梯配置管理 ====================
+
+    /**
+     * 创建加价阶梯配置
+     */
+    @PostMapping("/bid-increment-configs")
+    @Operation(summary = "创建加价阶梯配置", description = "创建新的加价阶梯配置")
+    public Result<Map<String, Object>> createBidIncrementConfig(@RequestBody Map<String, Object> configData) {
+        try {
+            // 解析配置数据
+            String configName = configData.get("configName").toString();
+            String description = configData.get("description").toString();
+            Integer status = Integer.valueOf(configData.get("status").toString());
+            
+            // 解析规则数据
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> rulesData = (List<Map<String, Object>>) configData.get("rules");
+            
+            // 创建配置对象
+            BidIncrementConfig config = new BidIncrementConfig();
+            config.setConfigName(configName);
+            config.setDescription(description);
+            config.setStatus(status);
+            
+            // 创建规则对象列表
+            List<BidIncrementRule> rules = new ArrayList<>();
+            if (rulesData != null) {
+                for (Map<String, Object> ruleData : rulesData) {
+                    BidIncrementRule rule = new BidIncrementRule();
+                    rule.setMinAmount(new BigDecimal(ruleData.get("minAmount").toString()));
+                    rule.setMaxAmount(new BigDecimal(ruleData.get("maxAmount").toString()));
+                    rule.setIncrementAmount(new BigDecimal(ruleData.get("incrementAmount").toString()));
+                    rule.setSortOrder(Integer.valueOf(ruleData.get("sortOrder").toString()));
+                    rules.add(rule);
+                }
+            }
+            
+            // 创建配置
+            Long configId = bidIncrementService.createConfig(config, rules);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("configId", configId);
+            
+            return Result.success("加价阶梯配置创建成功", result);
+            
+        } catch (Exception e) {
+            log.error("创建加价阶梯配置失败: {}", e.getMessage(), e);
+            return Result.error("创建失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 查询加价阶梯配置列表
+     */
+    @GetMapping("/bid-increment-configs")
+    @Operation(summary = "查询加价阶梯配置列表", description = "查询所有加价阶梯配置")
+    public Result<List<BidIncrementConfig>> getBidIncrementConfigList() {
+        try {
+            List<BidIncrementConfig> configs = bidIncrementService.getAllConfigs();
+            return Result.success("查询成功", configs);
+        } catch (Exception e) {
+            log.error("查询加价阶梯配置列表失败: {}", e.getMessage(), e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 根据ID查询加价阶梯配置
+     */
+    @GetMapping("/bid-increment-configs/{id}")
+    @Operation(summary = "查询加价阶梯配置详情", description = "根据ID查询加价阶梯配置详情")
+    public Result<BidIncrementConfig> getBidIncrementConfigById(@PathVariable Long id) {
+        try {
+            BidIncrementConfig config = bidIncrementService.getConfigById(id);
+            if (config != null) {
+                return Result.success("查询成功", config);
+            } else {
+                return Result.error("加价阶梯配置不存在");
+            }
+        } catch (Exception e) {
+            log.error("查询加价阶梯配置失败: ID={}, 错误: {}", id, e.getMessage(), e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 更新加价阶梯配置
+     */
+    @PutMapping("/bid-increment-configs/{id}")
+    @Operation(summary = "更新加价阶梯配置", description = "更新加价阶梯配置信息")
+    public Result<String> updateBidIncrementConfig(@PathVariable Long id, @RequestBody Map<String, Object> configData) {
+        try {
+            // 解析配置数据
+            String configName = configData.get("configName").toString();
+            String description = configData.get("description").toString();
+            Integer status = Integer.valueOf(configData.get("status").toString());
+            
+            // 解析规则数据
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> rulesData = (List<Map<String, Object>>) configData.get("rules");
+            
+            // 创建配置对象
+            BidIncrementConfig config = new BidIncrementConfig();
+            config.setId(id);
+            config.setConfigName(configName);
+            config.setDescription(description);
+            config.setStatus(status);
+            
+            // 创建规则对象列表
+            List<BidIncrementRule> rules = new ArrayList<>();
+            if (rulesData != null) {
+                for (Map<String, Object> ruleData : rulesData) {
+                    BidIncrementRule rule = new BidIncrementRule();
+                    rule.setMinAmount(new BigDecimal(ruleData.get("minAmount").toString()));
+                    rule.setMaxAmount(new BigDecimal(ruleData.get("maxAmount").toString()));
+                    rule.setIncrementAmount(new BigDecimal(ruleData.get("incrementAmount").toString()));
+                    rule.setSortOrder(Integer.valueOf(ruleData.get("sortOrder").toString()));
+                    rules.add(rule);
+                }
+            }
+            
+            boolean success = bidIncrementService.updateConfig(config, rules);
+            return success ? Result.success("加价阶梯配置更新成功") : Result.error("加价阶梯配置更新失败");
+            
+        } catch (Exception e) {
+            log.error("更新加价阶梯配置失败: {}", e.getMessage(), e);
+            return Result.error("更新失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 删除加价阶梯配置
+     */
+    @DeleteMapping("/bid-increment-configs/{id}")
+    @Operation(summary = "删除加价阶梯配置", description = "删除加价阶梯配置")
+    public Result<String> deleteBidIncrementConfig(@PathVariable Long id) {
+        try {
+            // 先校验是否被进行中拍卖会使用
+            boolean canModify = bidIncrementService.canModifyConfigForSession(id, null);
+            if (!canModify) {
+                return Result.error("已被拍卖会使用且拍卖会已开始");
+            }
+
+            boolean success = bidIncrementService.deleteConfig(id);
+            return success ? Result.success("加价阶梯配置删除成功") : Result.error("加价阶梯配置删除失败");
+        } catch (Exception e) {
+            log.error("删除加价阶梯配置失败: ID={}, 错误: {}", id, e.getMessage(), e);
+            return Result.error("删除失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取启用的加价阶梯配置列表
+     */
+    @GetMapping("/bid-increment-configs/enabled")
+    @Operation(summary = "获取启用的加价阶梯配置", description = "获取所有启用的加价阶梯配置")
+    public Result<List<BidIncrementConfig>> getEnabledBidIncrementConfigs() {
+        try {
+            List<BidIncrementConfig> configs = bidIncrementService.getEnabledConfigs();
+            return Result.success("查询成功", configs);
+        } catch (Exception e) {
+            log.error("查询启用的加价阶梯配置失败: {}", e.getMessage(), e);
+            return Result.error("查询失败: " + e.getMessage());
         }
     }
 

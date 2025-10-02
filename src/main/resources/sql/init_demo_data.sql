@@ -21,7 +21,7 @@ INSERT INTO auction_session (
   min_deposit_amount, max_bid_amount, min_increment_amount,
   is_authentic, is_free_shipping, is_returnable,
   rules, status, cover_image, is_visible,
-  anti_sniping_enabled, extend_threshold_sec, extend_seconds, extend_max_times,
+  anti_sniping_enabled, extend_threshold_sec, extend_seconds, extend_max_times,bid_increment_config_id,
   create_time
 ) VALUES (
   '春季艺术精品拍卖会',
@@ -36,7 +36,7 @@ INSERT INTO auction_session (
   1,
   '/images/default-session.jpg',
   1,
-  1, 60, 60, 5,
+  1, 60, 60, 5, 1
   NOW()
 );
 

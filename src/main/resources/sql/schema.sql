@@ -127,6 +127,41 @@ CREATE TABLE `auction_item` (
   UNIQUE KEY `uk_item_code` (`item_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='拍品表';
 
+
+
+-- 加价阶梯配置表
+CREATE TABLE IF NOT EXISTS `bid_increment_config` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '配置ID',
+  `config_name` varchar(100) NOT NULL COMMENT '配置名称',
+  `description` text COMMENT '配置描述',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态：0-禁用，1-启用',
+  `creator_id` bigint(20) DEFAULT NULL COMMENT '创建人ID',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted` tinyint(1) NOT NULL DEFAULT '0' COMMENT '删除标志：0-未删除，1-已删除',
+  PRIMARY KEY (`id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_creator_id` (`creator_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='加价阶梯配置表';
+
+-- 加价规则表
+CREATE TABLE IF NOT EXISTS `bid_increment_rule` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '规则ID',
+  `config_id` bigint(20) NOT NULL COMMENT '配置ID',
+  `min_amount` decimal(10,2) NOT NULL COMMENT '最小金额（元）',
+  `max_amount` decimal(10,2) DEFAULT NULL COMMENT '最大金额（元），NULL表示无上限',
+  `increment_amount` decimal(10,2) NOT NULL COMMENT '加价幅度（元）',
+  `sort_order` int(11) NOT NULL DEFAULT '0' COMMENT '排序',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted` tinyint(1) NOT NULL DEFAULT '0' COMMENT '删除标志：0-未删除，1-已删除',
+  PRIMARY KEY (`id`),
+  KEY `idx_config_id` (`config_id`),
+  KEY `idx_sort_order` (`sort_order`),
+  CONSTRAINT `fk_bid_increment_rule_config` FOREIGN KEY (`config_id`) REFERENCES `bid_increment_config` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='加价规则表';
+
+
 -- 拍卖会表
 CREATE TABLE `auction_session` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '拍卖会ID',
@@ -156,6 +191,7 @@ CREATE TABLE `auction_session` (
   `extend_threshold_sec` int(11) NOT NULL DEFAULT '60' COMMENT '临近结束触发延时的阈值（秒）',
   `extend_seconds` int(11) NOT NULL DEFAULT '60' COMMENT '每次顺延的秒数',
   `extend_max_times` int(11) NOT NULL DEFAULT '5' COMMENT '最大顺延次数（0为不限制）',
+  `bid_increment_config_id` bigint(20) DEFAULT NULL COMMENT '加价阶梯配置ID',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` tinyint(1) NOT NULL DEFAULT '0' COMMENT '删除标志：0-未删除，1-已删除',
@@ -163,7 +199,8 @@ CREATE TABLE `auction_session` (
   KEY `idx_creator_id` (`creator_id`),
   KEY `idx_status` (`status`),
   KEY `idx_start_time` (`start_time`),
-  KEY `idx_end_time` (`end_time`)
+  KEY `idx_end_time` (`end_time`),
+  CONSTRAINT `fk_auction_session_bid_increment_config` FOREIGN KEY (`bid_increment_config_id`) REFERENCES `bid_increment_config` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='拍卖会表';
 
 -- 拍卖会拍品关联表

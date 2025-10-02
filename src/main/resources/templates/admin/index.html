@@ -312,6 +312,7 @@
                         <el-menu-item index="user-management" @click="goToPage('user-management')">用户管理</el-menu-item>
                         <el-menu-item index="audit-logs" @click="goToPage('audit-logs')">审计日志</el-menu-item>
                         <el-menu-item index="notices" @click="goToPage('notices')">参拍须知</el-menu-item>
+                        <el-menu-item index="bid-increments" @click="goToPage('bid-increments')">加价阶梯</el-menu-item>
                     </el-sub-menu>
                 </el-menu>
             </el-aside>
@@ -373,6 +374,135 @@
                         </el-row>
                         
                         
+                    </div>
+
+                    <!-- 加价阶梯配置（含规则） -->
+                    <div v-else-if="activeMenu === 'bid-increments'" class="bid-increments-page">
+                        <div class="page-header">
+                            <h1>加价阶梯配置</h1>
+                            <el-button type="primary" @click="openCreateBidConfig">
+                                <i class="el-icon-plus"></i>
+                                新建配置
+                            </el-button>
+                        </div>
+
+                        <!-- 搜索筛选 -->
+                        <el-card class="search-card">
+                            <el-form :model="{ bidConfigSearchName, bidConfigStatus }" inline>
+                                <el-form-item label="配置名称">
+                                    <el-input v-model="bidConfigSearchName" placeholder="请输入配置名称" clearable></el-input>
+                                </el-form-item>
+                                <el-form-item label="状态">
+                                    <el-select v-model="bidConfigStatus" placeholder="请选择状态" clearable>
+                                        <el-option label="全部" value=""></el-option>
+                                        <el-option label="启用" :value="1"></el-option>
+                                        <el-option label="禁用" :value="0"></el-option>
+                                    </el-select>
+                                </el-form-item>
+                                <el-form-item>
+                                    <el-button type="primary" @click="searchBidConfigs">搜索</el-button>
+                                    <el-button @click="resetBidIncrementFilters">重置</el-button>
+                                </el-form-item>
+                            </el-form>
+                        </el-card>
+
+                        <!-- 配置表格 -->
+                        <el-card class="table-card">
+                            <el-table :data="bidIncrementConfigs" v-loading="bidIncrementLoading" stripe>
+                                <el-table-column prop="id" label="ID" width="80"></el-table-column>
+                                <el-table-column prop="configName" label="配置名称" min-width="200"></el-table-column>
+                                <el-table-column prop="description" label="描述" min-width="260" show-overflow-tooltip></el-table-column>
+                                <el-table-column prop="status" label="状态" width="100">
+                                    <template #default="scope">
+                                        <el-tag :type="scope.row.status === 1 ? 'success' : 'info'">{{ scope.row.status === 1 ? '启用' : '禁用' }}</el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="createTime" label="创建时间" width="180">
+                                    <template #default="scope">{{ formatTime(scope.row.createTime) }}</template>
+                                </el-table-column>
+                                <el-table-column label="操作" width="200" fixed="right">
+                                    <template #default="scope">
+                                        <el-button-group>
+                                            <el-button type="primary" size="small" @click="openEditBidConfig(scope.row)">编辑</el-button>
+                                            <el-button type="danger" size="small" @click="deleteBidConfig(scope.row)">删除</el-button>
+                                        </el-button-group>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+
+                            <!-- 分页 -->
+                            <div class="pagination-container" v-if="bidConfigTotal > 0">
+                                <el-pagination
+                                    v-model:current-page="bidConfigPage"
+                                    v-model:page-size="bidConfigPageSize"
+                                    :page-sizes="[10, 20, 50, 100]"
+                                    :total="bidConfigTotal"
+                                    layout="total, sizes, prev, pager, next, jumper"
+                                    @size-change="handleBidConfigSizeChange"
+                                    @current-change="handleBidConfigCurrentChange">
+                                </el-pagination>
+                            </div>
+                        </el-card>
+
+                        <!-- 新建/编辑配置对话框（含规则） -->
+                        <el-dialog v-model="bidConfigDialogVisible" :title="bidConfigForm.id ? '编辑加价阶梯配置' : '新建加价阶梯配置'" width="820px">
+                            <el-form :model="bidConfigForm" label-width="110px">
+                                <el-form-item label="配置名称">
+                                    <el-input v-model="bidConfigForm.configName" placeholder="请输入配置名称" />
+                                </el-form-item>
+                                <el-form-item label="状态">
+                                    <el-radio-group v-model="bidConfigForm.status">
+                                        <el-radio :value="1">启用</el-radio>
+                                        <el-radio :value="0">禁用</el-radio>
+                                    </el-radio-group>
+                                </el-form-item>
+                                <el-form-item label="描述">
+                                    <el-input type="textarea" :rows="3" v-model="bidConfigForm.description" placeholder="可选" />
+                                </el-form-item>
+
+                                <el-divider content-position="left">规则明细</el-divider>
+                                <div style="margin-bottom: 8px;">
+                                    <el-button size="small" @click="addRuleRow">添加规则行</el-button>
+                                </div>
+                                <el-table :data="bidConfigForm.rules" border size="small">
+                                    <el-table-column label="#" width="60">
+                                        <template #default="scope">{{ scope.$index + 1 }}</template>
+                                    </el-table-column>
+                                    <el-table-column label="最小金额(元)" width="160">
+                                        <template #default="scope">
+                                            <el-input-number v-model="scope.row.minAmount" :precision="2" :step="1" :min="0" style="width: 140px;" />
+                                        </template>
+                                    </el-table-column>
+                                    <el-table-column label="最大金额(元)" width="160">
+                                        <template #default="scope">
+                                            <el-input v-model="scope.row.maxAmountStr" placeholder="留空表示无上限" style="width: 140px;" />
+                                        </template>
+                                    </el-table-column>
+                                    <el-table-column label="加价幅度(元)" width="160">
+                                        <template #default="scope">
+                                            <el-input-number v-model="scope.row.incrementAmount" :precision="2" :step="1" :min="0.01" style="width: 140px;" />
+                                        </template>
+                                    </el-table-column>
+                                    <el-table-column label="排序" width="120">
+                                        <template #default="scope">
+                                            <el-input-number v-model="scope.row.sortOrder" :step="1" :min="0" style="width: 100px;" />
+                                        </template>
+                                    </el-table-column>
+                                    <el-table-column label="操作" width="120">
+                                        <template #default="scope">
+                                            <el-button text type="danger" size="small" @click="removeRuleRow(scope.$index)">删除</el-button>
+                                        </template>
+                                    </el-table-column>
+                                </el-table>
+                                <div style="margin-top: 8px; color: #888;">
+                                    说明：最大金额留空表示无上限；规则应按金额区间连续且不重叠，保存时将校验。
+                                </div>
+                            </el-form>
+                            <template #footer>
+                                <el-button @click="bidConfigDialogVisible = false">取消</el-button>
+                                <el-button type="primary" :loading="bidConfigSaving" @click="saveBidConfig">保存</el-button>
+                            </template>
+                        </el-dialog>
                     </div>
                     
                     <!-- 拍品列表 -->
@@ -1337,7 +1467,7 @@
                                             </el-form-item>
                                         </el-col>
                                         <el-col :span="12">
-                                            <el-form-item label="拍卖会类型" prop="sessionType" required>
+                                        <el-form-item label="拍卖会类型" prop="sessionType" required>
                                                 <el-select 
                                                     v-model="sessionForm.sessionType" 
                                                     placeholder="请选择拍卖会类型"
@@ -1347,6 +1477,17 @@
                                                     <el-option label="古董专场" :value="3"></el-option>
                                                     <el-option label="综合专场" :value="4"></el-option>
                                                 </el-select>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+
+                                    <el-row :gutter="20">
+                                        <el-col :span="12">
+                                            <el-form-item label="加价阶梯配置" prop="bidIncrementConfigId" required>
+                                                <el-select v-model="sessionForm.bidIncrementConfigId" placeholder="请选择加价阶梯配置" style="width: 100%">
+                                                    <el-option v-for="cfg in enabledBidConfigs" :key="cfg.id" :label="cfg.configName" :value="cfg.id" />
+                                                </el-select>
+                                                <div class="form-tip">仅显示启用中的配置</div>
                                             </el-form-item>
                                         </el-col>
                                     </el-row>
@@ -1969,6 +2110,12 @@
                                         placeholder="请输入拍卖会规则">
                                     </el-input>
                                 </el-form-item>
+                                <el-form-item label="加价阶梯配置">
+                                    <el-select v-model="editSessionForm.bidIncrementConfigId" placeholder="请选择加价阶梯配置" style="width: 100%" :disabled="editSessionForm.status === 2">
+                                        <el-option v-for="cfg in enabledBidConfigs" :key="cfg.id" :label="cfg.configName" :value="cfg.id" />
+                                    </el-select>
+                                    <div class="form-tip" v-if="editSessionForm.status === 2">进行中的拍卖会不可修改加价阶梯配置</div>
+                                </el-form-item>
                             </div>
 
                             <!-- 拍品管理 -->
@@ -2475,6 +2622,23 @@
                     currentRejectTransaction: null,
                     rejectRemark: '',
                     rejecting: false,
+                    // 加价阶梯
+                    bidIncrementConfigs: [],
+                    bidIncrementLoading: false,
+                    bidConfigPage: 1,
+                    bidConfigPageSize: 10,
+                    bidConfigTotal: 0,
+                    bidConfigSearchName: '',
+                    bidConfigStatus: null,
+                    bidConfigDialogVisible: false,
+                    bidConfigSaving: false,
+                    bidConfigForm: {
+                        id: null,
+                        configName: '',
+                        status: 1,
+                        description: '',
+                        rules: []
+                    },
                     
                     // 保证金账户列表
                     depositAccounts: [],
@@ -2659,6 +2823,8 @@
                         isFreeShipping: false,
                         isReturnable: false,
                         rules: '',
+                        bidIncrementConfigId: null,
+                        status: 1,
                         imageList: [],
                         _newCoverFiles: [],
                         selectedItems: []  // 已选择的拍品列表
@@ -2701,8 +2867,10 @@
                         isAuthentic: false,  // 默认不保真
                         isFreeShipping: false,  // 默认不包邮
                         isReturnable: false,  // 默认不支持退货
-                        rules: ''
+                        rules: '',
+                        bidIncrementConfigId: null
                     },
+                    enabledBidConfigs: [],
                     sessionRules: {
                         sessionName: [
                             { required: true, message: '请输入拍卖会名称', trigger: 'blur' },
@@ -2714,6 +2882,9 @@
                         description: [
                             { required: true, message: '请输入拍卖会描述', trigger: 'blur' },
                             { min: 10, max: 1000, message: '拍卖会描述长度在 10 到 1000 个字符', trigger: 'blur' }
+                        ],
+                        bidIncrementConfigId: [
+                            { required: true, message: '请选择加价阶梯配置', trigger: 'change' }
                         ],
                         startTime: [
                             { required: true, message: '请选择开始时间', trigger: 'change' }
@@ -2750,12 +2921,21 @@
                 this.loadStats();
                 if (this.activeMenu === 'items') this.loadItems();
                 if (this.activeMenu === 'sessions') this.loadSessions();
+                this.loadEnabledBidConfigs();
                 if (this.activeMenu === 'notices') this.loadNoticeCategories();
                 if (this.activeMenu === 'config') this.loadConfigs();
                 // 读取上传数量上限配置
                 this.fetchUploadLimits && this.fetchUploadLimits();
             },
             methods: {
+                async loadEnabledBidConfigs() {
+                    try {
+                        const res = await axios.get('/api/admin/bid-increment-configs/enabled');
+                        this.enabledBidConfigs = res.data?.data || [];
+                    } catch (e) {
+                        this.enabledBidConfigs = [];
+                    }
+                },
                 // ===== 通用图片处理方法（拍品/会场复用） =====
                 fetchUploadLimits() {
                     axios.get('/api/admin/configs?keyword=upload.max').then(res => {
@@ -3745,6 +3925,7 @@
                     if (index === 'orders-ship') this.loadPendingShipOrders();
                     if (index === 'audit-logs') this.loadAuditLogs();
                     if (index === 'notices') this.loadNoticeCategories();
+                    if (index === 'bid-increments') this.loadBidIncrementConfigs();
                 },
                 
                 // 更新面包屑
@@ -3761,7 +3942,8 @@
                         'audit-logs': [{ name: '首页', path: 'dashboard' }, { name: '审计日志', path: 'audit-logs' }],
                         'config': [{ name: '首页', path: 'dashboard' }, { name: '系统配置', path: 'config' }],
                         'user-management': [{ name: '首页', path: 'dashboard' }, { name: '数据管理', path: 'user-management' }],
-                        'notices': [{ name: '首页', path: 'dashboard' }, { name: '参拍须知', path: 'notices' }]
+                        'notices': [{ name: '首页', path: 'dashboard' }, { name: '参拍须知', path: 'notices' }],
+                        'bid-increments': [{ name: '首页', path: 'dashboard' }, { name: '系统管理', path: 'system-management' }, { name: '加价阶梯', path: 'bid-increments' }]
                     };
                     this.breadcrumbList = breadcrumbMap[menu] || [{ name: '首页', path: 'dashboard' }];
                 },
@@ -3792,6 +3974,8 @@
                         this.loadConfigs();
                     } else if (path === 'user-management') {
                         this.loadUsers();
+                    } else if (path === 'bid-increments') {
+                        this.loadBidIncrementConfigs();
                     }
                 },
                 
@@ -4116,6 +4300,7 @@
                         
                         const formData = {
                             ...this.sessionForm,
+                            bidIncrementConfigId: this.sessionForm.bidIncrementConfigId,
                             itemIds: this.selectedItems.map(item => item.id),
                             startTime: this.formatDateTime(this.sessionForm.startTime),
                             endTime: this.formatDateTime(this.sessionForm.endTime),
@@ -4377,6 +4562,7 @@
                         extendSeconds: session.extendSeconds ?? 60,
                         extendMaxTimes: session.extendMaxTimes ?? 5,
                         rules: session.rules,
+                        bidIncrementConfigId: session.bidIncrementConfigId ?? null,
                         imageList: this.normalizeSessionImages(session),
                         _newCoverFiles: [],
                         selectedItems: []  // 初始化为空，稍后加载
@@ -4440,6 +4626,7 @@
                             if (this.editSessionForm.extendSeconds != null) fd.append('extendSeconds', this.editSessionForm.extendSeconds);
                             if (this.editSessionForm.extendMaxTimes != null) fd.append('extendMaxTimes', this.editSessionForm.extendMaxTimes);
                             if (this.editSessionForm.rules != null) fd.append('rules', this.editSessionForm.rules);
+                            if (this.editSessionForm.bidIncrementConfigId != null) fd.append('bidIncrementConfigId', this.editSessionForm.bidIncrementConfigId);
                             // 附带当前图片列表：仅保留已存在URL
                             const sessionCurrentUrls = (this.editSessionForm.imageList || []).filter(u => typeof u === 'string' && !u.startsWith('data:'));
                             fd.append('currentImages', JSON.stringify(sessionCurrentUrls));
@@ -4467,7 +4654,8 @@
                                 isFreeShipping: this.editSessionForm.isFreeShipping ? 1 : 0,
                                 isReturnable: this.editSessionForm.isReturnable ? 1 : 0,
                                 antiSnipingEnabled: this.editSessionForm.antiSnipingEnabled ? 1 : 0,
-                                itemIds: this.editSessionForm.selectedItems ? this.editSessionForm.selectedItems.map(item => item.id) : []
+                                itemIds: this.editSessionForm.selectedItems ? this.editSessionForm.selectedItems.map(item => item.id) : [],
+                                bidIncrementConfigId: this.editSessionForm.bidIncrementConfigId
                             };
                             const response = await axios.put(`/api/admin/sessions/${this.editSessionForm.id}`, formData);
                             if (response.data.code === 200) {
@@ -4601,6 +4789,155 @@
                         ElMessage.error('加载配置失败');
                     } finally {
                         this.configLoading = false;
+                    }
+                },
+
+                // ========== 加价阶梯配置 ==========
+                async loadBidIncrementConfigs() {
+                    this.bidIncrementLoading = true;
+                    try {
+                        const params = new URLSearchParams();
+                        params.append('page', this.bidConfigPage);
+                        params.append('pageSize', this.bidConfigPageSize);
+                        if (this.bidConfigSearchName) params.append('configName', this.bidConfigSearchName);
+                        if (this.bidConfigStatus !== null && this.bidConfigStatus !== undefined && this.bidConfigStatus !== '') params.append('status', this.bidConfigStatus);
+                        const url = `/api/admin/bid-increment-configs${params.toString() ? '?' + params.toString() : ''}`;
+                        const res = await axios.get(url);
+                        const data = res.data?.data;
+                        // 兼容两种返回结构：数组 or { records, total }
+                        if (Array.isArray(data)) {
+                            this.bidIncrementConfigs = data;
+                            this.bidConfigTotal = data.length;
+                        } else {
+                            this.bidIncrementConfigs = data?.records || [];
+                            this.bidConfigTotal = data?.total || 0;
+                        }
+                    } catch (e) {
+                        console.error('加载加价阶梯失败:', e);
+                        ElMessage.error('加载失败');
+                    } finally {
+                        this.bidIncrementLoading = false;
+                    }
+                },
+                searchBidConfigs() {
+                    this.bidConfigPage = 1;
+                    this.loadBidIncrementConfigs();
+                },
+                resetBidIncrementFilters() {
+                    this.bidConfigSearchName = '';
+                    this.bidConfigStatus = '';
+                    this.bidConfigPage = 1;
+                    this.loadBidIncrementConfigs();
+                },
+                handleBidConfigSizeChange(size) {
+                    this.bidConfigPageSize = size;
+                    this.bidConfigPage = 1;
+                    this.loadBidIncrementConfigs();
+                },
+                handleBidConfigCurrentChange(page) {
+                    this.bidConfigPage = page;
+                    this.loadBidIncrementConfigs();
+                },
+                openCreateBidConfig() {
+                    this.bidConfigForm = { id: null, configName: '', status: 1, description: '' };
+                    this.bidConfigDialogVisible = true;
+                },
+                async openEditBidConfig(row) {
+                    try {
+                        // 先加载详情（含规则）
+                        const res = await axios.get(`/api/admin/bid-increment-configs/${row.id}`);
+                        const cfg = res.data?.data || {};
+                        const rules = (cfg.rules || []).map((r, idx) => ({
+                            minAmount: Number(r.minAmount ?? 0),
+                            maxAmountStr: r.maxAmount === null || r.maxAmount === undefined ? '' : String(r.maxAmount),
+                            incrementAmount: Number(r.incrementAmount ?? 0),
+                            sortOrder: Number(r.sortOrder ?? idx)
+                        }));
+                        this.bidConfigForm = {
+                            id: cfg.id ?? row.id,
+                            configName: cfg.configName ?? row.configName,
+                            status: cfg.status ?? row.status,
+                            description: cfg.description ?? row.description,
+                            rules
+                        };
+                        this.bidConfigDialogVisible = true;
+                    } catch (e) {
+                        console.error('加载配置详情失败:', e);
+                        ElMessage.error((e?.response?.data?.msg) || '加载配置详情失败');
+                    }
+                },
+                async saveBidConfig() {
+                    try {
+                        this.bidConfigSaving = true;
+                        const isUpdate = !!this.bidConfigForm.id;
+                        const url = isUpdate ? `/api/admin/bid-increment-configs/${this.bidConfigForm.id}` : '/api/admin/bid-increment-configs';
+                        const method = isUpdate ? 'put' : 'post';
+                        // 规则校验与转换
+                        const rules = (this.bidConfigForm.rules || []).map((r, idx) => ({
+                            minAmount: Number(r.minAmount ?? 0),
+                            maxAmount: r.maxAmountStr === undefined || r.maxAmountStr === null || r.maxAmountStr === '' ? null : Number(r.maxAmountStr),
+                            incrementAmount: Number(r.incrementAmount ?? 0),
+                            sortOrder: Number(r.sortOrder ?? idx)
+                        }));
+                        this.validateRules(rules);
+                        await axios[method](url, {
+                            configName: this.bidConfigForm.configName,
+                            description: this.bidConfigForm.description,
+                            status: this.bidConfigForm.status,
+                            rules
+                        });
+                        ElMessage.success(isUpdate ? '更新成功' : '创建成功');
+                        this.bidConfigDialogVisible = false;
+                        this.loadBidIncrementConfigs();
+                    } catch (e) {
+                        console.error('保存配置失败:', e);
+                        ElMessage.error('保存失败');
+                    } finally {
+                        this.bidConfigSaving = false;
+                    }
+                },
+                addRuleRow() {
+                    this.bidConfigForm.rules = this.bidConfigForm.rules || [];
+                    this.bidConfigForm.rules.push({ minAmount: 0, maxAmountStr: '', incrementAmount: 1, sortOrder: this.bidConfigForm.rules.length });
+                },
+                removeRuleRow(index) {
+                    (this.bidConfigForm.rules || []).splice(index, 1);
+                },
+                validateRules(rules) {
+                    if (!rules.length) return; // 允许空
+                    // 按 minAmount 升序
+                    const s = [...rules].sort((a,b)=>a.minAmount-b.minAmount);
+                    for (let i=0;i<s.length;i++) {
+                        const r = s[i];
+                        if (r.minAmount < 0) throw new Error('最小金额不能小于0');
+                        if (r.incrementAmount <= 0) throw new Error('加价幅度需大于0');
+                        if (r.maxAmount !== null && r.maxAmount <= r.minAmount) throw new Error('最大金额需大于最小金额或留空');
+                        if (i>0) {
+                            const prev = s[i-1];
+                            const prevMax = prev.maxAmount;
+                            if (prevMax === null) throw new Error('存在无上限规则后不应再有后续规则');
+                            if (r.minAmount < prevMax) throw new Error('规则区间发生重叠，请检查');
+                            if (r.minAmount > prevMax) throw new Error('规则区间不连续，请检查');
+                        }
+                    }
+                },
+                async deleteBidConfig(row) {
+                    try {
+                        await ElMessageBox.confirm('确认删除该配置吗？此操作不可恢复', '提示', { type: 'warning' });
+                        const res = await axios.delete(`/api/admin/bid-increment-configs/${row.id}`);
+                        if (res?.data?.code === 200) {
+                            ElMessage.success('删除成功');
+                            this.loadBidIncrementConfigs();
+                        } else {
+                            const msg = res?.data?.msg || res?.data?.message || '删除失败';
+                            ElMessage.error(msg);
+                        }
+                    } catch (e) {
+                        if (e !== 'cancel') {
+                            console.error('删除失败:', e);
+                            const msg = e?.response?.data?.msg || e?.response?.data?.message || e?.message || '删除失败';
+                            ElMessage.error(msg);
+                        }
                     }
                 },
                 

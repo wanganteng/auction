@@ -28,6 +28,7 @@
         <result column="extend_threshold_sec" property="extendThresholdSec" jdbcType="INTEGER"/>
         <result column="extend_seconds" property="extendSeconds" jdbcType="INTEGER"/>
         <result column="extend_max_times" property="extendMaxTimes" jdbcType="INTEGER"/>
+        <result column="bid_increment_config_id" property="bidIncrementConfigId" jdbcType="BIGINT"/>
         <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
         <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
         <result column="deleted" property="deleted" jdbcType="TINYINT"/>
@@ -39,7 +40,7 @@
         total_items, sold_items, view_count, deposit_ratio, commission_ratio,
         is_authentic, is_free_shipping, is_returnable, cover_image, images, rules, is_visible,
         anti_sniping_enabled, extend_threshold_sec, extend_seconds, extend_max_times,
-        create_time, update_time, deleted
+        bid_increment_config_id, create_time, update_time, deleted
     </sql>
 
     <!-- 插入拍卖会 -->
@@ -49,13 +50,13 @@
             total_items, sold_items, view_count, deposit_ratio, commission_ratio,
             is_authentic, is_free_shipping, is_returnable, cover_image, images, rules, is_visible,
             anti_sniping_enabled, extend_threshold_sec, extend_seconds, extend_max_times,
-            create_time, update_time, deleted
+            bid_increment_config_id, create_time, update_time, deleted
         ) VALUES (
             #{sessionName}, #{description}, #{sessionType}, #{status}, #{startTime}, #{endTime}, #{creatorId},
             #{totalItems}, #{soldItems}, #{viewCount}, #{depositRatio}, #{commissionRatio},
             #{isAuthentic}, #{isFreeShipping}, #{isReturnable}, #{coverImage}, #{images}, #{rules}, #{isVisible},
             #{antiSnipingEnabled}, #{extendThresholdSec}, #{extendSeconds}, #{extendMaxTimes},
-            #{createTime}, #{updateTime}, #{deleted}
+            #{bidIncrementConfigId}, #{createTime}, #{updateTime}, #{deleted}
         )
     </insert>
 
@@ -86,6 +87,7 @@
             <if test="extendThresholdSec != null">extend_threshold_sec = #{extendThresholdSec},</if>
             <if test="extendSeconds != null">extend_seconds = #{extendSeconds},</if>
             <if test="extendMaxTimes != null">extend_max_times = #{extendMaxTimes},</if>
+            <if test="bidIncrementConfigId != null">bid_increment_config_id = #{bidIncrementConfigId},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
             <if test="deleted != null">deleted = #{deleted},</if>
         </set>
@@ -159,6 +161,7 @@
             <if test="images != null">images = #{images},</if>
             <if test="rules != null">rules = #{rules},</if>
             <if test="isVisible != null">is_visible = #{isVisible},</if>
+            <if test="bidIncrementConfigId != null">bid_increment_config_id = #{bidIncrementConfigId},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
             <if test="deleted != null">deleted = #{deleted},</if>
         </set>
@@ -173,6 +176,15 @@
         WHERE asi.item_id = #{itemId}
         AND s.deleted = 0
         ORDER BY s.create_time DESC
+    </select>
+
+    <!-- 根据加价阶梯配置ID查询使用该配置的拍卖会列表 -->
+    <select id="selectSessionsByBidIncrementConfigId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM auction_session
+        WHERE bid_increment_config_id = #{configId}
+        AND deleted = 0
+        ORDER BY create_time DESC
     </select>
 
 </mapper>

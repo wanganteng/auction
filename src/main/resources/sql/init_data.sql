@@ -73,3 +73,19 @@ INSERT INTO `notice_category` (`name`, `sort_order`, `enabled`, `content_html`,`
 ('物流及其他费用说明', 6, 1,'<p>如会场未标注包邮，运费与保险费由买家承担。支持到付或平台代收，具体以订单为准。</p>', NOW(), NOW()),
 ('收退货说明', 7, 1,'<p>签收前务必当面查验。非质量问题一般不支持退货；若存在争议，请在签收后24小时内联系客服。</p>', NOW(), NOW()),
 ('法律法规', 8, 1, '<p>请遵守相关法律法规与平台规则，严禁违法违规拍品交易。平台保留对违规账号处理的权利。</p>', NOW(), NOW());
+
+
+
+-- 插入默认的加价阶梯配置
+INSERT INTO `bid_increment_config` (`id`,`config_name`, `description`, `status`, `creator_id`) VALUES
+(1,'默认加价阶梯', '系统默认的加价阶梯配置', 1, 1);
+
+
+-- 插入默认的加价规则
+INSERT INTO `bid_increment_rule` (`config_id`, `min_amount`, `max_amount`, `increment_amount`, `sort_order`) VALUES
+(1, 0.00, 100.00, 1.00, 1),
+(1, 100.00, 500.00, 5.00, 2),
+(1, 500.00, 1000.00, 10.00, 3),
+(1, 1000.00, 5000.00, 50.00, 4),
+(1, 5000.00, 10000.00, 100.00, 5),
+(1, 10000.00, NULL, 200.00, 6);

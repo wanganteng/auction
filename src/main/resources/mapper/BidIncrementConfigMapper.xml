@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.auction.mapper.BidIncrementConfigMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.auction.entity.BidIncrementConfig">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="config_name" property="configName" jdbcType="VARCHAR"/>
+        <result column="description" property="description" jdbcType="LONGVARCHAR"/>
+        <result column="status" property="status" jdbcType="TINYINT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, config_name, description, status, create_time, update_time, deleted
+    </sql>
+
+    <!-- 插入加价阶梯配置 -->
+    <insert id="insert" parameterType="com.auction.entity.BidIncrementConfig" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO bid_increment_config (
+            config_name, description, status, create_time, update_time, deleted
+        ) VALUES (
+            #{configName}, #{description}, #{status}, #{createTime}, #{updateTime}, #{deleted}
+        )
+    </insert>
+
+    <!-- 更新加价阶梯配置 -->
+    <update id="update" parameterType="com.auction.entity.BidIncrementConfig">
+        UPDATE bid_increment_config
+        <set>
+            <if test="configName != null">config_name = #{configName},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <!-- 根据ID查询加价阶梯配置 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM bid_increment_config
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 查询启用的加价阶梯配置列表 -->
+    <select id="selectEnabledList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM bid_increment_config
+        WHERE status = 1 AND deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 查询所有加价阶梯配置列表 -->
+    <select id="selectList" parameterType="com.auction.entity.BidIncrementConfig" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM bid_increment_config
+        <where>
+            deleted = 0
+            <if test="configName != null and configName != ''">
+                AND config_name LIKE CONCAT('%', #{configName}, '%')
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 根据ID删除加价阶梯配置 -->
+    <update id="deleteById" parameterType="java.lang.Long">
+        UPDATE bid_increment_config
+        SET deleted = 1, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 根据ID更新加价阶梯配置 -->
+    <update id="updateById" parameterType="com.auction.entity.BidIncrementConfig">
+        UPDATE bid_increment_config
+        <set>
+            <if test="configName != null">config_name = #{configName},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="deleted != null">deleted = #{deleted},</if>
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <!-- 根据配置ID查询规则数量 -->
+    <select id="countRulesByConfigId" parameterType="java.lang.Long" resultType="int">
+        SELECT COUNT(*)
+        FROM bid_increment_rule
+        WHERE config_id = #{configId} AND deleted = 0
+    </select>
+
+    <!-- 根据拍卖会ID查询关联的加价阶梯配置 -->
+    <select id="selectBySessionId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT c.*
+        FROM bid_increment_config c
+        INNER JOIN auction_session s ON c.id = s.bid_increment_config_id
+        WHERE s.id = #{sessionId}
+        AND c.deleted = 0
+        AND s.deleted = 0
+    </select>
+
+    <!-- 查询所有加价阶梯配置（包括禁用的） -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM bid_increment_config
+        WHERE deleted = 0
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>
