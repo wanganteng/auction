@@ -112,7 +112,8 @@ public class AuctionServiceImpl implements AuctionService {
             }
             
             // 使用状态机进行状态转换
-            if (stateMachine.transitionItem(item, "AUDIT", status)) {
+            String action = (status == 2) ? "APPROVE" : "REJECT";
+            if (stateMachine.transitionItem(item, action, status)) {
                 item.setUpdateTime(LocalDateTime.now());
                 int result = auctionItemMapper.update(item);
                 if (result > 0) {
@@ -199,7 +200,8 @@ public class AuctionServiceImpl implements AuctionService {
                 targetStatus = 6; // 6-流拍
             }
             
-            if (stateMachine.transitionItem(item, "END_AUCTION", targetStatus)) {
+            String action = (targetStatus == 5) ? "SOLD" : "UNSOLD";
+            if (stateMachine.transitionItem(item, action, targetStatus)) {
                 item.setUpdateTime(LocalDateTime.now());
                 int result = auctionItemMapper.update(item);
                 if (result > 0) {
@@ -335,7 +337,7 @@ public class AuctionServiceImpl implements AuctionService {
                 return false;
             }
             
-            if (stateMachine.transitionSession(session, "START_SESSION", 2)) { // 2-进行中
+            if (stateMachine.transitionSession(session, "START", 2)) { // 2-进行中
                 session.setUpdateTime(LocalDateTime.now());
                 int result = auctionSessionMapper.updateById(session);
                 if (result > 0) {
@@ -369,7 +371,7 @@ public class AuctionServiceImpl implements AuctionService {
                 return false;
             }
             
-            if (stateMachine.transitionSession(session, "END_SESSION", 3)) { // 3-已结束
+            if (stateMachine.transitionSession(session, "FINISH", 3)) { // 3-已结束
                 session.setUpdateTime(LocalDateTime.now());
                 int result = auctionSessionMapper.updateById(session);
                 if (result > 0) {
@@ -420,11 +422,7 @@ public class AuctionServiceImpl implements AuctionService {
             
             // 检查是否满足拍卖会的最小保证金要求
             // 这里需要从拍卖会获取最小保证金要求，暂时使用系统默认值
-            BigDecimal minDepositAmount = new BigDecimal("100"); // 默认最小保证金100元
-            if (depositAmount.compareTo(minDepositAmount) < 0) {
-                log.warn("保证金金额 {} 小于最小要求 {}", depositAmount, minDepositAmount);
-                return false;
-            }
+            // 最小保证金校验已移至加价阶梯规则中统一处理
             
             if (!depositAccountService.hasEnoughBalance(userId, depositAmountCents)) {
                 return false;
@@ -453,20 +451,7 @@ public class AuctionServiceImpl implements AuctionService {
                 return false;
             }
             
-            // 检查是否超过拍卖会的最大出价限制
-            // 这里需要从拍卖会获取最大出价限制，暂时使用系统默认值
-            BigDecimal maxBidAmount = new BigDecimal("1000000"); // 默认最大出价100万元
-            if (bidAmountYuan.compareTo(maxBidAmount) > 0) {
-                log.warn("出价金额 {} 超过最大限制 {}", bidAmountYuan, maxBidAmount);
-                return false;
-            }
-            
-            // 检查出价是否满足拍卖会的最小加价幅度
-            // 这里需要从拍卖会获取最小加价幅度，暂时使用系统默认值
-            BigDecimal minIncrementAmount = new BigDecimal("1"); // 默认最小加价1元
-            if (bidAmountYuan.compareTo(item.getCurrentPrice().add(minIncrementAmount)) < 0) {
-                return false;
-            }
+            // 注意：最大出价限制和加价幅度校验已移至加价阶梯规则中统一处理
             
             return true;
         } catch (Exception e) {

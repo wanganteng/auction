@@ -638,7 +638,7 @@ public class AuctionWebSocketHandler implements WebSocketHandler {
             data.put("bidId", bid.getId());
             data.put("userId", bid.getUserId());
             data.put("username", displayName); // 添加用户真实名称
-            data.put("bidAmount", bid.getBidAmountYuan());
+            data.put("bidAmountYuan", bid.getBidAmountYuan());
             data.put("bidTime", bid.getBidTime());
             data.put("bidSource", bid.getSource());
             data.put("isAutoBid", bid.getIsAuto());

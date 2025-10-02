@@ -70,8 +70,6 @@ public class AuctionScheduleTask {
                 ((com.auction.service.impl.AuctionOrderServiceImpl) auctionOrderService).processOverdueUnpaidOrders();
             }
             
-            // 检查已结束的拍卖会并触发结算
-            checkAndSettleEndedSessions();
             
         } catch (Exception e) {
             log.error("检查拍卖状态时发生错误: {}", e.getMessage());
@@ -311,40 +309,6 @@ public class AuctionScheduleTask {
         log.info("清理过期的拍卖会数据...");
     }
 
-    /**
-     * 检查并结算已结束的拍卖会
-     */
-    private void checkAndSettleEndedSessions() {
-        try {
-            // 获取已结束但未结算的拍卖会
-            PageInfo<AuctionSession> allSessionsPageInfo = auctionService.getAuctionSessions(1, 1000);
-            List<AuctionSession> allSessions = allSessionsPageInfo.getList();
-            List<AuctionSession> endedSessions = new java.util.ArrayList<>();
-            
-            for (AuctionSession session : allSessions) {
-                // 状态为已结束(3)或时间已过且状态为进行中(2)
-                if (session.getStatus() != null && 
-                    (session.getStatus() == 3 || 
-                     (session.getStatus() == 2 && session.getEndTime() != null && 
-                      session.getEndTime().isBefore(LocalDateTime.now())))) {
-                    endedSessions.add(session);
-                }
-            }
-            
-            for (AuctionSession session : endedSessions) {
-                try {
-                    log.info("开始结算拍卖会: {}", session.getId());
-                    auctionSettlementService.settleSession(session.getId());
-                    log.info("拍卖会结算完成: {}", session.getId());
-                } catch (Exception e) {
-                    log.error("拍卖会结算失败: sessionId={}, error={}", session.getId(), e.getMessage(), e);
-                }
-            }
-            
-        } catch (Exception e) {
-            log.error("检查已结束拍卖会时发生错误: {}", e.getMessage(), e);
-        }
-    }
 
     /**
      * 更新拍卖统计信息

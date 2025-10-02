@@ -222,12 +222,19 @@ public class BidIncrementServiceImpl implements BidIncrementService {
                 return true;
             }
 
-            // 出价必须是当前价格 + 加价金额的倍数
-            BigDecimal minBidAmount = currentPrice.add(rule.getIncrementAmount());
-            boolean isValid = bidAmount.compareTo(minBidAmount) >= 0;
+            // 出价必须高于当前价格
+            if (bidAmount.compareTo(currentPrice) <= 0) {
+                return false;
+            }
+            
+            // 出价必须是当前价格 + 加价金额的整数倍
+            BigDecimal incrementAmount = rule.getIncrementAmount();
+            BigDecimal priceDifference = bidAmount.subtract(currentPrice);
+            BigDecimal remainder = priceDifference.remainder(incrementAmount);
+            boolean isValid = remainder.compareTo(BigDecimal.ZERO) == 0;
 
-            log.debug("加价阶梯校验: currentPrice={}, bidAmount={}, minBidAmount={}, isValid={}",
-                     currentPrice, bidAmount, minBidAmount, isValid);
+            log.debug("加价阶梯校验: currentPrice={}, bidAmount={}, incrementAmount={}, priceDifference={}, isValid={}",
+                     currentPrice, bidAmount, incrementAmount, priceDifference, isValid);
 
             return isValid;
 

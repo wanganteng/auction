@@ -70,6 +70,9 @@ public class UserController {
     @Autowired
     private SysUserService sysUserService;
 
+    @Autowired
+    private BidIncrementService bidIncrementService;
+
     // ==================== 拍卖会管理 ====================
 
     /**
@@ -128,6 +131,74 @@ public class UserController {
     }
 
     /**
+     * 获取最低出价金额
+     */
+    @GetMapping("/sessions/{sessionId}/min-bid")
+    @Operation(summary = "获取最低出价金额", description = "根据当前价格和加价阶梯规则获取最低出价金额")
+    public Result<Map<String, Object>> getMinBidAmount(
+            @PathVariable Long sessionId,
+            @RequestParam Long itemId,
+            @RequestParam BigDecimal currentPrice) {
+        try {
+            // 获取拍卖会信息
+            AuctionSession session = auctionSessionService.getSessionById(sessionId);
+            if (session == null) {
+                return Result.error("拍卖会不存在");
+            }
+
+            // 获取加价阶梯配置
+            BidIncrementConfig config = null;
+            if (session.getBidIncrementConfigId() != null) {
+                config = bidIncrementService.getConfigById(session.getBidIncrementConfigId());
+            }
+
+            BigDecimal minBidAmount = currentPrice;
+            String ruleDescription = "无加价阶梯规则";
+
+            if (config != null) {
+                // 获取适用的加价规则
+                BidIncrementRule rule = bidIncrementService.getApplicableRule(currentPrice, config.getId());
+                if (rule != null) {
+                    minBidAmount = currentPrice.add(rule.getIncrementAmount());
+                    ruleDescription = String.format("当前价格区间：¥%s - ¥%s，加价幅度：¥%s", 
+                        rule.getMinAmount(), 
+                        rule.getMaxAmount() != null ? rule.getMaxAmount() : "无上限",
+                        rule.getIncrementAmount());
+                } else {
+                    // 如果没有找到适用规则，说明配置有问题
+                    log.warn("拍卖会 {} 的加价阶梯配置 {} 没有适用的规则，当前价格: {}", 
+                        sessionId, config.getId(), currentPrice);
+                    return Result.error("加价阶梯配置错误，请联系管理员");
+                }
+            } else {
+                // 没有加价阶梯配置，这是不允许的
+                log.warn("拍卖会 {} 没有配置加价阶梯规则", sessionId);
+                return Result.error("拍卖会缺少加价阶梯配置，请联系管理员");
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("minBidAmount", minBidAmount);
+            result.put("ruleDescription", ruleDescription);
+            result.put("hasIncrementRules", config != null);
+            
+            // 如果有加价阶梯规则，返回加价幅度信息
+            if (config != null) {
+                BidIncrementRule rule = bidIncrementService.getApplicableRule(currentPrice, config.getId());
+                if (rule != null) {
+                    result.put("incrementAmount", rule.getIncrementAmount());
+                }
+            }
+
+            return Result.success("获取成功", result);
+
+        } catch (Exception e) {
+            log.error("获取最低出价金额失败: sessionId={}, itemId={}, currentPrice={}, error={}", 
+                sessionId, itemId, currentPrice, e.getMessage(), e);
+            return Result.error("获取最低出价金额失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 获取拍卖会详情
      */
     @GetMapping("/sessions/{id}")
@@ -153,9 +224,7 @@ public class UserController {
             sessionDetail.put("coverImage", session.getCoverImage());
             sessionDetail.put("depositRatio", session.getDepositRatio());
             sessionDetail.put("commissionRatio", session.getCommissionRatio());
-            sessionDetail.put("minDepositAmount", session.getMinDepositAmount());
-            sessionDetail.put("maxBidAmount", session.getMaxBidAmount());
-            sessionDetail.put("minIncrementAmount", session.getBidIncrementConfigId());
+            // 加价规则信息已通过 bidIncrementConfig 字段提供
             sessionDetail.put("totalItems", session.getTotalItems());
             sessionDetail.put("soldItems", session.getSoldItems());
             sessionDetail.put("viewCount", session.getViewCount());
@@ -220,7 +289,7 @@ public class UserController {
             for (AuctionBid bid : bids) {
                 Map<String, Object> bidMap = new HashMap<>();
                 bidMap.put("id", bid.getId());
-                bidMap.put("bidAmount", bid.getBidAmountYuan());
+                bidMap.put("bidAmountYuan", bid.getBidAmountYuan());
                 bidMap.put("bidTime", bid.getBidTime());
                 
                 // 获取用户真实信息

@@ -22,7 +22,7 @@
 
     <!-- 基础字段 -->
     <sql id="Base_Column_List">
-        id, session_id, item_id, user_id, bid_amount, bid_amount_yuan, bid_time,
+        id, session_id, item_id, user_id, bid_amount_yuan, bid_time,
         source, is_auto, status, client_ip, user_agent, create_time, update_time, deleted
     </sql>
 
@@ -91,7 +91,7 @@
         SELECT <include refid="Base_Column_List"/>
         FROM auction_bid
         WHERE item_id = #{itemId} AND deleted = 0 AND status = 0
-        ORDER BY bid_amount DESC
+        ORDER BY bid_amount_yuan DESC
         LIMIT 1
     </select>
 

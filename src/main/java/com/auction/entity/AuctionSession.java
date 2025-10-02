@@ -104,16 +104,6 @@ public class AuctionSession {
     private Integer isReturnable;
 
     /**
-     * 最小保证金金额（元）
-     */
-    private BigDecimal minDepositAmount;
-
-    /**
-     * 最大出价金额（元）
-     */
-    private BigDecimal maxBidAmount;
-
-    /**
      * 加价阶梯配置ID
      */
     private Long bidIncrementConfigId;

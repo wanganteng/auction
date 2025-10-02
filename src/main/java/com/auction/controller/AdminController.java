@@ -358,8 +358,6 @@ public class AdminController {
             // 解析拍卖参数
             BigDecimal depositRatio = new BigDecimal(sessionData.get("depositRatio").toString());
             BigDecimal commissionRatio = new BigDecimal(sessionData.get("commissionRatio").toString());
-            BigDecimal minDepositAmount = new BigDecimal(sessionData.get("minDepositAmount").toString());
-            BigDecimal maxBidAmount = new BigDecimal(sessionData.get("maxBidAmount").toString());
             Long bidIncrementConfigId = sessionData.get("bidIncrementConfigId") == null ? null : Long.valueOf(sessionData.get("bidIncrementConfigId").toString());
             Integer depositRefundDays = Integer.valueOf(sessionData.get("depositRefundDays").toString());
             
@@ -379,9 +377,6 @@ public class AdminController {
             session.setEndTime(LocalDateTime.parse(endTimeStr.replace("Z", "")));
             session.setDepositRatio(depositRatio);
             session.setCommissionRatio(commissionRatio);
-            // 转换BigDecimal到Long（分）
-            session.setMinDepositAmount(minDepositAmount);
-            session.setMaxBidAmount(maxBidAmount);
             session.setBidIncrementConfigId(bidIncrementConfigId);
             
             // 设置默认值

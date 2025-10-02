@@ -232,6 +232,34 @@
             color: #f56c6c;
         }
         
+        .min-bid {
+            background: #f0f9ff;
+            border: 1px solid #409EFF;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .min-bid-label {
+            font-size: 14px;
+            color: #606266;
+            margin-bottom: 5px;
+        }
+        
+        .min-bid-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #409EFF;
+            margin-bottom: 8px;
+        }
+        
+        .min-bid-rule {
+            font-size: 12px;
+            color: #909399;
+            line-height: 1.4;
+        }
+        
         .bidding-form {
             margin-bottom: 30px;
         }
@@ -604,6 +632,15 @@
                         <div class="current-price-value">¥{{ currentPrice }}</div>
                     </div>
                     
+                    <!-- 最低出价 -->
+                    <div class="min-bid" v-if="minBidInfo">
+                        <div class="min-bid-label">最低出价</div>
+                        <div class="min-bid-value">¥{{ minBidInfo.minBidAmount }}</div>
+                        <div class="min-bid-rule" v-if="minBidInfo.ruleDescription">
+                            {{ minBidInfo.ruleDescription }}
+                        </div>
+                    </div>
+                    
                     <!-- 保证金信息显示 -->
                     <div class="deposit-info">
                         <div class="deposit-item">
@@ -661,6 +698,12 @@
                         <!-- 出价提示 -->
                         <div class="bid-tips" style="margin-top: 10px; font-size: 12px; color: #909399;">
                             <p style="margin: 0;">💡 出价金额必须为整数元，如：100、500、1000</p>
+                            <p style="margin: 5px 0 0 0;" v-if="minBidInfo">
+                                📋 最低出价：¥{{ minBidInfo.minBidAmount }}，低于此金额将无法出价
+                            </p>
+                            <p style="margin: 5px 0 0 0;" v-if="minBidInfo && minBidInfo.hasIncrementRules && minBidInfo.incrementAmount">
+                                ⚡ 加价规则：每次加价必须是 ¥{{ minBidInfo.incrementAmount }} 的整数倍
+                            </p>
                         </div>
                     </div>
                     
@@ -684,7 +727,7 @@
                                     </div>
                                     <div class="bid-time">{{ formatTime(bid.bidTime) }}</div>
                                 </div>
-                                <div class="bid-amount">¥{{ bid.bidAmountYuan != null ? bid.bidAmountYuan : bid.bidAmount }}</div>
+                                <div class="bid-amount">¥{{ bid.bidAmountYuan }}</div>
                             </div>
                         </div>
                     </div>
@@ -754,7 +797,9 @@
                         winnerName: '',
                         finalPrice: 0,
                         isNoBid: false
-                    }
+                    },
+                    // 最低出价信息
+                    minBidInfo: null
                 }
             },
             computed: {
@@ -784,10 +829,27 @@
                 },
                 isValidBid() {
                     const bid = parseFloat(this.bidAmount);
-                    const inc = (this.session && this.session.minIncrementAmount ? this.session.minIncrementAmount : 0);
-                    // 验证为有效数字、正数、整数
-                    return !isNaN(bid) && bid > 0 && Number.isInteger(bid) && 
-                           bid > this.currentPrice && bid >= this.currentPrice + inc;
+                    if (isNaN(bid) || bid <= 0 || !Number.isInteger(bid)) return false;
+                    
+                    // 使用最低出价信息进行验证
+                    if (this.minBidInfo && this.minBidInfo.minBidAmount) {
+                        // 检查是否满足最低出价要求
+                        if (bid < this.minBidInfo.minBidAmount) {
+                            return false;
+                        }
+                        
+                        // 如果有加价阶梯规则，检查是否符合倍数关系
+                        if (this.minBidInfo.hasIncrementRules && this.minBidInfo.incrementAmount) {
+                            const priceDifference = bid - this.currentPrice;
+                            const remainder = priceDifference % this.minBidInfo.incrementAmount;
+                            return remainder === 0;
+                        }
+                        
+                        return true;
+                    }
+                    
+                    // 兜底：如果没有加价规则信息，拒绝出价
+                    return false;
                 },
                 // 计算本次出价所需保证金
                 requiredDepositAmount() {
@@ -895,6 +957,8 @@
                                     this.currentItemId = target.id;
                                     // 价格（后端拍品价格以元传入，此处保持元单位）
                                     this.currentPrice = target.currentPrice || target.startingPrice || 0;
+                                    // 加载最低出价信息
+                                    this.loadMinBidInfo();
                                 } else {
                                     this.currentItemId = null;
                                     this.currentPrice = 0;
@@ -930,8 +994,8 @@
                                 const bids = response.data.data || [];
                                 // 按照出价金额从高到低排序，确保第一名是当前最高出价
                                 this.bidHistory = bids.sort((a, b) => {
-                                    const amountA = Number(a.bidAmountYuan || a.bidAmount || 0);
-                                    const amountB = Number(b.bidAmountYuan || b.bidAmount || 0);
+                                    const amountA = Number(a.bidAmountYuan || 0);
+                                    const amountB = Number(b.bidAmountYuan || 0);
                                     return amountB - amountA;
                                 });
                             }
@@ -939,6 +1003,27 @@
                         .catch(error => {
                             console.error('加载出价历史错误:', error);
                         });
+                },
+                
+                // 加载最低出价信息
+                loadMinBidInfo() {
+                    if (!this.currentItemId || !this.session) return;
+                    
+                    const sessionId = this.getSessionIdFromUrl();
+                    axios.get(`/api/user/sessions/${sessionId}/min-bid`, {
+                        params: {
+                            itemId: this.currentItemId,
+                            currentPrice: this.currentPrice
+                        }
+                    })
+                    .then(response => {
+                        if (response.data.code === 200) {
+                            this.minBidInfo = response.data.data;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('获取最低出价信息失败:', error);
+                    });
                 },
 
                 // 切换拍品
@@ -950,6 +1035,8 @@
                     }
                     // 重置轮播图索引
                     this.currentImageIndex = 0;
+                    // 重新加载最低出价信息
+                    this.loadMinBidInfo();
                 },
                 
                 // 轮播图控制方法
@@ -1048,7 +1135,7 @@
                             // 用最新一条记录刷新当前价
                             if (this.bidHistory && this.bidHistory.length > 0) {
                                 const first = this.bidHistory[0];
-                                const v = Number(first.bidAmountYuan != null ? first.bidAmountYuan : first.bidAmount);
+                                const v = Number(first.bidAmountYuan || 0);
                                 if (!isNaN(v) && v > 0) this.currentPrice = v;
                             }
                         } catch (_) {}
@@ -1068,6 +1155,8 @@
                             // 从 data 中取出金额与时间
                             if (bucket && bucket.bidAmountYuan != null) {
                                 this.currentPrice = Number(bucket.bidAmountYuan);
+                                // 重新加载最低出价信息
+                                this.loadMinBidInfo();
                             }
                             // 添加新出价记录
                             const newBid = {
@@ -1083,8 +1172,8 @@
                             
                             // 重新排序，确保按出价金额从高到低排列
                             this.bidHistory = this.bidHistory.sort((a, b) => {
-                                const amountA = Number(a.bidAmountYuan || a.bidAmount || 0);
-                                const amountB = Number(b.bidAmountYuan || b.bidAmount || 0);
+                                const amountA = Number(a.bidAmountYuan || 0);
+                                const amountB = Number(b.bidAmountYuan || 0);
                                 return amountB - amountA;
                             });
                             
@@ -1099,8 +1188,8 @@
                                 
                                 // 重新排序，确保按出价金额从高到低排列
                                 this.bidHistory = this.bidHistory.sort((a, b) => {
-                                    const amountA = Number(a.bidAmountYuan || a.bidAmount || 0);
-                                    const amountB = Number(b.bidAmountYuan || b.bidAmount || 0);
+                                    const amountA = Number(a.bidAmountYuan || 0);
+                                    const amountB = Number(b.bidAmountYuan || 0);
                                     return amountB - amountA;
                                 });
                                 
@@ -1127,8 +1216,8 @@
                                     
                                     // 重新排序，确保按出价金额从高到低排列
                                     this.bidHistory = this.bidHistory.sort((a, b) => {
-                                        const amountA = Number(a.bidAmountYuan || a.bidAmount || 0);
-                                        const amountB = Number(b.bidAmountYuan || b.bidAmount || 0);
+                                        const amountA = Number(a.bidAmountYuan || 0);
+                                        const amountB = Number(b.bidAmountYuan || 0);
                                         return amountB - amountA;
                                     });
                                     
