@@ -194,6 +194,39 @@ public class UserDepositTransactionService {
     }
 
     /**
+     * 查询用户在特定拍品上的冻结保证金总额
+     * @param userId 用户ID
+     * @param itemId 拍品ID
+     * @return 冻结保证金总额（元）
+     */
+    public BigDecimal getFrozenAmountByUserAndItem(Long userId, Long itemId) {
+        try {
+            UserDepositTransaction query = new UserDepositTransaction();
+            query.setUserId(userId);
+            query.setRelatedId(itemId);
+            query.setRelatedType("item");
+            query.setTransactionType(2); // 冻结类型
+            query.setStatus(1); // 成功状态
+            
+            List<UserDepositTransaction> transactions = userDepositTransactionMapper.selectList(query);
+            
+            BigDecimal totalFrozen = BigDecimal.ZERO;
+            for (UserDepositTransaction transaction : transactions) {
+                if (transaction.getAmount() != null) {
+                    totalFrozen = totalFrozen.add(transaction.getAmount());
+                }
+            }
+            
+            log.info("查询用户拍品冻结保证金: userId={}, itemId={}, totalFrozen={}", userId, itemId, totalFrozen);
+            return totalFrozen;
+            
+        } catch (Exception e) {
+            log.error("查询用户拍品冻结保证金失败: userId={}, itemId={}, error={}", userId, itemId, e.getMessage(), e);
+            return BigDecimal.ZERO;
+        }
+    }
+
+    /**
      * 生成交易流水号
      */
     private String generateTransactionNo() {

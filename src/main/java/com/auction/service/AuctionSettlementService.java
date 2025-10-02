@@ -51,6 +51,9 @@ public class AuctionSettlementService {
     @Autowired
     private com.auction.service.SysUserService sysUserService;
 
+    @Autowired
+    private UserDepositTransactionService userDepositTransactionService;
+
     /**
      * 结算指定拍卖会
      */
@@ -146,12 +149,12 @@ public class AuctionSettlementService {
             BigDecimal commissionYuan = commissionRatio.multiply(finalPriceYuan)
                     .setScale(0, BigDecimal.ROUND_HALF_UP);
 
-            // 中标者需冻结的保证金（元）= 最高出价 * 保证金比例（向上取整到元，保持与出价阶段一致）
-            BigDecimal winnerDepositYuan = depositRatio.multiply(finalPriceYuan)
-                    .setScale(0, BigDecimal.ROUND_CEILING);
+            // 查询中标者在该拍品上的实际冻结保证金
+            BigDecimal actualWinnerDepositYuan = userDepositTransactionService.getFrozenAmountByUserAndItem(winnerUserId, itemId);
+            log.info("中标者实际冻结保证金: winnerUserId={}, itemId={}, actualFrozen={}", winnerUserId, itemId, actualWinnerDepositYuan);
 
             // 创建订单（金额单位：元）
-            BigDecimal balanceYuan = finalPriceYuan.add(commissionYuan).subtract(winnerDepositYuan);
+            BigDecimal balanceYuan = finalPriceYuan.add(commissionYuan).subtract(actualWinnerDepositYuan);
             if (balanceYuan.compareTo(BigDecimal.ZERO) < 0) balanceYuan = BigDecimal.ZERO;
 
             AuctionOrder order = new AuctionOrder();
@@ -160,7 +163,7 @@ public class AuctionSettlementService {
             order.setBuyerId(winnerUserId);
             order.setSellerId(1L); // 超级管理员/平台
             order.setTotalAmount(finalPriceYuan);
-            order.setDepositAmount(winnerDepositYuan);
+            order.setDepositAmount(actualWinnerDepositYuan);
             order.setBalanceAmount(balanceYuan);
             order.setStatus(1); // 待付款
             order.setCreateTime(LocalDateTime.now());
@@ -171,7 +174,7 @@ public class AuctionSettlementService {
             // 记录到结果
             result.setOrderId(orderId);
             result.setCommissionFee(commissionYuan);
-            result.setDepositUsed(winnerDepositYuan);
+            result.setDepositUsed(actualWinnerDepositYuan);
 
             // 发送中标通知（包含充值提醒）
             if (orderId != null) {
@@ -200,31 +203,39 @@ public class AuctionSettlementService {
                 }
             }
 
-            // 未中标者解冻保证金
+            // 未中标者解冻保证金 - 使用实际冻结金额
             for (Map.Entry<Long, BigDecimal> entry : userMaxBidYuan.entrySet()) {
                 Long userId = entry.getKey();
                 if (!userId.equals(winnerUserId)) {
-                    BigDecimal userDepositYuan = depositRatio.multiply(entry.getValue())
-                            .setScale(0, BigDecimal.ROUND_CEILING);
-                    BigDecimal unfreezeYuan = userDepositYuan;
-                    try {
-                        userDepositAccountService.unfreezeAmount(userId, unfreezeYuan, itemId, "item", "未中标解冻");
-                    } catch (Exception e) {
-                        log.warn("解冻未中标保证金失败: userId={}, itemId={}, err={}", userId, itemId, e.getMessage());
+                    // 查询该用户在该拍品上的实际冻结金额
+                    BigDecimal actualFrozenAmount = userDepositTransactionService.getFrozenAmountByUserAndItem(userId, itemId);
+                    if (actualFrozenAmount.compareTo(BigDecimal.ZERO) > 0) {
+                        try {
+                            userDepositAccountService.unfreezeAmount(userId, actualFrozenAmount, itemId, "item", "未中标解冻");
+                            log.info("未中标解冻保证金: userId={}, itemId={}, actualFrozen={}", userId, itemId, actualFrozenAmount);
+                        } catch (Exception e) {
+                            log.warn("解冻未中标保证金失败: userId={}, itemId={}, actualFrozen={}, err={}", userId, itemId, actualFrozenAmount, e.getMessage());
+                        }
+                    } else {
+                        log.warn("未中标用户无冻结保证金可解冻: userId={}, itemId={}", userId, itemId);
                     }
                 }
             }
         } else {
-            // 流拍：所有参与者解冻保证金
+            // 流拍：所有参与者解冻保证金 - 使用实际冻结金额
             for (Map.Entry<Long, BigDecimal> entry : userMaxBidYuan.entrySet()) {
                 Long userId = entry.getKey();
-                BigDecimal userDepositYuan = depositRatio.multiply(entry.getValue())
-                        .setScale(0, BigDecimal.ROUND_CEILING);
-                BigDecimal unfreezeYuan = userDepositYuan;
-                try {
-                    userDepositAccountService.unfreezeAmount(userId, unfreezeYuan, itemId, "item", "流拍解冻");
-                } catch (Exception e) {
-                    log.warn("流拍解冻保证金失败: userId={}, itemId={}, err={}", userId, itemId, e.getMessage());
+                // 查询该用户在该拍品上的实际冻结金额
+                BigDecimal actualFrozenAmount = userDepositTransactionService.getFrozenAmountByUserAndItem(userId, itemId);
+                if (actualFrozenAmount.compareTo(BigDecimal.ZERO) > 0) {
+                    try {
+                        userDepositAccountService.unfreezeAmount(userId, actualFrozenAmount, itemId, "item", "流拍解冻");
+                        log.info("流拍解冻保证金: userId={}, itemId={}, actualFrozen={}", userId, itemId, actualFrozenAmount);
+                    } catch (Exception e) {
+                        log.warn("流拍解冻保证金失败: userId={}, itemId={}, actualFrozen={}, err={}", userId, itemId, actualFrozenAmount, e.getMessage());
+                    }
+                } else {
+                    log.warn("流拍用户无冻结保证金可解冻: userId={}, itemId={}", userId, itemId);
                 }
             }
         }
