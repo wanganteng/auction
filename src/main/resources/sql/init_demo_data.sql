@@ -18,7 +18,6 @@ INSERT INTO auction_item (
 INSERT INTO auction_session (
   session_name, description, start_time, end_time, creator_id,
   deposit_ratio, commission_ratio,
-  min_deposit_amount, max_bid_amount, min_increment_amount,
   is_authentic, is_free_shipping, is_returnable,
   rules, status, cover_image, is_visible,
   anti_sniping_enabled, extend_threshold_sec, extend_seconds, extend_max_times,bid_increment_config_id,
@@ -30,13 +29,12 @@ INSERT INTO auction_session (
   DATE_ADD(NOW(), INTERVAL 2 DAY),
   1,
   0.10, 0.05,
-  100000, 100000000, 10000,
   1, 1, 1,
   '竞拍须知：加价幅度固定，拍得后请在48小时内完成支付。',
   1,
   '/images/default-session.jpg',
   1,
-  1, 60, 60, 5, 1
+  1, 60, 60, 5, 1,
   NOW()
 );
 

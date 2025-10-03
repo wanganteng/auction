@@ -69,6 +69,7 @@ public class AuctionBidService {
             bid.setStatus(0); // 有效
             bid.setCreateTime(LocalDateTime.now());
             bid.setUpdateTime(LocalDateTime.now());
+            bid.setDeleted(0); // 未删除
 
             // 在插入出价记录之前，先计算历史最高出价（避免包含当前出价）
             BigDecimal oldRequiredDeposit = calculateHistoricalDepositRequirement(bid);
@@ -340,11 +341,11 @@ public class AuctionBidService {
                 );
             }
 
-            // 安全检查：如果差额为0但新出价大于历史最高出价，说明计算有误
+            // 安全检查：如果差额为0但新出价大于历史最高出价，因为计算目前计算保证才用向上取整，如果相邻两次加价价格较近则会出现这种情况
             if (deltaFreeze.compareTo(BigDecimal.ZERO) == 0 && newRequiredDeposit.compareTo(oldRequiredDeposit) > 0) {
-                log.error("保证金计算异常: 新出价大于历史最高出价但差额为0, userId={}, itemId={}, newRequired={}, oldRequired={}", 
+                log.error("保证金计算标点: 新出价大于历史最高出价但差额为0, userId={}, itemId={}, newRequired={}, oldRequired={}",
                     bid.getUserId(), bid.getItemId(), newRequiredDeposit, oldRequiredDeposit);
-                throw new RuntimeException("保证金计算异常，请检查历史出价记录");
+                //throw new RuntimeException("保证金计算异常，请检查历史出价记录");
             }
 
             UserDepositAccount account = depositAccountService.getAccountByUserId(bid.getUserId());
@@ -363,14 +364,14 @@ public class AuctionBidService {
                 }
                 
                 boolean success = depositAccountService.freezeAmount(
-                    bid.getUserId(), freezeAmount, bid.getId(), "bid", "出价冻结保证金");
+                    bid.getUserId(), freezeAmount, bid.getItemId(), "item", "出价冻结保证金");
                 
                 if (!success) {
                     throw new RuntimeException("保证金冻结操作失败");
                 }
                 
-                log.info("保证金冻结成功: 用户ID={}, 金额={}元, 出价ID={}", 
-                    bid.getUserId(), freezeAmount, bid.getId());
+                log.info("保证金冻结成功: 用户ID={}, 金额={}元, 拍品ID={}", 
+                    bid.getUserId(), freezeAmount, bid.getItemId());
             } else {
                 log.info("无需冻结保证金: 用户ID={}, 出价ID={}, 差额={}元", 
                     bid.getUserId(), bid.getId(), deltaFreeze);

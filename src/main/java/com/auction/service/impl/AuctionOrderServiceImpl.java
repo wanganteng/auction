@@ -61,6 +61,9 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
             if (order.getUpdateTime() == null) {
                 order.setUpdateTime(LocalDateTime.now());
             }
+            if (order.getDeleted() == null) {
+                order.setDeleted(0); // 未删除
+            }
             
             int result = orderMapper.insert(order);
             if (result > 0) {
@@ -68,11 +71,11 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
                 return order.getId();
             } else {
                 log.error("订单创建失败: {}", order.getOrderNo());
-                return null;
+                throw new RuntimeException("订单创建失败: 数据库插入返回0");
             }
         } catch (Exception e) {
             log.error("创建订单时发生错误: {}", e.getMessage());
-            return null;
+            throw new RuntimeException("创建订单失败: " + e.getMessage(), e);
         }
     }
 
@@ -152,7 +155,7 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
                 boolean deducted = depositAccountService.deductFromAvailable(buyerId, totalPayAmount, orderId, "order", desc);
                 if (!deducted) {
                     log.error("扣除支付金额失败: orderId={}, amount={}", orderId, totalPayAmount);
-                    return false;
+                    throw new RuntimeException("扣除支付金额失败");
                 }
                 log.info("扣除支付金额成功: userId={}, amount={}", buyerId, totalPayAmount);
             }
@@ -163,8 +166,7 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
                 boolean deducted = depositAccountService.deductAmount(buyerId, depositAmount, orderId, "order", desc);
                 if (!deducted) {
                     log.error("扣除保证金失败: orderId={}, amount={}", orderId, depositAmount);
-                    // TODO: 这里应该回滚尾款扣除，建议使用事务管理
-                    return false;
+                    throw new RuntimeException("扣除保证金失败，事务将回滚");
                 }
                 log.info("保证金抵扣成功: userId={}, amount={}", buyerId, depositAmount);
             }
@@ -181,11 +183,11 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
                 return true;
             } else {
                 log.error("更新订单状态失败: {}", orderId);
-                return false;
+                throw new RuntimeException("更新订单状态失败");
             }
         } catch (Exception e) {
             log.error("支付订单时发生错误: orderId={}, error={}", orderId, e.getMessage(), e);
-            return false;
+            throw new RuntimeException("支付订单失败: " + e.getMessage(), e);
         }
     }
     
@@ -227,11 +229,11 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
                 return true;
             } else {
                 log.error("订单发货失败: {}", orderId);
-                return false;
+                throw new RuntimeException("订单发货失败");
             }
         } catch (Exception e) {
             log.error("订单发货时发生错误: {}", e.getMessage());
-            return false;
+            throw new RuntimeException("订单发货失败: " + e.getMessage(), e);
         }
     }
 
@@ -320,11 +322,11 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
                 return true;
             } else {
                 log.error("订单确认收货失败: {}", orderId);
-                return false;
+                throw new RuntimeException("订单确认收货失败");
             }
         } catch (Exception e) {
             log.error("确认收货时发生错误: {}", e.getMessage());
-            return false;
+            throw new RuntimeException("确认收货失败: " + e.getMessage(), e);
         }
     }
 
@@ -353,11 +355,11 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
                 return true;
             } else {
                 log.error("订单取消失败: {}", orderId);
-                return false;
+                throw new RuntimeException("订单取消失败");
             }
         } catch (Exception e) {
             log.error("取消订单时发生错误: {}", e.getMessage());
-            return false;
+            throw new RuntimeException("取消订单失败: " + e.getMessage(), e);
         }
     }
 
@@ -432,11 +434,11 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
                 return true;
             } else {
                 log.error("订单退款失败: {}", orderId);
-                return false;
+                throw new RuntimeException("订单退款失败");
             }
         } catch (Exception e) {
             log.error("订单退款时发生错误: {}", e.getMessage());
-            return false;
+            throw new RuntimeException("订单退款失败: " + e.getMessage(), e);
         }
     }
 
@@ -505,11 +507,11 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
                 return true;
             } else {
                 log.error("订单完成失败: {}", orderId);
-                return false;
+                throw new RuntimeException("订单完成失败");
             }
         } catch (Exception e) {
             log.error("完成订单时发生错误: {}", e.getMessage());
-            return false;
+            throw new RuntimeException("完成订单失败: " + e.getMessage(), e);
         }
     }
 
@@ -545,11 +547,11 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
                 return true;
             } else {
                 log.error("订单状态更新失败: {}, 状态: {}", orderId, status);
-                return false;
+                throw new RuntimeException("订单状态更新失败");
             }
         } catch (Exception e) {
             log.error("更新订单状态时发生错误: {}", e.getMessage());
-            return false;
+            throw new RuntimeException("更新订单状态失败: " + e.getMessage(), e);
         }
     }
 }

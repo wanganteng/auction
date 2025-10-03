@@ -154,11 +154,23 @@
             padding: 30px;
         }
         
+        .item-title-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
         .item-title {
             font-size: 28px;
             font-weight: bold;
             color: #303133;
-            margin: 0 0 15px 0;
+            margin: 0;
+            flex: 1;
+        }
+        
+        .auction-status-badge {
+            margin-left: 15px;
         }
         
         .item-description {
@@ -584,7 +596,13 @@
                     
                     <div class="item-content">
                         <!-- 当前拍品信息（优先展示） -->
-                        <h1 class="item-title">{{ selectedItem?.itemName || '当前拍品' }}</h1>
+                        <div class="item-title-container">
+                            <h1 class="item-title">{{ selectedItem?.itemName || '当前拍品' }}</h1>
+                            <div class="auction-status-badge" v-if="auctionEndInfo.isEnded">
+                                <el-tag v-if="auctionEndInfo.hasWinner" type="success" size="large">成交</el-tag>
+                                <el-tag v-else-if="auctionEndInfo.isNoBid" type="info" size="large">流拍</el-tag>
+                            </div>
+                        </div>
                         <p class="item-description">{{ selectedItem?.description || '暂无拍品描述' }}</p>
                         <div class="item-details">
                             <div class="detail-item">
@@ -775,8 +793,10 @@
                                 <div>
                                     <div class="bid-user">
                                         {{ bid.username }}
-                                        <span class="bid-status" v-if="index === 0">领先</span>
-                                        <span class="bid-status" v-else>被超越</span>
+                                        <el-tag v-if="index === 0 && auctionEndInfo.isEnded && auctionEndInfo.hasWinner" 
+                                                type="success" size="small" style="margin-left: 8px;">中拍</el-tag>
+                                        <span v-else-if="index === 0" class="bid-status">领先</span>
+                                        <span v-else class="bid-status">被超越</span>
                                     </div>
                                     <div class="bid-time">{{ formatTime(bid.bidTime) }}</div>
                                 </div>
@@ -1524,19 +1544,12 @@
                             window.location.href = '/auction/user/orders';
                         });
                     } else {
-                        // 流拍
+                        // 流拍 - 不显示弹窗，只更新状态
                         this.auctionEndInfo.hasWinner = false;
                         this.auctionEndInfo.isNoBid = true;
                         
-                        ElMessageBox.alert(
-                            '拍卖结束！<br><br>很遗憾，本次拍卖无人出价，拍品流拍。',
-                            '拍卖结束',
-                            {
-                                dangerouslyUseHTMLString: true,
-                                confirmButtonText: '确定',
-                                type: 'info'
-                            }
-                        );
+                        // 显示简单的成功提示
+                        ElMessage.success('拍卖已结束');
                     }
                 }
             }

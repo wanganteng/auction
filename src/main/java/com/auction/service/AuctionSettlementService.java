@@ -83,6 +83,8 @@ public class AuctionSettlementService {
                 settleSingleItem(session, item, commissionRatio, depositRatio);
             } catch (Exception e) {
                 log.error("结算拍品失败: sessionId={}, itemId={}, err={}", sessionId, item.getId(), e.getMessage(), e);
+                // 重新抛出异常，确保事务回滚
+                throw new RuntimeException("结算拍品失败: " + e.getMessage(), e);
             }
         }
     }
@@ -168,8 +170,12 @@ public class AuctionSettlementService {
             order.setStatus(1); // 待付款
             order.setCreateTime(LocalDateTime.now());
             order.setUpdateTime(LocalDateTime.now());
+            order.setDeleted(0); // 未删除
 
             orderId = auctionOrderService.createOrder(order);
+            if (orderId == null) {
+                throw new RuntimeException("订单创建失败，无法继续结算流程");
+            }
 
             // 记录到结果
             result.setOrderId(orderId);
@@ -241,13 +247,24 @@ public class AuctionSettlementService {
         }
 
         // 写入结果表
-        auctionResultService.saveResult(result);
+        try {
+            auctionResultService.saveResult(result);
+        } catch (Exception e) {
+            log.error("保存拍卖结果失败: itemId={}, err={}", itemId, e.getMessage(), e);
+            throw new RuntimeException("保存拍卖结果失败: " + e.getMessage(), e);
+        }
+        
         // 更新拍品状态为已成交/流拍
-        AuctionItem update = new AuctionItem();
-        update.setId(itemId);
-        update.setStatus(sold ? 5 : 6); // 5-已成交 6-流拍
-        update.setUpdateTime(LocalDateTime.now());
-        auctionItemMapper.update(update);
+        try {
+            AuctionItem update = new AuctionItem();
+            update.setId(itemId);
+            update.setStatus(sold ? 5 : 6); // 5-已成交 6-流拍
+            update.setUpdateTime(LocalDateTime.now());
+            auctionItemMapper.update(update);
+        } catch (Exception e) {
+            log.error("更新拍品状态失败: itemId={}, status={}, err={}", itemId, sold ? 5 : 6, e.getMessage(), e);
+            throw new RuntimeException("更新拍品状态失败: " + e.getMessage(), e);
+        }
 
         // 发送拍卖结束消息到竞价房间
         sendAuctionEndMessage(sessionId, itemId, item, winnerUserId, finalPriceYuan);
