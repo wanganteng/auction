@@ -207,6 +207,25 @@
             top: 100px;
         }
         
+        .auction-status-alert {
+            margin: 20px 0;
+        }
+        
+        .auction-status-alert .el-alert {
+            border-radius: 8px;
+        }
+        
+        .auction-status-alert .el-alert__title {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .auction-status-alert .el-alert__content p {
+            margin: 8px 0 0 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
         .bidding-title {
             font-size: 20px;
             font-weight: bold;
@@ -707,6 +726,40 @@
                         </div>
                     </div>
                     
+                    <!-- 拍卖状态提示 -->
+                    <div v-if="!canBid && session" class="auction-status-alert">
+                        <el-alert 
+                            v-if="session.status === 1"
+                            title="拍卖尚未开始" 
+                            type="info" 
+                            :closable="false"
+                            show-icon>
+                            <template #default>
+                                <p>拍卖会将于 {{ formatTime(session.startTime) }} 开始，请耐心等待。</p>
+                            </template>
+                        </el-alert>
+                        <el-alert 
+                            v-else-if="session.status === 3"
+                            title="拍卖已结束" 
+                            type="warning" 
+                            :closable="false"
+                            show-icon>
+                            <template #default>
+                                <p>拍卖会已于 {{ formatTime(session.endTime) }} 结束，无法继续出价。</p>
+                            </template>
+                        </el-alert>
+                        <el-alert 
+                            v-else-if="session.status === 4"
+                            title="拍卖已取消" 
+                            type="error" 
+                            :closable="false"
+                            show-icon>
+                            <template #default>
+                                <p>此拍卖会已被取消，无法参与竞拍。</p>
+                            </template>
+                        </el-alert>
+                    </div>
+                    
                     <!-- 竞拍历史 -->
                     <div class="bid-history">
                         <h4 style="margin: 0 0 15px 0; color: #303133;">出价记录</h4>
@@ -822,6 +875,13 @@
                 },
                 canBid() {
                     if (!this.session) return false;
+                    
+                    // 检查拍卖会状态：只有进行中(2)才能出价
+                    if (this.session.status !== 2) {
+                        return false;
+                    }
+                    
+                    // 检查时间范围
                     const now = new Date();
                     const startTime = new Date(this.session.startTime);
                     const endTime = new Date(this.session.endTime);
