@@ -267,7 +267,14 @@ public class AuctionSettlementService {
         }
 
         // 发送拍卖结束消息到竞价房间
-        sendAuctionEndMessage(sessionId, itemId, item, winnerUserId, finalPriceYuan);
+        // 根据是否成交决定传递的参数
+        Long messageWinnerId = sold ? winnerUserId : null;
+        BigDecimal messageFinalPrice = sold ? finalPriceYuan : BigDecimal.ZERO;
+        
+        log.info("拍卖结算完成: itemId={}, sold={}, winnerId={}, finalPrice={}, messageWinnerId={}, messageFinalPrice={}", 
+            itemId, sold, winnerUserId, finalPriceYuan, messageWinnerId, messageFinalPrice);
+        
+        sendAuctionEndMessage(sessionId, itemId, item, messageWinnerId, messageFinalPrice);
     }
 
     /**

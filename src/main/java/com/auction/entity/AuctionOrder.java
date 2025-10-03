@@ -152,6 +152,11 @@ public class AuctionOrder {
     private AuctionSession session;
 
     /**
+     * 物流公司ID
+     */
+    private Long logisticsCompanyId;
+
+    /**
      * 物流信息（非数据库字段）
      */
     private AuctionLogistics logistics;

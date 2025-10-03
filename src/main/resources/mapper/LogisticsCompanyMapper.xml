@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.auction.mapper.LogisticsCompanyMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.auction.entity.LogisticsCompany">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="company_name" property="companyName" jdbcType="VARCHAR"/>
+        <result column="company_code" property="companyCode" jdbcType="VARCHAR"/>
+        <result column="base_fee" property="baseFee" jdbcType="DECIMAL"/>
+        <result column="insurance_rate" property="insuranceRate" jdbcType="DECIMAL"/>
+        <result column="enabled" property="enabled" jdbcType="TINYINT"/>
+        <result column="sort_order" property="sortOrder" jdbcType="INTEGER"/>
+        <result column="remark" property="remark" jdbcType="VARCHAR"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+        <result column="deleted" property="deleted" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, company_name, company_code, base_fee, insurance_rate, enabled, 
+        sort_order, remark, create_time, update_time, deleted
+    </sql>
+
+    <!-- 插入物流公司配置 -->
+    <insert id="insert" parameterType="com.auction.entity.LogisticsCompany" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO logistics_company (
+            company_name, company_code, base_fee, insurance_rate, enabled,
+            sort_order, remark, create_time, update_time, deleted
+        ) VALUES (
+            #{companyName}, #{companyCode}, #{baseFee}, #{insuranceRate}, #{enabled},
+            #{sortOrder}, #{remark}, NOW(), NOW(), 0
+        )
+    </insert>
+
+    <!-- 更新物流公司配置 -->
+    <update id="update" parameterType="com.auction.entity.LogisticsCompany">
+        UPDATE logistics_company
+        <set>
+            <if test="companyName != null">company_name = #{companyName},</if>
+            <if test="companyCode != null">company_code = #{companyCode},</if>
+            <if test="baseFee != null">base_fee = #{baseFee},</if>
+            <if test="insuranceRate != null">insurance_rate = #{insuranceRate},</if>
+            <if test="enabled != null">enabled = #{enabled},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = NOW()
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <!-- 根据ID查询物流公司 -->
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM logistics_company
+        WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <!-- 查询物流公司列表 -->
+    <select id="selectList" parameterType="com.auction.entity.LogisticsCompany" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM logistics_company
+        <where>
+            deleted = 0
+            <if test="companyName != null and companyName != ''">
+                AND company_name LIKE CONCAT('%', #{companyName}, '%')
+            </if>
+            <if test="companyCode != null and companyCode != ''">
+                AND company_code = #{companyCode}
+            </if>
+            <if test="enabled != null">
+                AND enabled = #{enabled}
+            </if>
+        </where>
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <!-- 根据ID删除物流公司（逻辑删除） -->
+    <update id="deleteById" parameterType="java.lang.Long">
+        UPDATE logistics_company
+        SET deleted = 1, update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 查询启用的物流公司列表 -->
+    <select id="selectEnabledCompanies" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM logistics_company
+        WHERE enabled = 1 AND deleted = 0
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <!-- 查询所有物流公司 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM logistics_company
+        WHERE deleted = 0
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+</mapper>
+

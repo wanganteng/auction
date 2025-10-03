@@ -326,6 +326,7 @@ CREATE TABLE `auction_order` (
   `receiver_phone` varchar(20) DEFAULT NULL COMMENT '收货人电话',
   `receiver_address` varchar(500) DEFAULT NULL COMMENT '收货地址',
   `pickup_address` varchar(500) DEFAULT NULL COMMENT '自提地址',
+  `logistics_company_id` bigint(20) DEFAULT NULL COMMENT '物流公司ID',
   `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '订单状态：1-待付款，2-已付款，3-已发货，4-已收货，5-已完成，6-已取消',
   `payment_time` datetime DEFAULT NULL COMMENT '付款时间',
   `ship_time` datetime DEFAULT NULL COMMENT '发货时间',
@@ -338,7 +339,8 @@ CREATE TABLE `auction_order` (
   KEY `idx_session_id` (`session_id`),
   KEY `idx_buyer_id` (`buyer_id`),
   KEY `idx_seller_id` (`seller_id`),
-  KEY `idx_status` (`status`)
+  KEY `idx_status` (`status`),
+  KEY `idx_logistics_company_id` (`logistics_company_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单表';
 
 -- 物流信息表
@@ -493,3 +495,33 @@ CREATE TABLE IF NOT EXISTS `audit_log` (
   KEY `idx_create_time` (`create_time`),
   KEY `idx_success` (`success`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='审计日志表';
+
+
+-- 创建物流公司配置表
+CREATE TABLE IF NOT EXISTS `logistics_company` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `company_name` varchar(100) NOT NULL COMMENT '物流公司名称',
+  `company_code` varchar(50) NOT NULL COMMENT '物流公司代码',
+  `base_fee` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '基础运费（元）',
+  `insurance_rate` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '保价费率（百分比，如0.5表示0.5%）',
+  `enabled` tinyint(1) NOT NULL DEFAULT '1' COMMENT '是否启用（0-禁用，1-启用）',
+  `sort_order` int(11) NOT NULL DEFAULT '0' COMMENT '排序权重',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否删除（0-未删除，1-已删除）',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_company_code` (`company_code`),
+  KEY `idx_enabled_sort` (`enabled`, `sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物流公司配置表';
+
+-- 插入默认物流公司数据
+INSERT INTO `logistics_company` (`company_name`, `company_code`, `base_fee`, `insurance_rate`, `enabled`, `sort_order`, `remark`) VALUES
+('顺丰速运', 'SF', 15.00, 0.50, 1, 1, '顺丰速运，安全快速'),
+('圆通速递', 'YTO', 12.00, 0.30, 1, 2, '圆通速递，经济实惠'),
+('中通快递', 'ZTO', 10.00, 0.25, 1, 3, '中通快递，覆盖广泛'),
+('申通快递', 'STO', 10.00, 0.25, 1, 4, '申通快递，服务稳定'),
+('韵达速递', 'YD', 8.00, 0.20, 1, 5, '韵达速递，价格优惠'),
+('京东物流', 'JD', 12.00, 0.40, 1, 6, '京东物流，自营配送'),
+('邮政EMS', 'EMS', 20.00, 1.00, 1, 7, '邮政EMS，全国覆盖'),
+('德邦快递', 'DBL', 18.00, 0.60, 1, 8, '德邦快递，大件运输');

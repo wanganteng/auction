@@ -477,47 +477,29 @@
                         <div class="order-amount">
                             <div class="amount-label">成交金额</div>
                             <div class="amount-value">¥{{ Number(order.totalAmount || 0).toFixed(2) }}</div>
-                            <!-- 待支付订单显示余额提示 -->
-                            <div v-if="order.status === 1 || order.status === 'pending'" style="margin-top: 8px;">
-                                <div style="font-size: 12px; color: #909399;">
-                                    保证金抵扣：¥{{ Number(order.depositAmount || 0).toFixed(2) }}
-                                </div>
-                                <div style="font-size: 12px; color: #909399;">
-                                    需付尾款：¥{{ Number(order.balanceAmount || 0).toFixed(2) }}
-                                </div>
-                                <div v-if="Number(order.balanceAmount || 0) > availableBalance" style="font-size: 12px; color: #E6A23C; margin-top: 4px;">
-                                    ⚠️ 余额不足，需充值 ¥{{ (Number(order.balanceAmount || 0) - availableBalance).toFixed(2) }}
-                                </div>
-                            </div>
                         </div>
                         
                         <div class="order-actions">
                             <el-button 
-                                v-if="order.status === 'pending'"
+                                v-if="order.status === 1 || order.status === 'pending'"
                                 type="primary" 
                                 @click="showPaymentDialog(order)"
                                 class="action-btn">
                                 立即支付
                             </el-button>
                             <el-button 
-                                v-if="order.status === 'pending'"
+                                v-if="order.status === 1 || order.status === 'pending'"
                                 type="danger" 
                                 @click="cancelOrder(order)"
                                 class="action-btn">
                                 取消订单
                             </el-button>
                             <el-button 
-                                v-if="order.status === 'shipped'"
+                                v-if="order.status === 3 || order.status === 'shipped'"
                                 type="success" 
                                 @click="confirmReceive(order)"
                                 class="action-btn">
                                 确认收货
-                            </el-button>
-                            <el-button 
-                                type="info" 
-                                @click="viewOrderDetail(order)"
-                                class="action-btn">
-                                查看详情
                             </el-button>
                         </div>
                         
@@ -565,20 +547,47 @@
                 <!-- 配送方式选择 -->
                 <div style="margin-bottom: 20px;">
                     <h4 style="margin: 0 0 15px 0; font-size: 16px; color: #303133;">选择配送方式</h4>
-                    <el-radio-group v-model="deliveryMethod" size="large">
+                    <el-radio-group v-model="deliveryMethod" size="large" @change="onDeliveryMethodChange">
                         <el-radio :label="1" border style="margin-right: 15px;">
                             <i class="el-icon-truck"></i> 物流配送
-                            <span v-if="currentOrder.item?.isFreeShipping || currentOrder.isFreeShipping" style="color: #67C23A; font-size: 12px; margin-left: 5px;">
+                            <span v-if="sessionIsFreeShipping === 1" style="color: #67C23A; font-size: 12px; margin-left: 5px;">
                                 （包邮 免运费）
                             </span>
                             <span v-else style="color: #E6A23C; font-size: 12px; margin-left: 5px;">
-                                （+¥{{ (currentOrder.item?.shippingFee || 15).toFixed(2) }}）
+                                （+¥{{ actualShippingFee.toFixed(2) }}）
                             </span>
                         </el-radio>
                         <el-radio :label="2" border>
                             <i class="el-icon-place"></i> 线下自提
                             <span style="color: #67C23A; font-size: 12px; margin-left: 5px;">（免运费）</span>
                         </el-radio>
+                    </el-radio-group>
+                </div>
+                
+                <!-- 物流公司选择（物流配送时显示且非包邮） -->
+                <div v-if="deliveryMethod === 1 && sessionIsFreeShipping !== 1" style="margin-bottom: 20px;">
+                    <h4 style="margin: 0 0 15px 0; font-size: 16px; color: #303133;">选择物流公司</h4>
+                    <el-radio-group v-model="selectedLogisticsCompanyId" @change="onLogisticsCompanyChange" style="width: 100%;">
+                        <div 
+                            v-for="company in logisticsCompanies" 
+                            :key="company.id"
+                            style="margin-bottom: 10px;">
+                            <el-radio :label="company.id" border style="width: 100%; padding: 15px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: bold; margin-bottom: 5px;">
+                                            {{ company.companyName }}
+                                        </div>
+                                        <div style="color: #909399; font-size: 13px;">
+                                            基础运费：¥{{ company.baseFee }} | 保价费率：{{ company.insuranceRate }}%
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right; color: #f56c6c; font-weight: bold;">
+                                        ¥{{ calculateCompanyFee(company).toFixed(2) }}
+                                    </div>
+                                </div>
+                            </el-radio>
+                        </div>
                     </el-radio-group>
                 </div>
                 
@@ -664,8 +673,12 @@
                 <!-- 支付明细 -->
                 <div class="payment-detail-box">
                     <div class="payment-detail-item">
-                        <span class="payment-detail-label">订单总额</span>
+                        <span class="payment-detail-label">拍品成交价</span>
                         <span class="payment-detail-value">¥{{ Number(currentOrder.totalAmount || 0).toFixed(2) }}</span>
+                    </div>
+                    <div class="payment-detail-item">
+                        <span class="payment-detail-label">佣金 ({{ (sessionCommissionRate * 100).toFixed(1) }}%)</span>
+                        <span class="payment-detail-value warning">+¥{{ commissionFee.toFixed(2) }}</span>
                     </div>
                     <div class="payment-detail-item">
                         <span class="payment-detail-label">保证金抵扣</span>
@@ -675,9 +688,15 @@
                         <span class="payment-detail-label">商品尾款</span>
                         <span class="payment-detail-value">¥{{ Number(currentOrder.balanceAmount || 0).toFixed(2) }}</span>
                     </div>
-                    <div class="payment-detail-item" v-if="actualShippingFee > 0">
+                    <div class="payment-detail-item" v-if="deliveryMethod === 1 && actualShippingFee > 0">
                         <span class="payment-detail-label">物流费用</span>
                         <span class="payment-detail-value warning">+¥{{ actualShippingFee.toFixed(2) }}</span>
+                    </div>
+                    <div class="payment-detail-item" v-if="deliveryMethod === 2 || sessionIsFreeShipping === 1">
+                        <span class="payment-detail-label">配送方式</span>
+                        <span class="payment-detail-value success">
+                            {{ deliveryMethod === 2 ? '线下自提（免运费）' : '包邮（免运费）' }}
+                        </span>
                     </div>
                     <div class="payment-detail-item">
                         <span class="payment-detail-label">实付金额</span>
@@ -789,7 +808,14 @@
                     },
                     // 地址管理
                     savedAddresses: [], // 保存的地址列表
-                    selectedAddressId: 0 // 选中的地址ID，0表示手动输入
+                    selectedAddressId: 0, // 选中的地址ID，0表示手动输入
+                    // 物流公司管理
+                    logisticsCompanies: [], // 物流公司列表
+                    selectedLogisticsCompanyId: null, // 选中的物流公司ID
+                    // 拍卖会信息
+                    sessionCommissionRate: 0, // 拍卖会佣金比例
+                    sessionIsFreeShipping: 0, // 拍卖会是否包邮
+                    commissionFee: 0 // 佣金费用
                 }
             },
             computed: {
@@ -827,18 +853,19 @@
                     // 如果是线下自提，物流费为0
                     if (this.deliveryMethod === 2) return 0;
                     
-                    // 检查拍品是否包邮（优先从 item 对象读取，其次从 order 读取）
-                    const isFreeShipping = this.currentOrder.item?.isFreeShipping || this.currentOrder.isFreeShipping;
-                    if (isFreeShipping) return 0;
+                    // 检查拍卖会是否包邮（从拍卖会表的isFreeShipping字段读取）
+                    if (this.sessionIsFreeShipping === 1) return 0;
                     
-                    // 读取拍品设置的运费（优先从 item 对象读取）
-                    const itemShippingFee = this.currentOrder.item?.shippingFee;
-                    if (itemShippingFee != null) {
-                        return Number(itemShippingFee);
+                    // 如果选择了物流公司，使用物流公司计算的费用
+                    if (this.selectedLogisticsCompanyId && this.deliveryMethod === 1) {
+                        const company = this.logisticsCompanies.find(c => c.id === this.selectedLogisticsCompanyId);
+                        if (company) {
+                            return this.calculateCompanyFee(company);
+                        }
                     }
                     
-                    // 如果拍品没有设置运费，使用默认值15元
-                    return 15;
+                    // 如果没有选择物流公司，返回0（等待用户选择）
+                    return 0;
                 },
                 // 计算实际需要支付的金额（尾款 + 物流费）
                 actualPayAmount() {
@@ -1006,7 +1033,14 @@
                 
                 // 获取状态样式类
                 getStatusClass(status) {
+                    // 支持数字和字符串两种格式
                     const statusMap = {
+                        1: 'status-pending',
+                        2: 'status-paid',
+                        3: 'status-shipped',
+                        4: 'status-delivered',
+                        5: 'status-delivered',
+                        6: 'status-cancelled',
                         'pending': 'status-pending',
                         'paid': 'status-paid',
                         'shipped': 'status-shipped',
@@ -1018,7 +1052,14 @@
                 
                 // 获取状态文本
                 getStatusText(status) {
+                    // 支持数字和字符串两种格式
                     const statusMap = {
+                        1: '待支付',
+                        2: '已支付',
+                        3: '已发货',
+                        4: '已收货',
+                        5: '已完成',
+                        6: '已取消',
                         'pending': '待支付',
                         'paid': '已支付',
                         'shipped': '已发货',
@@ -1067,6 +1108,53 @@
                         });
                 },
                 
+                // 加载物流公司列表
+                loadLogisticsCompanies() {
+                    axios.get('/api/user/logistics-companies')
+                        .then(response => {
+                            if (response.data.code === 200) {
+                                this.logisticsCompanies = response.data.data || [];
+                                // 如果有物流公司，默认选择第一个
+                                if (this.logisticsCompanies.length > 0) {
+                                    this.selectedLogisticsCompanyId = this.logisticsCompanies[0].id;
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            console.error('加载物流公司列表失败:', error);
+                        });
+                },
+                
+                // 计算物流公司费用
+                calculateCompanyFee(company) {
+                    if (!company || !this.currentOrder) return 0;
+                    
+                    const orderAmount = Number(this.currentOrder.totalAmount || 0);
+                    const baseFee = Number(company.baseFee || 0);
+                    const insuranceRate = Number(company.insuranceRate || 0);
+                    
+                    // 保价费用 = 订单金额 * 保价费率 / 100
+                    const insuranceFee = orderAmount * insuranceRate / 100;
+                    
+                    // 总费用 = 基础运费 + 保价费用
+                    return baseFee + insuranceFee;
+                },
+                
+                // 配送方式改变
+                onDeliveryMethodChange() {
+                    // 重置物流公司选择
+                    this.selectedLogisticsCompanyId = null;
+                    if (this.deliveryMethod === 1 && this.logisticsCompanies.length > 0) {
+                        this.selectedLogisticsCompanyId = this.logisticsCompanies[0].id;
+                    }
+                },
+                
+                // 物流公司改变
+                onLogisticsCompanyChange() {
+                    // 物流公司改变时，费用会自动重新计算
+                    console.log('物流公司改变:', this.selectedLogisticsCompanyId);
+                },
+                
                 // 选择地址
                 onAddressSelect(addressId) {
                     if (addressId === 0) {
@@ -1089,17 +1177,40 @@
                 },
                 
                 // 显示支付对话框
-                showPaymentDialog(order) {
+                async showPaymentDialog(order) {
                     this.currentOrder = order;
                     this.selectedPaymentMethod = '';
                     // 重置配送信息
                     this.deliveryMethod = 1;
                     this.receiverInfo = { name: '', phone: '', address: '' };
                     this.selectedAddressId = 0;
+                    this.selectedLogisticsCompanyId = null;
+                    
+                    // 加载拍卖会信息以获取佣金比例和包邮信息
+                    try {
+                        const sessionResponse = await axios.get(`/api/user/sessions/${order.sessionId}`);
+                        if (sessionResponse.data.code === 200) {
+                            const sessionData = sessionResponse.data.data;
+                            this.sessionCommissionRate = Number(sessionData.commissionRatio || 0);
+                            this.sessionIsFreeShipping = sessionData.isFreeShipping || 0;
+                            
+                            // 计算佣金费用 = 成交价 × 佣金比例（commissionRatio已经是小数，如0.05代表5%）
+                            this.commissionFee = Number(order.totalAmount || 0) * this.sessionCommissionRate;
+                        }
+                    } catch (e) {
+                        console.error('加载拍卖会信息失败:', e);
+                        // 使用默认值
+                        this.sessionCommissionRate = 0;
+                        this.sessionIsFreeShipping = 0;
+                        this.commissionFee = 0;
+                    }
+                    
                     // 刷新保证金余额
                     this.loadDepositBalance();
                     // 加载地址列表
                     this.loadAddresses();
+                    // 加载物流公司列表
+                    this.loadLogisticsCompanies();
                     this.paymentDialogVisible = true;
                 },
                 
@@ -1111,7 +1222,7 @@
                         return;
                     }
                     
-                    // 如果选择物流配送，验证收货信息
+                    // 如果选择物流配送，验证收货信息和物流公司
                     if (this.deliveryMethod === 1) {
                         if (!this.receiverInfo.name || !this.receiverInfo.phone || !this.receiverInfo.address) {
                             ElMessage.error('请填写完整的收货信息');
@@ -1121,6 +1232,12 @@
                         const phoneReg = /^1[3-9]\d{9}$/;
                         if (!phoneReg.test(this.receiverInfo.phone)) {
                             ElMessage.error('请输入正确的手机号');
+                            return;
+                        }
+                        // 验证是否选择了物流公司（非包邮情况下）
+                        const isFreeShipping = this.currentOrder.item?.isFreeShipping || this.currentOrder.isFreeShipping;
+                        if (!isFreeShipping && !this.selectedLogisticsCompanyId) {
+                            ElMessage.error('请选择物流公司');
                             return;
                         }
                     }
@@ -1159,6 +1276,7 @@
                             paymentMethod: 'deposit',
                             deliveryMethod: this.deliveryMethod,
                             shippingFee: this.actualShippingFee,
+                            logisticsCompanyId: this.selectedLogisticsCompanyId,
                             receiverName: this.receiverInfo.name,
                             receiverPhone: this.receiverInfo.phone,
                             receiverAddress: this.receiverInfo.address
@@ -1239,11 +1357,6 @@
                     });
                 },
                 
-                // 查看订单详情
-                viewOrderDetail(order) {
-                    // 跳转到订单详情页面
-                    window.location.href = `/auction/user/orders/${order.id}`;
-                },
                 
                 // 跳转到登录页面
                 async loadUnreadNotifications() {

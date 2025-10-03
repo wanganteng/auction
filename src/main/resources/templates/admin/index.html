@@ -310,6 +310,7 @@
                         </template>
                         <el-menu-item index="config" @click="goToPage('config')">系统配置</el-menu-item>
                         <el-menu-item index="user-management" @click="goToPage('user-management')">用户管理</el-menu-item>
+                        <el-menu-item index="logistics-companies" @click="goToPage('logistics-companies')">物流公司管理</el-menu-item>
                         <el-menu-item index="audit-logs" @click="goToPage('audit-logs')">审计日志</el-menu-item>
                         <el-menu-item index="notices" @click="goToPage('notices')">参拍须知</el-menu-item>
                         <el-menu-item index="bid-increments" @click="goToPage('bid-increments')">加价阶梯</el-menu-item>
@@ -377,6 +378,118 @@
                     </div>
 
                     <!-- 加价阶梯配置（含规则） -->
+                    <!-- 物流公司管理 -->
+                    <div v-else-if="activeMenu === 'logistics-companies'" class="logistics-companies-page">
+                        <div class="page-header">
+                            <h1>物流公司管理</h1>
+                            <el-button type="primary" @click="openCreateLogisticsCompany">
+                                <i class="el-icon-plus"></i>
+                                新建物流公司
+                            </el-button>
+                        </div>
+
+                        <!-- 搜索筛选 -->
+                        <el-card class="search-card">
+                            <el-form inline>
+                                <el-form-item label="公司名称">
+                                    <el-input v-model="logisticsSearchName" placeholder="请输入公司名称" clearable></el-input>
+                                </el-form-item>
+                                <el-form-item label="状态">
+                                    <el-select v-model="logisticsStatus" placeholder="请选择状态" clearable>
+                                        <el-option label="全部" value=""></el-option>
+                                        <el-option label="启用" :value="1"></el-option>
+                                        <el-option label="禁用" :value="0"></el-option>
+                                    </el-select>
+                                </el-form-item>
+                                <el-form-item>
+                                    <el-button type="primary" @click="searchLogisticsCompanies">搜索</el-button>
+                                    <el-button @click="resetLogisticsFilters">重置</el-button>
+                                </el-form-item>
+                            </el-form>
+                        </el-card>
+
+                        <!-- 物流公司表格 -->
+                        <el-card class="table-card">
+                            <el-table :data="logisticsCompanies" v-loading="logisticsLoading" stripe>
+                                <el-table-column prop="id" label="ID" width="80"></el-table-column>
+                                <el-table-column prop="companyName" label="公司名称" min-width="150"></el-table-column>
+                                <el-table-column prop="companyCode" label="公司代码" width="120"></el-table-column>
+                                <el-table-column prop="baseFee" label="基础运费(元)" width="120">
+                                    <template #default="scope">¥{{ scope.row.baseFee }}</template>
+                                </el-table-column>
+                                <el-table-column prop="insuranceRate" label="保价费率(%)" width="120">
+                                    <template #default="scope">{{ scope.row.insuranceRate }}%</template>
+                                </el-table-column>
+                                <el-table-column prop="sortOrder" label="排序" width="80"></el-table-column>
+                                <el-table-column prop="enabled" label="状态" width="100">
+                                    <template #default="scope">
+                                        <el-tag :type="scope.row.enabled === 1 ? 'success' : 'info'">
+                                            {{ scope.row.enabled === 1 ? '启用' : '禁用' }}
+                                        </el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="remark" label="备注" min-width="200" show-overflow-tooltip></el-table-column>
+                                <el-table-column label="操作" width="200" fixed="right">
+                                    <template #default="scope">
+                                        <el-button-group>
+                                            <el-button type="primary" size="small" @click="openEditLogisticsCompany(scope.row)">编辑</el-button>
+                                            <el-button type="danger" size="small" @click="deleteLogisticsCompany(scope.row)">删除</el-button>
+                                        </el-button-group>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+
+                            <!-- 分页 -->
+                            <div class="pagination-container" v-if="logisticsTotal > 0">
+                                <el-pagination
+                                    v-model:current-page="logisticsPage"
+                                    v-model:page-size="logisticsPageSize"
+                                    :page-sizes="[10, 20, 50, 100]"
+                                    :total="logisticsTotal"
+                                    layout="total, sizes, prev, pager, next, jumper"
+                                    @size-change="handleLogisticsSizeChange"
+                                    @current-change="handleLogisticsCurrentChange">
+                                </el-pagination>
+                            </div>
+                        </el-card>
+
+                        <!-- 新建/编辑物流公司对话框 -->
+                        <el-dialog v-model="logisticsDialogVisible" :title="logisticsForm.id ? '编辑物流公司' : '新建物流公司'" width="600px">
+                            <el-form :model="logisticsForm" label-width="120px">
+                                <el-form-item label="公司名称" required>
+                                    <el-input v-model="logisticsForm.companyName" placeholder="请输入公司名称" />
+                                </el-form-item>
+                                <el-form-item label="公司代码" required>
+                                    <el-input v-model="logisticsForm.companyCode" placeholder="如: SF, YTO" />
+                                </el-form-item>
+                                <el-form-item label="基础运费(元)" required>
+                                    <el-input-number v-model="logisticsForm.baseFee" :precision="2" :step="1" :min="0" />
+                                </el-form-item>
+                                <el-form-item label="保价费率(%)" required>
+                                    <el-input-number v-model="logisticsForm.insuranceRate" :precision="2" :step="0.1" :min="0" :max="100" />
+                                    <span style="margin-left: 10px; color: #999; font-size: 12px;">保价费 = 订单金额 × 保价费率 / 100</span>
+                                </el-form-item>
+                                <el-form-item label="排序权重">
+                                    <el-input-number v-model="logisticsForm.sortOrder" :min="0" />
+                                    <span style="margin-left: 10px; color: #999; font-size: 12px;">数值越小越靠前</span>
+                                </el-form-item>
+                                <el-form-item label="状态">
+                                    <el-radio-group v-model="logisticsForm.enabled">
+                                        <el-radio :value="1">启用</el-radio>
+                                        <el-radio :value="0">禁用</el-radio>
+                                    </el-radio-group>
+                                </el-form-item>
+                                <el-form-item label="备注">
+                                    <el-input type="textarea" :rows="3" v-model="logisticsForm.remark" placeholder="可选" />
+                                </el-form-item>
+                            </el-form>
+                            <template #footer>
+                                <el-button @click="logisticsDialogVisible = false">取消</el-button>
+                                <el-button type="primary" @click="saveLogisticsCompany" :loading="logisticsSaving">保存</el-button>
+                            </template>
+                        </el-dialog>
+                    </div>
+
                     <div v-else-if="activeMenu === 'bid-increments'" class="bid-increments-page">
                         <div class="page-header">
                             <h1>加价阶梯配置</h1>
@@ -2630,6 +2743,26 @@
                     bidConfigTotal: 0,
                     bidConfigSearchName: '',
                     bidConfigStatus: null,
+                    // 物流公司管理
+                    logisticsCompanies: [],
+                    logisticsLoading: false,
+                    logisticsPage: 1,
+                    logisticsPageSize: 10,
+                    logisticsTotal: 0,
+                    logisticsSearchName: '',
+                    logisticsStatus: null,
+                    logisticsDialogVisible: false,
+                    logisticsSaving: false,
+                    logisticsForm: {
+                        id: null,
+                        companyName: '',
+                        companyCode: '',
+                        baseFee: 0,
+                        insuranceRate: 0,
+                        sortOrder: 0,
+                        enabled: 1,
+                        remark: ''
+                    },
                     bidConfigDialogVisible: false,
                     bidConfigSaving: false,
                     bidConfigForm: {
@@ -3974,6 +4107,8 @@
                         this.loadConfigs();
                     } else if (path === 'user-management') {
                         this.loadUsers();
+                    } else if (path === 'logistics-companies') {
+                        this.loadLogisticsCompanies();
                     } else if (path === 'bid-increments') {
                         this.loadBidIncrementConfigs();
                     }
@@ -5103,6 +5238,139 @@
                 formatTime(time) {
                     if (!time) return '-';
                     return new Date(time).toLocaleString('zh-CN');
+                },
+                
+                // ========== 物流公司管理 ==========
+                async loadLogisticsCompanies() {
+                    this.logisticsLoading = true;
+                    try {
+                        const res = await axios.get('/api/admin/logistics-companies', {
+                            params: {
+                                page: this.logisticsPage,
+                                size: this.logisticsPageSize
+                            }
+                        });
+                        if (res.data.code === 200) {
+                            const data = res.data.data;
+                            this.logisticsCompanies = data.list || [];
+                            this.logisticsTotal = data.total || 0;
+                        }
+                    } catch (e) {
+                        console.error('加载物流公司列表失败:', e);
+                        ElMessage.error('加载物流公司列表失败');
+                    } finally {
+                        this.logisticsLoading = false;
+                    }
+                },
+                
+                searchLogisticsCompanies() {
+                    this.logisticsPage = 1;
+                    this.loadLogisticsCompanies();
+                },
+                
+                resetLogisticsFilters() {
+                    this.logisticsSearchName = '';
+                    this.logisticsStatus = null;
+                    this.logisticsPage = 1;
+                    this.loadLogisticsCompanies();
+                },
+                
+                handleLogisticsSizeChange(size) {
+                    this.logisticsPageSize = size;
+                    this.logisticsPage = 1;
+                    this.loadLogisticsCompanies();
+                },
+                
+                handleLogisticsCurrentChange(page) {
+                    this.logisticsPage = page;
+                    this.loadLogisticsCompanies();
+                },
+                
+                openCreateLogisticsCompany() {
+                    this.logisticsForm = {
+                        id: null,
+                        companyName: '',
+                        companyCode: '',
+                        baseFee: 0,
+                        insuranceRate: 0,
+                        sortOrder: 0,
+                        enabled: 1,
+                        remark: ''
+                    };
+                    this.logisticsDialogVisible = true;
+                },
+                
+                openEditLogisticsCompany(company) {
+                    this.logisticsForm = {
+                        id: company.id,
+                        companyName: company.companyName,
+                        companyCode: company.companyCode,
+                        baseFee: company.baseFee,
+                        insuranceRate: company.insuranceRate,
+                        sortOrder: company.sortOrder,
+                        enabled: company.enabled,
+                        remark: company.remark
+                    };
+                    this.logisticsDialogVisible = true;
+                },
+                
+                async saveLogisticsCompany() {
+                    if (!this.logisticsForm.companyName) {
+                        ElMessage.warning('请输入公司名称');
+                        return;
+                    }
+                    if (!this.logisticsForm.companyCode) {
+                        ElMessage.warning('请输入公司代码');
+                        return;
+                    }
+                    
+                    this.logisticsSaving = true;
+                    try {
+                        let res;
+                        if (this.logisticsForm.id) {
+                            // 编辑
+                            res = await axios.put(`/api/admin/logistics-companies/${this.logisticsForm.id}`, this.logisticsForm);
+                        } else {
+                            // 新建
+                            res = await axios.post('/api/admin/logistics-companies', this.logisticsForm);
+                        }
+                        
+                        if (res.data.code === 200) {
+                            ElMessage.success(this.logisticsForm.id ? '更新成功' : '创建成功');
+                            this.logisticsDialogVisible = false;
+                            this.loadLogisticsCompanies();
+                        } else {
+                            ElMessage.error(res.data.message || '操作失败');
+                        }
+                    } catch (e) {
+                        console.error('保存物流公司失败:', e);
+                        ElMessage.error('操作失败');
+                    } finally {
+                        this.logisticsSaving = false;
+                    }
+                },
+                
+                async deleteLogisticsCompany(company) {
+                    try {
+                        await ElMessageBox.confirm(`确定要删除物流公司 "${company.companyName}" 吗？`, '提示', {
+                            confirmButtonText: '确定',
+                            cancelButtonText: '取消',
+                            type: 'warning'
+                        });
+                        
+                        const res = await axios.delete(`/api/admin/logistics-companies/${company.id}`);
+                        if (res.data.code === 200) {
+                            ElMessage.success('删除成功');
+                            this.loadLogisticsCompanies();
+                        } else {
+                            ElMessage.error(res.data.message || '删除失败');
+                        }
+                    } catch (e) {
+                        if (e !== 'cancel') {
+                            console.error('删除物流公司失败:', e);
+                            ElMessage.error('删除失败');
+                        }
+                    }
                 },
                 
                 // 退出登录

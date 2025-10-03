@@ -51,6 +51,9 @@ public class UserController {
 
     @Autowired
     private AuctionBidService auctionBidService;
+    
+    @Autowired
+    private com.auction.service.LogisticsCompanyService logisticsCompanyService;
 
     @Autowired
     private AuctionOrderService auctionOrderService;
@@ -429,6 +432,83 @@ public class UserController {
     }
 
     /**
+     * 获取启用的物流公司列表
+     */
+    @GetMapping("/logistics-companies")
+    @Operation(summary = "获取启用的物流公司列表", description = "获取启用的物流公司列表供用户选择")
+    public Result<List<com.auction.entity.LogisticsCompany>> getEnabledLogisticsCompanies() {
+        try {
+            List<com.auction.entity.LogisticsCompany> companies = logisticsCompanyService.getEnabledCompanies();
+            return Result.success("查询成功", companies);
+        } catch (Exception e) {
+            log.error("获取启用的物流公司列表失败: {}", e.getMessage(), e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 计算物流费用
+     */
+    @PostMapping("/logistics-companies/calculate-fee")
+    @Operation(summary = "计算物流费用", description = "根据物流公司和订单金额计算物流费用")
+    public Result<java.math.BigDecimal> calculateLogisticsFee(@RequestBody Map<String, Object> params) {
+        try {
+            Long companyId = Long.valueOf(params.get("companyId").toString());
+            java.math.BigDecimal orderAmount = new java.math.BigDecimal(params.get("orderAmount").toString());
+            
+            java.math.BigDecimal fee = logisticsCompanyService.calculateShippingFee(companyId, orderAmount);
+            return Result.success("计算成功", fee);
+        } catch (Exception e) {
+            log.error("计算物流费用失败: {}", e.getMessage(), e);
+            return Result.error("计算失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取订单通知数量
+     */
+    @GetMapping("/orders/notification-count")
+    @Operation(summary = "获取订单通知数量", description = "获取用户订单相关的通知数量")
+    public Result<Integer> getOrderNotificationCount() {
+        try {
+            SysUser currentUser = SecurityUtils.getCurrentUser();
+            if (currentUser == null) {
+                return Result.error("用户未登录");
+            }
+            
+            // 统计待支付、待发货、待收货等需要用户处理的订单数量
+            int notificationCount = 0;
+            
+            // 待支付订单数量
+            AuctionOrder pendingPaymentOrder = new AuctionOrder();
+            pendingPaymentOrder.setBuyerId(currentUser.getId());
+            pendingPaymentOrder.setStatus(1); // 待支付
+            List<AuctionOrder> pendingPaymentOrders = auctionOrderService.getOrderList(pendingPaymentOrder);
+            notificationCount += pendingPaymentOrders.size();
+            
+            // 待发货订单数量（卖家视角）
+            AuctionOrder pendingShipOrder = new AuctionOrder();
+            pendingShipOrder.setSellerId(currentUser.getId());
+            pendingShipOrder.setStatus(2); // 已支付待发货
+            List<AuctionOrder> pendingShipOrders = auctionOrderService.getOrderList(pendingShipOrder);
+            notificationCount += pendingShipOrders.size();
+            
+            // 待收货订单数量（买家视角）
+            AuctionOrder pendingReceiveOrder = new AuctionOrder();
+            pendingReceiveOrder.setBuyerId(currentUser.getId());
+            pendingReceiveOrder.setStatus(3); // 已发货待收货
+            List<AuctionOrder> pendingReceiveOrders = auctionOrderService.getOrderList(pendingReceiveOrder);
+            notificationCount += pendingReceiveOrders.size();
+            
+            return Result.success("查询成功", notificationCount);
+            
+        } catch (Exception e) {
+            log.error("获取订单通知数量失败: {}", e.getMessage(), e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 支付订单
      */
     @PostMapping("/orders/pay")
@@ -450,6 +530,8 @@ public class UserController {
                 Integer.valueOf(paymentData.get("deliveryMethod").toString()) : 1;
             BigDecimal shippingFee = paymentData.containsKey("shippingFee") ? 
                 new BigDecimal(paymentData.get("shippingFee").toString()) : BigDecimal.ZERO;
+            Long logisticsCompanyId = paymentData.containsKey("logisticsCompanyId") ? 
+                Long.valueOf(paymentData.get("logisticsCompanyId").toString()) : null;
             String receiverName = paymentData.containsKey("receiverName") ? 
                 paymentData.get("receiverName").toString() : null;
             String receiverPhone = paymentData.containsKey("receiverPhone") ? 
@@ -460,6 +542,7 @@ public class UserController {
             // 更新订单的配送信息
             order.setDeliveryMethod(deliveryMethod);
             order.setShippingFee(shippingFee);
+            order.setLogisticsCompanyId(logisticsCompanyId);
             order.setReceiverName(receiverName);
             order.setReceiverPhone(receiverPhone);
             order.setReceiverAddress(receiverAddress);

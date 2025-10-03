@@ -881,6 +881,120 @@ public class AdminController {
         }
     }
 
+    // ==================== 物流公司配置管理 ====================
+
+    @Autowired
+    private com.auction.service.LogisticsCompanyService logisticsCompanyService;
+
+    /**
+     * 创建物流公司配置
+     */
+    @PostMapping("/logistics-companies")
+    @Operation(summary = "创建物流公司配置", description = "创建新的物流公司配置")
+    public Result<String> createLogisticsCompany(@RequestBody com.auction.entity.LogisticsCompany company) {
+        try {
+            boolean success = logisticsCompanyService.createCompany(company);
+            if (success) {
+                return Result.success("物流公司配置创建成功");
+            } else {
+                return Result.error("物流公司配置创建失败");
+            }
+        } catch (Exception e) {
+            log.error("创建物流公司配置失败: {}", e.getMessage(), e);
+            return Result.error("创建失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 更新物流公司配置
+     */
+    @PutMapping("/logistics-companies/{id}")
+    @Operation(summary = "更新物流公司配置", description = "更新物流公司配置")
+    public Result<String> updateLogisticsCompany(@PathVariable Long id, @RequestBody com.auction.entity.LogisticsCompany company) {
+        try {
+            company.setId(id);
+            boolean success = logisticsCompanyService.updateCompany(company);
+            if (success) {
+                return Result.success("物流公司配置更新成功");
+            } else {
+                return Result.error("物流公司配置更新失败");
+            }
+        } catch (Exception e) {
+            log.error("更新物流公司配置失败: {}", e.getMessage(), e);
+            return Result.error("更新失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 删除物流公司配置
+     */
+    @DeleteMapping("/logistics-companies/{id}")
+    @Operation(summary = "删除物流公司配置", description = "删除物流公司配置")
+    public Result<String> deleteLogisticsCompany(@PathVariable Long id) {
+        try {
+            boolean success = logisticsCompanyService.deleteCompany(id);
+            if (success) {
+                return Result.success("物流公司配置删除成功");
+            } else {
+                return Result.error("物流公司配置删除失败");
+            }
+        } catch (Exception e) {
+            log.error("删除物流公司配置失败: {}", e.getMessage(), e);
+            return Result.error("删除失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 查询物流公司配置列表
+     */
+    @GetMapping("/logistics-companies")
+    @Operation(summary = "查询物流公司配置列表", description = "查询物流公司配置列表")
+    public Result<com.github.pagehelper.PageInfo<com.auction.entity.LogisticsCompany>> getLogisticsCompanies(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            com.github.pagehelper.PageInfo<com.auction.entity.LogisticsCompany> pageInfo = 
+                logisticsCompanyService.getAllCompanies(page, size);
+            return Result.success("查询成功", pageInfo);
+        } catch (Exception e) {
+            log.error("查询物流公司配置列表失败: {}", e.getMessage(), e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取启用的物流公司列表
+     */
+    @GetMapping("/logistics-companies/enabled")
+    @Operation(summary = "获取启用的物流公司列表", description = "获取启用的物流公司列表")
+    public Result<List<com.auction.entity.LogisticsCompany>> getEnabledLogisticsCompanies() {
+        try {
+            List<com.auction.entity.LogisticsCompany> companies = logisticsCompanyService.getEnabledCompanies();
+            return Result.success("查询成功", companies);
+        } catch (Exception e) {
+            log.error("获取启用的物流公司列表失败: {}", e.getMessage(), e);
+            return Result.error("查询失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 计算物流费用
+     */
+    @PostMapping("/logistics-companies/calculate-fee")
+    @Operation(summary = "计算物流费用", description = "根据物流公司和订单金额计算物流费用")
+    public Result<java.math.BigDecimal> calculateLogisticsFee(@RequestBody Map<String, Object> params) {
+        try {
+            Long companyId = Long.valueOf(params.get("companyId").toString());
+            java.math.BigDecimal orderAmount = new java.math.BigDecimal(params.get("orderAmount").toString());
+            
+            java.math.BigDecimal fee = logisticsCompanyService.calculateShippingFee(companyId, orderAmount);
+            return Result.success("计算成功", fee);
+        } catch (Exception e) {
+            log.error("计算物流费用失败: {}", e.getMessage(), e);
+            return Result.error("计算失败: " + e.getMessage());
+        }
+    }
+
     // ==================== 物流管理 ====================
 
     /**

@@ -173,6 +173,12 @@
             margin-left: 15px;
         }
         
+        .success-price {
+            color: #67c23a !important;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
         .item-description {
             color: #606266;
             font-size: 16px;
@@ -530,7 +536,10 @@
                 </div>
                 <div class="nav-links">
                     <el-link :underline="false" disabled style="font-weight: bold; color: #409EFF; cursor: not-allowed;">拍卖会</el-link>
-                    <el-link href="/auction/user/orders" :underline="false">我的订单</el-link>
+                    <el-link href="/auction/user/orders" :underline="false">
+                        我的订单
+                        <el-badge :value="orderNotifications" :hidden="orderNotifications === 0" style="margin-left: 5px;"></el-badge>
+                    </el-link>
                     <el-link href="/auction/user/deposits" :underline="false">保证金</el-link>
                     <el-link href="/auction/user/addresses" :underline="false">收货地址</el-link>
                     <el-link href="/auction/user/notifications" :underline="false">我的通知</el-link>
@@ -617,9 +626,13 @@
                                 <div class="detail-label">当前价格</div>
                                 <div class="detail-value price-highlight">¥{{ currentPrice }}</div>
                             </div>
-                            <div class="detail-item">
+                            <div class="detail-item" v-if="auctionEndInfo.isEnded && auctionEndInfo.hasWinner">
+                                <div class="detail-label">落槌价</div>
+                                <div class="detail-value price-highlight success-price">¥{{ auctionEndInfo.finalPrice }}</div>
+                            </div>
+                            <div class="detail-item" v-if="selectedItem?.estimatePrice">
                                 <div class="detail-label">估价</div>
-                                <div class="detail-value">¥{{ selectedItem ? (selectedItem.estimatedPrice || 0) : 0 }}</div>
+                                <div class="detail-value">¥{{ selectedItem.estimatePrice }}</div>
                             </div>
                             <div class="detail-item">
                                 <div class="detail-label">材质</div>
@@ -838,6 +851,7 @@
                     isLoggedIn: false,
                     userInfo: {},
                     unreadNotifications: 0,
+                    orderNotifications: 0,
                     session: null,
                     currentPrice: 0,
                     currentItemId: null,
@@ -901,10 +915,17 @@
                         return false;
                     }
                     
-                    // 检查时间范围
+                    // 检查时间范围 - 立即检查结束时间
                     const now = new Date();
                     const startTime = new Date(this.session.startTime);
                     const endTime = new Date(this.session.endTime);
+                    
+                    // 如果当前时间超过结束时间，立即更新拍卖会状态
+                    if (now > endTime) {
+                        this.session.status = 3; // 设置为已结束状态
+                        return false;
+                    }
+                    
                     return now >= startTime && now <= endTime;
                 },
                 isValidBid() {
@@ -950,6 +971,8 @@
                     this.loadSession();
                     this.initWebSocket();
                     this.startCountdown();
+                    this.startAuctionTimeCheck(); // 启动拍卖时间检查
+                    this.loadOrderNotifications(); // 加载订单通知
                 }
             },
             beforeUnmount() {
@@ -1008,6 +1031,17 @@
                         }
                     } catch (error) {
                         console.error('获取未读通知数失败:', error);
+                    }
+                },
+                
+                async loadOrderNotifications() {
+                    try {
+                        const response = await axios.get('/api/user/orders/notification-count');
+                        if (response.data.code === 200) {
+                            this.orderNotifications = response.data.data || 0;
+                        }
+                    } catch (error) {
+                        console.error('获取订单通知数失败:', error);
                     }
                 },
                 
@@ -1220,6 +1254,21 @@
                             }
                         } catch (_) {}
                     }, 3000);
+                },
+                
+                // 定时检查拍卖结束时间
+                startAuctionTimeCheck() {
+                    if (this._timeCheckTimer) clearInterval(this._timeCheckTimer);
+                    this._timeCheckTimer = setInterval(() => {
+                        if (this.session && this.session.status === 2) {
+                            const now = new Date();
+                            const endTime = new Date(this.session.endTime);
+                            if (now > endTime) {
+                                this.session.status = 3; // 立即更新为已结束状态
+                                console.log('拍卖时间已到，自动结束');
+                            }
+                        }
+                    }, 1000); // 每秒检查一次
                 },
                 
                 // 处理WebSocket消息
@@ -1512,6 +1561,7 @@
                 
                 // 处理拍卖结束
                 handleAuctionEnd(data) {
+                    console.log('收到拍卖结束消息:', data);
                     this.auctionEndInfo.isEnded = true;
                     
                     const auctionData = data.data || {};
@@ -1519,30 +1569,19 @@
                     const finalPrice = auctionData.finalPriceYuan || auctionData.finalPrice;
                     const winnerName = auctionData.winnerName;
                     
-                    if (winnerId && finalPrice > 0) {
+                    if (winnerId && finalPrice && finalPrice > 0) {
                         // 有人中拍
                         this.auctionEndInfo.hasWinner = true;
                         this.auctionEndInfo.finalPrice = finalPrice;
                         this.auctionEndInfo.isNoBid = false;
                         this.auctionEndInfo.winnerName = winnerName || '未知用户';
                         
-                        ElMessageBox.alert(
-                            `🎉 拍卖结束！<br><br>` +
-                            `恭喜 <strong>${this.auctionEndInfo.winnerName}</strong> 成功竞得拍品！<br>` +
-                            `落槌价：<strong style="color: #f56c6c; font-size: 18px;">¥${finalPrice}</strong><br><br>` +
-                            `请中拍者前往【我的订单】完成支付。`,
-                            '拍卖结束',
-                            {
-                                dangerouslyUseHTMLString: true,
-                                confirmButtonText: '查看订单',
-                                type: 'success',
-                                showCancelButton: true,
-                                cancelButtonText: '继续浏览'
-                            }
-                        ).then(() => {
-                            // 跳转到订单页面
-                            window.location.href = '/auction/user/orders';
-                        });
+                        // 更新当前价格为成交价
+                        this.currentPrice = finalPrice;
+                        
+                        // 更新订单通知数量
+                        this.loadOrderNotifications();
+
                     } else {
                         // 流拍 - 不显示弹窗，只更新状态
                         this.auctionEndInfo.hasWinner = false;
