@@ -52,8 +52,8 @@ public class UserDepositTransactionService {
             transaction.setRelatedType(relatedType);
             transaction.setDescription(description);
             
-            // 根据交易类型设置状态：充值(1)和提现(6)需要审核，其他类型直接成功
-            if (transactionType == 1 || transactionType == 6) {
+            // 根据交易类型设置状态：充值(1)和提现(2)需要审核，其他类型直接成功
+            if (transactionType == 1 || transactionType == 2) {
                 transaction.setStatus(0); // 待审核
             } else {
                 transaction.setStatus(1); // 成功

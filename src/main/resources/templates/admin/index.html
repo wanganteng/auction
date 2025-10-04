@@ -3448,7 +3448,7 @@
                             // 过滤出已审核的（状态1或2），排除待审核（0）和处理中（3）
                             this.auditedDeposits = allTransactions.filter(t => {
                                 // 只显示充值(1)和提现(6)
-                                const isDepositOrWithdraw = t.transactionType === 1 || t.transactionType === 6;
+                                const isDepositOrWithdraw = t.transactionType === 1 || t.transactionType === 2;
                                 // 只显示已审核的状态（1成功或2失败）
                                 const isAudited = t.status === 1 || t.status === 2;
                                 

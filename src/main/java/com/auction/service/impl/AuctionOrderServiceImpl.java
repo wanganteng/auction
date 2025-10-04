@@ -260,7 +260,7 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
             Long buyerId = order.getBuyerId();
             BigDecimal totalRefund = order.getTotalAmount(); // 退款总额 = 成交价 + 佣金
             
-            // 1. 退还用户已支付的金额（尾款 + 保证金）
+            // 1. 退还用户已支付的金额（尾款 + 保证金 + 物流费）
             // 尾款退还
             if (order.getBalanceAmount() != null && order.getBalanceAmount().compareTo(BigDecimal.ZERO) > 0) {
                 String desc = "拒绝发货退款（尾款），订单号:" + order.getOrderNo() + "，原因:" + reason;
@@ -273,6 +273,13 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
                 String desc = "拒绝发货退款（保证金），订单号:" + order.getOrderNo() + "，原因:" + reason;
                 depositAccountService.recharge(buyerId, order.getDepositAmount(), desc);
                 log.info("退还保证金: orderId={}, amount={}", orderId, order.getDepositAmount());
+            }
+            
+            // 物流费退还
+            if (order.getShippingFee() != null && order.getShippingFee().compareTo(BigDecimal.ZERO) > 0) {
+                String desc = "拒绝发货退款（物流费），订单号:" + order.getOrderNo() + "，原因:" + reason;
+                depositAccountService.recharge(buyerId, order.getShippingFee(), desc);
+                log.info("退还物流费: orderId={}, amount={}", orderId, order.getShippingFee());
             }
             
             // 2. 更新订单状态为已取消

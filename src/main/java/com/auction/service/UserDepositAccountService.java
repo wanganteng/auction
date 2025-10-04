@@ -355,7 +355,7 @@ public class UserDepositAccountService {
             userDepositTransactionService.createTransaction(
                 account.getId(),
                 userId,
-                6, // 提现
+                2, // 提现
                 amount,
                 account.getAvailableAmount(),
                 account.getAvailableAmount(), // 待审核时余额不变
@@ -549,7 +549,7 @@ public class UserDepositAccountService {
             userDepositTransactionService.createTransaction(
                 account.getId(),
                 userId,
-                5, // 退还
+                6, // 退还
                 amount,
                 account.getRefundedAmount(),
                 newRefundedAmount,
