@@ -364,7 +364,7 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
     }
 
     /**
-     * 处理超时未支付订单：扣除保证金并取消订单
+     * 处理超时未支付订单：将冻结保证金转为违约金并取消订单
      * 超时阈值（分钟）从系统配置 order.pay.timeout_minutes 读取，默认30
      * 扣除金额=订单depositAmount（元）
      */
@@ -384,23 +384,27 @@ public class AuctionOrderServiceImpl implements AuctionOrderService {
                 }
 
                 try {
-                    // 扣除保证金
+                    // 将冻结的保证金转为违约金（从冻结金额中扣除，作为违约金没收）
                     Long buyerId = order.getBuyerId();
-                    if (order.getDepositAmount() != null) {
-                        String desc = "订单支付超时扣除保证金，订单号:" + order.getOrderNo();
+                    if (order.getDepositAmount() != null && order.getDepositAmount().compareTo(BigDecimal.ZERO) > 0) {
+                        String desc = String.format("超时未支付尾款，冻结保证金¥%.2f转为违约金，订单号:%s", 
+                            order.getDepositAmount(), order.getOrderNo());
                         boolean deducted = depositAccountService.deductAmount(buyerId, order.getDepositAmount(), order.getId(), "order", desc);
-                        if (!deducted) {
-                            log.warn("扣除保证金失败: orderId={}, buyerId={}", order.getId(), buyerId);
+                        if (deducted) {
+                            log.info("超时未支付尾款，冻结保证金已转为违约金: orderId={}, buyerId={}, 违约金={}元", 
+                                order.getId(), buyerId, order.getDepositAmount());
+                        } else {
+                            log.warn("扣除冻结保证金失败（转违约金）: orderId={}, buyerId={}", order.getId(), buyerId);
                         }
                     } else {
-                        log.warn("订单未设置保证金: orderId={}", order.getId());
+                        log.warn("订单未设置保证金或保证金为0: orderId={}", order.getId());
                     }
 
                     // 取消订单
                     order.setStatus(6); // 已取消
                     order.setUpdateTime(LocalDateTime.now());
                     orderMapper.update(order);
-                    log.info("订单超时已取消并处理保证金: {}", order.getId());
+                    log.info("订单超时已取消，冻结金额已转为违约金: orderId={}", order.getId());
                 } catch (Exception ex) {
                     log.error("处理超时订单失败: orderId={}, err={}", order.getId(), ex.getMessage(), ex);
                 }

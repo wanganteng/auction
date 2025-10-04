@@ -37,7 +37,7 @@ public class UserDepositTransaction {
     private String transactionNo;
 
     /**
-     * 交易类型：1-充值，2-冻结，3-解冻，4-扣除，5-退还
+     * 交易类型：1-充值，2-提现，3-冻结，4-解冻，5-扣除，6-退还
      */
     private Integer transactionType;
 

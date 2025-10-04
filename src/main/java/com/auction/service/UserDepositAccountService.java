@@ -156,7 +156,7 @@ public class UserDepositAccountService {
             userDepositTransactionService.createTransaction(
                 account.getId(),
                 userId,
-                2, // 冻结
+                3, // 冻结
                 amount,
                 account.getAvailableAmount(),
                 newAvailableAmount,
@@ -209,7 +209,7 @@ public class UserDepositAccountService {
             userDepositTransactionService.createTransaction(
                 account.getId(),
                 userId,
-                3, // 解冻
+                4, // 解冻
                 amount,
                 account.getAvailableAmount(),
                 newAvailableAmount,
@@ -311,11 +311,11 @@ public class UserDepositAccountService {
                 account.getRefundedAmount()
             );
 
-            // 记录交易流水（类型4-扣除）
+            // 记录交易流水（类型5-扣除）
             userDepositTransactionService.createTransaction(
                 account.getId(),
                 userId,
-                4, // 扣除
+                5, // 扣除
                 amount,
                 account.getFrozenAmount(),
                 newFrozenAmount,

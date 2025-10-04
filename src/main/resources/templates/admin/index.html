@@ -1031,8 +1031,17 @@
                                 </el-table-column>
                                 <el-table-column label="交易金额" width="150">
                                     <template #default="scope">
-                                        <span :style="{color: scope.row.transactionType === 1 || scope.row.transactionType === 3 || scope.row.transactionType === 5 ? '#67C23A' : '#F56C6C', fontWeight: 'bold'}">
-                                            {{ scope.row.transactionType === 1 || scope.row.transactionType === 3 || scope.row.transactionType === 5 ? '+' : '-' }}¥{{ Number(scope.row.amount || 0).toFixed(2) }}
+                                        <span :style="{
+                                            color: (scope.row.transactionType === 1 || scope.row.transactionType === 6) ? '#67C23A' : 
+                                                   (scope.row.transactionType === 2 || scope.row.transactionType === 5) ? '#F56C6C' : 
+                                                   scope.row.transactionType === 3 ? '#E6A23C' : 
+                                                   scope.row.transactionType === 4 ? '#409EFF' : '#909399',
+                                            fontWeight: 'bold'
+                                        }">
+                                            {{ (scope.row.transactionType === 1 || scope.row.transactionType === 6) ? '+' : 
+                                               (scope.row.transactionType === 2 || scope.row.transactionType === 5) ? '-' : 
+                                               scope.row.transactionType === 3 ? '🔒' : 
+                                               scope.row.transactionType === 4 ? '🔓' : '' }}¥{{ Number(scope.row.amount || 0).toFixed(2) }}
                                         </span>
                                     </template>
                                 </el-table-column>
@@ -3523,11 +3532,11 @@
                 getTransactionTypeTag(type) {
                     const tagMap = {
                         1: 'success',  // 充值
-                        2: 'warning',  // 冻结
-                        3: 'info',     // 解冻
-                        4: 'danger',   // 扣除
-                        5: 'success',  // 退还
-                        6: 'warning'   // 提现
+                        2: 'warning',  // 提现
+                        3: 'info',     // 冻结
+                        4: 'success',  // 解冻
+                        5: 'danger',   // 扣除（含违约金）
+                        6: 'success'   // 退还
                     };
                     return tagMap[type] || 'info';
                 },
@@ -3535,11 +3544,11 @@
                 getTransactionTypeName(type) {
                     const nameMap = {
                         1: '充值',
-                        2: '冻结',
-                        3: '解冻',
-                        4: '扣除',
-                        5: '退还',
-                        6: '提现'
+                        2: '提现',
+                        3: '冻结',
+                        4: '解冻',
+                        5: '扣除',
+                        6: '退还'
                     };
                     return nameMap[type] || '未知';
                 },

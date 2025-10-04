@@ -248,20 +248,20 @@ public class DepositController {
                     case 1: // 充值
                         totalRecharge = totalRecharge.add(transaction.getAmount());
                         break;
-                    case 2: // 冻结
+                    case 2: // 提现
+                        totalWithdraw = totalWithdraw.add(transaction.getAmount());
+                        break;
+                    case 3: // 冻结
                         totalFrozen = totalFrozen.add(transaction.getAmount());
                         break;
-                    case 3: // 解冻
+                    case 4: // 解冻
                         totalUnfrozen = totalUnfrozen.add(transaction.getAmount());
                         break;
-                    case 4: // 扣除
+                    case 5: // 扣除（包含违约金）
                         totalDeducted = totalDeducted.add(transaction.getAmount());
                         break;
-                    case 5: // 退还
+                    case 6: // 退还
                         totalRefunded = totalRefunded.add(transaction.getAmount());
-                        break;
-                    case 6: // 提现
-                        totalWithdraw = totalWithdraw.add(transaction.getAmount());
                         break;
                 }
             }

@@ -205,7 +205,7 @@ public class UserDepositTransactionService {
             query.setUserId(userId);
             query.setRelatedId(itemId);
             query.setRelatedType("item");
-            query.setTransactionType(2); // 冻结类型
+            query.setTransactionType(3); // 冻结类型
             query.setStatus(1); // 成功状态
             
             List<UserDepositTransaction> transactions = userDepositTransactionMapper.selectList(query);
