@@ -1101,17 +1101,32 @@
                 
                 // 加载出价历史
                 loadBidHistory() {
+                    // 获取当前拍卖会ID和拍品ID
                     const sessionId = this.getSessionIdFromUrl();
-                    axios.get(`/api/user/sessions/${sessionId}/bids`)
+                    const itemId = this.currentItemId; // 直接使用 currentItemId 而不是 currentItem?.id
+                    
+                    console.log('开始加载出价历史:', { sessionId, itemId, currentItemId: this.currentItemId, currentItem: this.currentItem });
+                    
+                    if (!sessionId || !itemId) {
+                        console.warn('拍卖会ID或拍品ID不存在，无法加载出价历史', { sessionId, itemId });
+                        return;
+                    }
+                    
+                    console.log('发起出价历史请求:', `/api/user/sessions/${sessionId}/items/${itemId}/bids`);
+                    
+                    axios.get(`/api/user/sessions/${sessionId}/items/${itemId}/bids`)
                         .then(response => {
+                            console.log('出价历史响应:', response.data);
                             if (response.data.code === 200) {
                                 const bids = response.data.data || [];
+                                console.log('获取到出价记录:', bids);
                                 // 按照出价金额从高到低排序，确保第一名是当前最高出价
                                 this.bidHistory = bids.sort((a, b) => {
                                     const amountA = Number(a.bidAmountYuan || 0);
                                     const amountB = Number(b.bidAmountYuan || 0);
                                     return amountB - amountA;
                                 });
+                                console.log('排序后的出价历史:', this.bidHistory);
                             }
                         })
                         .catch(error => {
@@ -1151,6 +1166,8 @@
                     this.currentImageIndex = 0;
                     // 重新加载最低出价信息
                     this.loadMinBidInfo();
+                    // 重新加载出价历史
+                    this.loadBidHistory();
                 },
                 
                 // 轮播图控制方法

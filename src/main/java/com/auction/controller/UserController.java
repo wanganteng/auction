@@ -276,15 +276,16 @@ public class UserController {
     }
 
     /**
-     * 获取拍卖会出价记录
+     * 获取拍品出价记录
      */
-    @GetMapping("/sessions/{id}/bids")
-    @Operation(summary = "获取出价记录", description = "获取指定拍卖会的出价记录")
-    public Result<List<Map<String, Object>>> getSessionBids(@PathVariable Long id) {
+    @GetMapping("/sessions/{sessionId}/items/{itemId}/bids")
+    @Operation(summary = "获取拍品出价记录", description = "获取指定拍卖会中指定拍品的出价记录")
+    public Result<List<Map<String, Object>>> getItemBids(@PathVariable Long sessionId, @PathVariable Long itemId) {
         try {
             // 使用现有的方法获取出价记录
             AuctionBid bidQuery = new AuctionBid();
-            bidQuery.setSessionId(id);
+            bidQuery.setSessionId(sessionId);  // 指定拍卖会
+            bidQuery.setItemId(itemId);       // 指定拍品
             bidQuery.setStatus(0); // 只查询有效出价
             List<AuctionBid> bids = auctionBidService.getBidList(bidQuery);
             
@@ -313,7 +314,7 @@ public class UserController {
             return Result.success("查询成功", bidList);
 
         } catch (Exception e) {
-            log.error("获取出价记录失败: {}", e.getMessage(), e);
+            log.error("获取拍品出价记录失败: {}", e.getMessage(), e);
             return Result.error("查询失败: " + e.getMessage());
         }
     }
