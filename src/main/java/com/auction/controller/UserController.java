@@ -76,6 +76,9 @@ public class UserController {
     @Autowired
     private BidIncrementService bidIncrementService;
 
+    @Autowired
+    private com.auction.mapper.AuctionResultMapper auctionResultMapper;
+
     // ==================== 拍卖会管理 ====================
 
     /**
@@ -248,6 +251,65 @@ public class UserController {
                 m.put("currentPrice", item.getCurrentPrice());
                 m.put("images", item.getImages());
                 m.put("status", item.getStatus());
+                
+                // 添加成交信息
+                if (item.getStatus() != null && (item.getStatus() == 5 || item.getStatus() == 6)) {
+                    // 拍品已结束（成交或流拍），查询成交信息
+                    try {
+                        // 查询拍卖结果（按会场+拍品，避免历史拍卖干扰）
+                        AuctionResult result = auctionResultMapper.selectBySessionAndItem(id, item.getId());
+                        if (result != null) {
+                            m.put("auctionResult", new HashMap<String, Object>() {{
+                                put("isEnded", true);
+                                put("hasWinner", result.getResultStatus() == 1); // 1-成交
+                                put("finalPrice", result.getFinalPrice());
+                                put("winnerId", result.getWinnerUserId());
+                                put("resultStatus", result.getResultStatus()); // 0-流拍 1-成交
+                            }});
+                            
+                            // 如果有中拍者，获取中拍者信息
+                            if (result.getWinnerUserId() != null && result.getResultStatus() == 1) {
+                                try {
+                                    SysUser winner = sysUserService.getById(result.getWinnerUserId());
+                                    if (winner != null) {
+                                        String winnerName = (winner.getNickname() != null && !winner.getNickname().trim().isEmpty()) 
+                                            ? winner.getNickname() 
+                                            : winner.getUsername();
+                                        ((Map<String, Object>) m.get("auctionResult")).put("winnerName", winnerName);
+                                    }
+                                } catch (Exception e) {
+                                    log.warn("获取中拍者信息失败: winnerId={}, error={}", result.getWinnerUserId(), e.getMessage());
+                                }
+                            }
+                        } else {
+                            // 没有拍卖结果记录，但拍品状态显示已结束
+                            m.put("auctionResult", new HashMap<String, Object>() {{
+                                put("isEnded", true);
+                                put("hasWinner", false);
+                                put("finalPrice", item.getCurrentPrice());
+                                put("resultStatus", item.getStatus() == 5 ? 1 : 0); // 5-已成交 6-流拍
+                            }});
+                        }
+                    } catch (Exception e) {
+                        log.warn("查询拍品成交信息失败: itemId={}, error={}", item.getId(), e.getMessage());
+                        // 出错时设置默认值
+                        m.put("auctionResult", new HashMap<String, Object>() {{
+                            put("isEnded", true);
+                            put("hasWinner", false);
+                            put("finalPrice", item.getCurrentPrice());
+                            put("resultStatus", item.getStatus() == 5 ? 1 : 0);
+                        }});
+                    }
+                } else {
+                    // 拍品未结束，设置默认值
+                    m.put("auctionResult", new HashMap<String, Object>() {{
+                        put("isEnded", false);
+                        put("hasWinner", false);
+                        put("finalPrice", 0);
+                        put("resultStatus", 0);
+                    }});
+                }
+                
                 itemList.add(m);
             }
             sessionDetail.put("items", itemList);

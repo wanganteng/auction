@@ -1,6 +1,6 @@
 -- 数据库初始化数据脚本
 -- 用于初始化基础数据和测试数据
--- 注意：此脚本需要在 schema.sql 之后执行
+-- 注意：此脚本需要在 1_schema.sql 之后执行
 
 -- 1. 插入基础角色数据
 INSERT INTO `sys_role` (`role_name`, `role_code`, `description`) VALUES

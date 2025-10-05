@@ -1071,6 +1071,10 @@
                                     this.currentItemId = target.id;
                                     // 价格（后端拍品价格以元传入，此处保持元单位）
                                     this.currentPrice = target.currentPrice || target.startingPrice || 0;
+                                    
+                                    // 🔧 检查拍品成交状态并初始化auctionEndInfo
+                                    this.initAuctionEndInfo(target);
+                                    
                                     // 加载最低出价信息
                                     this.loadMinBidInfo();
                                 } else {
@@ -1576,6 +1580,34 @@
                     });
                 },
                 
+                // 初始化拍卖结束信息（页面加载时调用）
+                initAuctionEndInfo(item) {
+                    console.log('初始化拍品成交状态:', item);
+                    
+                    if (item && item.auctionResult) {
+                        const result = item.auctionResult;
+                        this.auctionEndInfo.isEnded = result.isEnded || false;
+                        this.auctionEndInfo.hasWinner = result.hasWinner || false;
+                        this.auctionEndInfo.finalPrice = result.finalPrice || 0;
+                        this.auctionEndInfo.winnerName = result.winnerName || '';
+                        this.auctionEndInfo.isNoBid = !result.hasWinner && result.isEnded;
+                        
+                        console.log('拍品成交状态:', this.auctionEndInfo);
+                        
+                        // 如果已成交，更新当前价格为成交价
+                        if (this.auctionEndInfo.isEnded && this.auctionEndInfo.hasWinner) {
+                            this.currentPrice = this.auctionEndInfo.finalPrice;
+                        }
+                    } else {
+                        // 没有成交信息，重置为默认值
+                        this.auctionEndInfo.isEnded = false;
+                        this.auctionEndInfo.hasWinner = false;
+                        this.auctionEndInfo.finalPrice = 0;
+                        this.auctionEndInfo.winnerName = '';
+                        this.auctionEndInfo.isNoBid = false;
+                    }
+                },
+                
                 // 处理拍卖结束
                 handleAuctionEnd(data) {
                     console.log('收到拍卖结束消息:', data);
@@ -1607,6 +1639,10 @@
                         // 显示简单的成功提示
                         ElMessage.success('拍卖已结束');
                     }
+                    
+                    // 🔧 关键修复：拍卖结束后重新加载出价历史
+                    console.log('拍卖结束，重新加载出价历史');
+                    this.loadBidHistory();
                 }
             }
         }).use(ElementPlus).mount('#app');

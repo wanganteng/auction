@@ -1,18 +1,18 @@
 -- 初始化演示数据：拍品、拍卖会、拍卖会与拍品关联
--- 执行前请确认已导入 schema.sql 并存在必要表结构
+-- 执行前请确认已导入 1_schema.sql 并存在必要表结构
 
 -- 1) 插入拍品（拍品金额字段单位为“元”的小数）
 INSERT INTO auction_item (
   item_name, description, category_id, starting_price, current_price, reserve_price,
   deposit_ratio, commission_ratio, is_authentic, is_free_shipping, is_returnable,
-  status, uploader_id, images, create_time
+  status, uploader_id, images, item_code, dimensions, material, create_time
 ) VALUES
 ('清代青花瓷瓶', '清代青花纹饰，保存完好。', 2, 5000.00, 5000.00, 8000.00,
-  0.10, 0.05, 1, 1, 1, 1, 1, '["/images/default-item.jpg"]', NOW()),
+  0.10, 0.05, 1, 1, 1, 1, 1, '["/images/default-item.jpg"]', 'LOT-001', '未知', '未知', NOW()),
 ('明代黄花梨圈椅', '原木包浆，造型典雅。', 5, 15000.00, 15000.00, 20000.00,
-  0.10, 0.05, 1, 1, 1, 1, 1, '["/images/default-item.jpg"]', NOW()),
+  0.10, 0.05, 1, 1, 1, 1, 1, '["/images/default-item.jpg"]', 'LOT-002','未知','未知', NOW()),
 ('和田玉挂件', '青白玉质，工艺精细。', 3, 2000.00, 2000.00, 0.00,
-  0.10, 0.05, 1, 1, 1, 1, 1, '["/images/default-item.jpg"]', NOW());
+  0.10, 0.05, 1, 1, 1, 1, 1, '["/images/default-item.jpg"]', 'LOT-003', '未知', '未知',  NOW());
 
 -- 2) 创建拍卖会
 INSERT INTO auction_session (
