@@ -2433,7 +2433,8 @@
                                                 :file-list="imageFileList"
                                                 accept="image/*"
                                                 :on-exceed="handleExceed"
-                                                :before-upload="beforeUpload">
+                                                :before-upload="beforeUpload"
+                                                :show-file-list="false">
                                                 <el-button type="primary">
                                                     <el-icon class="el-icon-plus"></el-icon>
                                                     选择图片
@@ -3245,9 +3246,8 @@
                         if (response.data.success) {
                             // 处理图片数据
                             this.items = response.data.data.map(item => {
-                                // 解析图片数据
+                                // 解析图片数据 - 统一使用images字段
                                 let imageList = [];
-                                let detailImageList = [];
                                 
                                 if (item.images) {
                                     try {
@@ -3257,18 +3257,9 @@
                                     }
                                 }
                                 
-                                if (item.detailImages) {
-                                    try {
-                                        detailImageList = JSON.parse(item.detailImages);
-                                    } catch (e) {
-                                        console.warn('解析拍品详情图片失败:', e);
-                                    }
-                                }
-                                
                                 return {
                                     ...item,
-                                    imageList,
-                                    detailImageList
+                                    imageList
                                 };
                             });
                             this.itemsTotal = response.data.total || 0;

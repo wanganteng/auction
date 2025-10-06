@@ -47,7 +47,7 @@ public class AuctionItemService {
      * 创建拍品
      */
     @Transactional
-    public Long createItem(AuctionItem item, List<MultipartFile> imageFiles, List<MultipartFile> detailImageFiles) {
+    public Long createItem(AuctionItem item, List<MultipartFile> imageFiles) {
         try {
             // 设置默认值
             setDefaultValues(item);
@@ -56,11 +56,10 @@ public class AuctionItemService {
             if (imageFiles != null && !imageFiles.isEmpty()) {
                 List<String> imageUrls = commonImageService.uploadItemImages(imageFiles);
                 item.setImages(objectMapper.writeValueAsString(imageUrls));
-            }
-
-            if (detailImageFiles != null && !detailImageFiles.isEmpty()) {
-                List<String> detailImageUrls = commonImageService.uploadItemImages(detailImageFiles);
-                item.setDetailImages(objectMapper.writeValueAsString(detailImageUrls));
+                // 第一张图片作为详情图片（封面）
+                if (!imageUrls.isEmpty()) {
+                    item.setDetailImages(objectMapper.writeValueAsString(imageUrls));
+                }
             }
 
             // 验证至少需要一张图片
@@ -122,17 +121,16 @@ public class AuctionItemService {
      * 更新拍品（包含图片）
      */
     @Transactional
-    public boolean updateItem(AuctionItem item, List<MultipartFile> imageFiles, List<MultipartFile> detailImageFiles) {
+    public boolean updateItem(AuctionItem item, List<MultipartFile> imageFiles) {
         try {
             // 上传新图片
             if (imageFiles != null && !imageFiles.isEmpty()) {
                 List<String> imageUrls = commonImageService.uploadItemImages(imageFiles);
                 item.setImages(objectMapper.writeValueAsString(imageUrls));
-            }
-
-            if (detailImageFiles != null && !detailImageFiles.isEmpty()) {
-                List<String> detailImageUrls = commonImageService.uploadItemImages(detailImageFiles);
-                item.setDetailImages(objectMapper.writeValueAsString(detailImageUrls));
+                // 第一张图片作为详情图片（封面）
+                if (!imageUrls.isEmpty()) {
+                    item.setDetailImages(objectMapper.writeValueAsString(imageUrls));
+                }
             }
 
             // 设置更新时间
@@ -281,6 +279,15 @@ public class AuctionItemService {
             if (currentImages != null && !currentImages.trim().isEmpty()) {
                 // 直接使用前端传递的当前图片列表
                 existingItem.setImages(currentImages);
+                // 第一张图片作为详情图片（封面）
+                try {
+                    List<String> currentImageUrls = objectMapper.readValue(currentImages, new TypeReference<List<String>>() {});
+                    if (!currentImageUrls.isEmpty()) {
+                        existingItem.setDetailImages(objectMapper.writeValueAsString(currentImageUrls));
+                    }
+                } catch (Exception e) {
+                    log.warn("解析当前图片失败: {}", e.getMessage());
+                }
             }
             
             // 如果有新上传的图片，添加到现有图片列表中
@@ -303,6 +310,10 @@ public class AuctionItemService {
                 
                 // 更新图片列表
                 existingItem.setImages(objectMapper.writeValueAsString(currentImageUrls));
+                // 第一张图片作为详情图片（封面）
+                if (!currentImageUrls.isEmpty()) {
+                    existingItem.setDetailImages(objectMapper.writeValueAsString(currentImageUrls));
+                }
             }
 
             // 验证至少需要一张图片
@@ -394,10 +405,6 @@ public class AuctionItemService {
                 List<String> imageList = objectMapper.readValue(item.getImages(), new TypeReference<List<String>>() {});
                 item.setImageList(imageList);
             }
-            if (item.getDetailImages() != null && !item.getDetailImages().isEmpty()) {
-                List<String> detailImageList = objectMapper.readValue(item.getDetailImages(), new TypeReference<List<String>>() {});
-                item.setDetailImageList(detailImageList);
-            }
         } catch (Exception e) {
             log.warn("解析图片列表失败: {}", e.getMessage());
         }
@@ -410,15 +417,6 @@ public class AuctionItemService {
         try {
             if (item.getImageList() != null) {
                 for (String imageUrl : item.getImageList()) {
-                    // 从URL中提取对象名称
-                    String objectName = extractObjectNameFromUrl(imageUrl);
-                    if (objectName != null) {
-                        minioService.deleteFile(objectName);
-                    }
-                }
-            }
-            if (item.getDetailImageList() != null) {
-                for (String imageUrl : item.getDetailImageList()) {
                     // 从URL中提取对象名称
                     String objectName = extractObjectNameFromUrl(imageUrl);
                     if (objectName != null) {

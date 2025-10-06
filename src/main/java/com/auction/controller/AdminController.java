@@ -112,15 +112,14 @@ public class AdminController {
     @Operation(summary = "上传拍品", description = "超级管理员上传拍品")
     public Result<Map<String, Object>> uploadItem(
             @ModelAttribute AuctionItem item,
-            @RequestParam(value = "imageFiles", required = false) List<MultipartFile> imageFiles,
-            @RequestParam(value = "detailImageFiles", required = false) List<MultipartFile> detailImageFiles) {
+            @RequestParam(value = "imageFiles", required = false) List<MultipartFile> imageFiles) {
         try {
             // 获取当前用户
             SysUser currentUser = SecurityUtils.getCurrentUser();
             item.setUploaderId(currentUser.getId());
 
             // 创建拍品
-            Long itemId = auctionItemService.createItem(item, imageFiles, detailImageFiles);
+            Long itemId = auctionItemService.createItem(item, imageFiles);
 
             Map<String, Object> data = new HashMap<>();
             data.put("itemId", itemId);

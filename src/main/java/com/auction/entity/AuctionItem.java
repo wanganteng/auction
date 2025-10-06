@@ -174,8 +174,4 @@ public class AuctionItem {
      */
     private List<String> imageList;
 
-    /**
-     * 拍品详情图片列表（非数据库字段）
-     */
-    private List<String> detailImageList;
 }
