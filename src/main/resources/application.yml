@@ -58,6 +58,16 @@ spring:
           min-idle: 5
           max-wait: 3000ms
 
+  # 安全配置
+  security:
+    # 会话管理配置
+    session:
+      timeout: 1800  # 30分钟，单位：秒
+    # 登录安全配置
+    login:
+      max-attempts: 5
+      lockout-duration: 300  # 5分钟锁定时间
+
 # MinIO配置
 minio:
   endpoint: http://localhost:9000
@@ -89,3 +99,8 @@ auction:
     name: 拍卖系统
     version: 1.0.0
     description: 基于Spring Boot的在线拍卖系统
+
+  # 系统维护模式
+  maintenance:
+    enabled: false
+    message: "系统维护中，请稍后再试"

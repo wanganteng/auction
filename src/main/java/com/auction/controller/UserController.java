@@ -79,6 +79,9 @@ public class UserController {
     @Autowired
     private com.auction.mapper.AuctionResultMapper auctionResultMapper;
 
+    @Autowired
+    private com.auction.mapper.AuctionOrderMapper auctionOrderMapper;
+
     // ==================== 拍卖会管理 ====================
 
     /**
@@ -281,6 +284,60 @@ public class UserController {
                                     log.warn("获取中拍者信息失败: winnerId={}, error={}", result.getWinnerUserId(), e.getMessage());
                                 }
                             }
+
+                            // 追加履约 outcome：基于订单状态衍生最终展示
+                            try {
+                                AuctionOrder queryOrder = new AuctionOrder();
+                                queryOrder.setSessionId(id);
+                                queryOrder.setItemId(item.getId());
+                                List<AuctionOrder> orders = auctionOrderMapper.selectList(queryOrder);
+                                AuctionOrder latestOrder = null;
+                                if (orders != null && !orders.isEmpty()) {
+                                    // 选取最新的一条（优先按updateTime，其次按createTime，最后按id）
+                                    latestOrder = orders.stream().max((a,b) -> {
+                                        if (a.getUpdateTime() != null && b.getUpdateTime() != null) {
+                                            return a.getUpdateTime().compareTo(b.getUpdateTime());
+                                        } else if (a.getCreateTime() != null && b.getCreateTime() != null) {
+                                            return a.getCreateTime().compareTo(b.getCreateTime());
+                                        } else {
+                                            return Long.compare(
+                                                a.getId() == null ? 0L : a.getId(),
+                                                b.getId() == null ? 0L : b.getId()
+                                            );
+                                        }
+                                    }).orElse(null);
+                                }
+
+                                Integer orderStatus = latestOrder != null ? latestOrder.getStatus() : null;
+                                String orderStatusText;
+                                if (orderStatus == null) {
+                                    orderStatusText = "成交-待下单";
+                                } else {
+                                    switch (orderStatus) {
+                                        case 1: orderStatusText = "成交-未支付"; break;
+                                        case 2: orderStatusText = "成交-待发货"; break;
+                                        case 3: orderStatusText = "成交-运输中"; break;
+                                        case 4: orderStatusText = "成交-已收货"; break;
+                                        case 5: orderStatusText = "成交-已完成"; break;
+                                        case 6: orderStatusText = "成交-取消/违约"; break;
+                                        default: orderStatusText = "成交-处理中"; break;
+                                    }
+                                }
+
+                                Map<String, Object> outcome = new HashMap<>();
+                                outcome.put("isEnded", true);
+                                outcome.put("hasWinner", result.getResultStatus() == 1);
+                                outcome.put("finalPrice", result.getFinalPrice());
+                                outcome.put("winnerId", result.getWinnerUserId());
+                                outcome.put("winnerName", ((Map<String, Object>) m.get("auctionResult")).get("winnerName"));
+                                outcome.put("orderStatus", orderStatus);
+                                outcome.put("orderStatusText", orderStatusText);
+                                // 汇总文案：若无中拍者直接流拍，否则用订单状态文本
+                                outcome.put("finalOutcomeText", (result.getResultStatus() == 1) ? orderStatusText : "流拍");
+                                m.put("outcome", outcome);
+                            } catch (Exception e) {
+                                log.warn("装配拍品履约状态失败: sessionId={}, itemId={}, err={}", id, item.getId(), e.getMessage());
+                            }
                         } else {
                             // 没有拍卖结果记录，但拍品状态显示已结束
                             m.put("auctionResult", new HashMap<String, Object>() {{
@@ -289,6 +346,13 @@ public class UserController {
                                 put("finalPrice", item.getCurrentPrice());
                                 put("resultStatus", item.getStatus() == 5 ? 1 : 0); // 5-已成交 6-流拍
                             }});
+
+                            Map<String, Object> outcome = new HashMap<>();
+                            outcome.put("isEnded", true);
+                            outcome.put("hasWinner", false);
+                            outcome.put("finalPrice", item.getCurrentPrice());
+                            outcome.put("finalOutcomeText", "流拍");
+                            m.put("outcome", outcome);
                         }
                     } catch (Exception e) {
                         log.warn("查询拍品成交信息失败: itemId={}, error={}", item.getId(), e.getMessage());
@@ -299,6 +363,13 @@ public class UserController {
                             put("finalPrice", item.getCurrentPrice());
                             put("resultStatus", item.getStatus() == 5 ? 1 : 0);
                         }});
+
+                        Map<String, Object> outcome = new HashMap<>();
+                        outcome.put("isEnded", true);
+                        outcome.put("hasWinner", false);
+                        outcome.put("finalPrice", item.getCurrentPrice());
+                        outcome.put("finalOutcomeText", "流拍");
+                        m.put("outcome", outcome);
                     }
                 } else {
                     // 拍品未结束，设置默认值
@@ -308,6 +379,13 @@ public class UserController {
                         put("finalPrice", 0);
                         put("resultStatus", 0);
                     }});
+
+                    Map<String, Object> outcome = new HashMap<>();
+                    outcome.put("isEnded", false);
+                    outcome.put("hasWinner", false);
+                    outcome.put("finalPrice", 0);
+                    outcome.put("finalOutcomeText", "未结束");
+                    m.put("outcome", outcome);
                 }
                 
                 itemList.add(m);

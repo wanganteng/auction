@@ -56,12 +56,6 @@ INSERT INTO `sys_config` (`config_key`, `config_value`, `config_type`, `descript
 ('auction.auto_bid.enabled', 'true', 'BOOLEAN', '是否启用自动出价', 1, 1),
 ('auction.item.audit_enabled', 'true', 'BOOLEAN', '是否启用拍品审核', 1, 1),
 
--- 系统安全配置
-('system.maintenance_mode', 'false', 'BOOLEAN', '系统维护模式', 1, 1),
-('system.max_login_attempts', '5', 'NUMBER', '最大登录尝试次数', 1, 1),
-('system.session_timeout', '1800', 'NUMBER', '会话超时时间（秒）', 1, 1),
-('system.file.max_size', '10485760', 'NUMBER', '文件上传最大大小（字节）', 1, 1),
-('system.file.allowed_types', 'jpg,jpeg,png,gif', 'STRING', '允许上传的文件类型', 1, 1);
 
 -- 7. 参拍须知：预置分类
 INSERT INTO `notice_category` (`name`, `sort_order`, `enabled`, `content_html`,`create_time`, `update_time`) VALUES
