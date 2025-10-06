@@ -117,7 +117,7 @@ public class AdminController {
             @RequestParam(value = "status", defaultValue = "1") Integer status) {
         try {
             // 获取当前用户
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             item.setUploaderId(currentUser.getId());
             item.setStatus(status); // 设置上架状态
 
@@ -128,7 +128,6 @@ public class AdminController {
             data.put("itemId", itemId);
 
             return Result.success("拍品上传成功", data);
-
         } catch (Exception e) {
             log.error("拍品上传失败: {}", e.getMessage(), e);
             return Result.error("拍品上传失败: " + e.getMessage());
@@ -688,7 +687,7 @@ public class AdminController {
             @PathVariable Long id,
             @RequestBody(required = false) Map<String, String> params) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             String remark = params != null ? params.get("remark") : null;
             
             boolean success = userDepositAccountService.approveRecharge(id, currentUser.getId(), remark);
@@ -708,7 +707,7 @@ public class AdminController {
             @PathVariable Long id,
             @RequestBody(required = false) Map<String, String> params) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             String remark = params != null ? params.get("remark") : null;
             
             boolean success = userDepositAccountService.approveWithdraw(id, currentUser.getId(), remark);
@@ -728,7 +727,7 @@ public class AdminController {
             @PathVariable Long id,
             @RequestBody Map<String, String> params) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             String remark = params.get("remark");
             
             if (remark == null || remark.trim().isEmpty()) {
@@ -1113,7 +1112,7 @@ public class AdminController {
                                                @RequestParam Integer status, 
                                                @RequestParam(required = false) String auditComment) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             
             boolean success = userDepositRefundService.auditRefundApplication(
                 id, 
@@ -1167,15 +1166,6 @@ public class AdminController {
             log.error("拍卖会结算失败: sessionId={}, error={}", id, e.getMessage(), e);
             return Result.error("拍卖会结算失败: " + e.getMessage());
         }
-    }
-
-    /**
-     * 获取当前用户
-     * @deprecated 使用 SecurityUtils.getCurrentUser() 代替
-     */
-    @Deprecated
-    private SysUser getCurrentUser() {
-        return SecurityUtils.getCurrentUser();
     }
 
     /**

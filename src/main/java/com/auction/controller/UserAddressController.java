@@ -32,19 +32,6 @@ public class UserAddressController {
     @Autowired
     private UserAddressService userAddressService;
 
-    
-
-    /**
-     * 获取当前登录用户
-     */
-    private SysUser getCurrentUser() {
-        try {
-            return SecurityUtils.getCurrentUser();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
     /**
      * 获取当前用户的所有地址
      */
@@ -52,7 +39,7 @@ public class UserAddressController {
     @Operation(summary = "获取地址列表", description = "获取当前用户的所有收货地址")
     public Result<List<UserAddress>> getAddresses() {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             if (currentUser == null) {
                 return Result.error("未登录");
             }
@@ -72,7 +59,7 @@ public class UserAddressController {
     @Operation(summary = "获取默认地址", description = "获取当前用户的默认收货地址")
     public Result<UserAddress> getDefaultAddress() {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             if (currentUser == null) {
                 return Result.error("未登录");
             }
@@ -92,7 +79,7 @@ public class UserAddressController {
     @Operation(summary = "获取地址详情", description = "根据ID获取地址详情")
     public Result<UserAddress> getAddressById(@PathVariable Long id) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             if (currentUser == null) {
                 return Result.error("未登录");
             }
@@ -121,7 +108,7 @@ public class UserAddressController {
     @Operation(summary = "新增地址", description = "新增收货地址")
     public Result<String> addAddress(@RequestBody UserAddress address) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             if (currentUser == null) {
                 return Result.error("未登录");
             }
@@ -159,7 +146,7 @@ public class UserAddressController {
     @Operation(summary = "更新地址", description = "更新收货地址")
     public Result<String> updateAddress(@RequestBody UserAddress address) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             if (currentUser == null) {
                 return Result.error("未登录");
             }
@@ -196,7 +183,7 @@ public class UserAddressController {
     @Operation(summary = "删除地址", description = "删除收货地址")
     public Result<String> deleteAddress(@PathVariable Long id) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             if (currentUser == null) {
                 return Result.error("未登录");
             }
@@ -220,7 +207,7 @@ public class UserAddressController {
     @Operation(summary = "设置默认地址", description = "将指定地址设置为默认地址")
     public Result<String> setDefaultAddress(@PathVariable Long id) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             if (currentUser == null) {
                 return Result.error("未登录");
             }

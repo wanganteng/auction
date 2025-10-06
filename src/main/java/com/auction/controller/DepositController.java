@@ -8,6 +8,7 @@ import com.auction.entity.UserDepositTransaction;
 import com.auction.security.CustomUserDetailsService;
 import com.auction.service.UserDepositAccountService;
 import com.auction.service.UserDepositTransactionService;
+import com.auction.util.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
@@ -52,7 +53,7 @@ public class DepositController {
     @Operation(summary = "获取保证金账户信息", description = "获取当前用户的保证金账户信息")
     public Result<UserDepositAccount> getAccount() {
         try {
-            Long userId = getCurrentUserId();
+            Long userId = SecurityUtils.getCurrentUserId();
             if (userId == null) {
                 return Result.error("用户未登录");
             }
@@ -78,7 +79,7 @@ public class DepositController {
     @Operation(summary = "充值保证金", description = "向保证金账户充值")
     public Result<String> deposit(@Valid @RequestBody DepositRequest request) {
         try {
-            Long userId = getCurrentUserId();
+            Long userId = SecurityUtils.getCurrentUserId();
             if (userId == null) {
                 return Result.error("用户未登录");
             }
@@ -123,7 +124,7 @@ public class DepositController {
     @Operation(summary = "提现保证金", description = "从保证金账户提现")
     public Result<String> withdraw(@Valid @RequestBody WithdrawRequest request) {
         try {
-            Long userId = getCurrentUserId();
+            Long userId = SecurityUtils.getCurrentUserId();
             if (userId == null) {
                 return Result.error("用户未登录");
             }
@@ -173,7 +174,7 @@ public class DepositController {
             @RequestParam(defaultValue = "10") Integer pageSize,
             @RequestParam(required = false) Integer type) {
         try {
-            Long userId = getCurrentUserId();
+            Long userId = SecurityUtils.getCurrentUserId();
             if (userId == null) {
                 return Result.error("用户未登录");
             }
@@ -228,7 +229,7 @@ public class DepositController {
     @Operation(summary = "获取交易统计", description = "获取保证金账户的交易统计信息")
     public Result<Map<String, Object>> getStats() {
         try {
-            Long userId = getCurrentUserId();
+            Long userId = SecurityUtils.getCurrentUserId();
             if (userId == null) {
                 return Result.error("用户未登录");
             }
@@ -291,7 +292,7 @@ public class DepositController {
     @Operation(summary = "检查余额", description = "检查保证金账户余额是否足够")
     public Result<Map<String, Object>> checkBalance(@RequestParam Long amount) {
         try {
-            Long userId = getCurrentUserId();
+            Long userId = SecurityUtils.getCurrentUserId();
             if (userId == null) {
                 return Result.error("用户未登录");
             }
@@ -316,25 +317,6 @@ public class DepositController {
         } catch (Exception e) {
             log.error("检查余额失败: {}", e.getMessage());
             return Result.error("检查余额失败");
-        }
-    }
-
-    /**
-     * 获取当前用户ID
-     * 
-     * @return 用户ID
-     */
-    /**
-     * 获取当前用户ID
-     * @deprecated 使用 SecurityUtils.getCurrentUserId() 代替
-     */
-    @Deprecated
-    private Long getCurrentUserId() {
-        try {
-            return com.auction.util.SecurityUtils.getCurrentUserId();
-        } catch (Exception e) {
-            log.error("获取当前用户ID失败: {}", e.getMessage());
-            return null;
         }
     }
 }

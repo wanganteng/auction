@@ -1,5 +1,6 @@
 package com.auction.aspect;
 
+import cn.hutool.extra.servlet.ServletUtil;
 import com.auction.entity.AuditLog;
 import com.auction.entity.SysUser;
 import com.auction.security.CustomUserDetailsService;
@@ -77,8 +78,8 @@ public class AuditLogAspect {
         
         // 创建审计日志对象
         AuditLog auditLog = new AuditLog();
-        auditLog.setUserId(currentUser != null ? currentUser.getId() : null);
-        auditLog.setUsername(currentUser != null ? currentUser.getUsername() : "匿名");
+        auditLog.setUserId(currentUser.getId());
+        auditLog.setUsername(currentUser.getUsername());
         
         // 设置操作类型和模块
         setOperationTypeAndModule(auditLog, methodName);
@@ -117,7 +118,6 @@ public class AuditLogAspect {
             if (args.length > 0 && args[0] instanceof Long) {
                 auditLog.setTargetId((Long) args[0]);
             }
-            
         } catch (Exception e) {
             // 失败
             auditLog.setSuccess(0);
@@ -129,7 +129,7 @@ public class AuditLogAspect {
             long duration = System.currentTimeMillis() - startTime;
             auditLog.setDuration(duration);
             
-            // 异步记录日志（不阻塞主流程）
+            // 记录审计日志（同步操作，但失败不影响主流程）
             auditLogService.log(auditLog);
         }
         
@@ -209,20 +209,33 @@ public class AuditLogAspect {
 
     /**
      * 获取真实IP地址
+     * 使用Hutool工具类，简洁且功能完善
      */
     private String getIpAddress(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("X-Real-IP");
+        if (request == null) {
+            return "unknown";
         }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
+        
+        try {
+            // 使用Hutool的ServletUtil.getClientIP方法
+            // 该方法已经考虑了各种代理头的情况
+            String clientIp = ServletUtil.getClientIP(request);
+            
+            // 如果获取到的IP为空或unknown，使用备用方法
+            if (clientIp == null || clientIp.isEmpty() || "unknown".equalsIgnoreCase(clientIp)) {
+                clientIp = request.getRemoteAddr();
+            }
+            
+            // 如果仍然是unknown或空，返回默认值
+            if (clientIp == null || clientIp.isEmpty() || "unknown".equalsIgnoreCase(clientIp)) {
+                return "unknown";
+            }
+            
+            return clientIp;
+        } catch (Exception e) {
+            log.warn("获取客户端IP失败: {}", e.getMessage());
+            return "unknown";
         }
-        // 如果是多级代理，取第一个IP
-        if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
-        }
-        return ip;
     }
 }
 

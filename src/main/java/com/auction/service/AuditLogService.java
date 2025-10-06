@@ -33,9 +33,6 @@ public class AuditLogService {
     @Transactional
     public void log(AuditLog auditLog) {
         try {
-            if (auditLog.getCreateTime() == null) {
-                auditLog.setCreateTime(LocalDateTime.now());
-            }
             auditLogMapper.insert(auditLog);
         } catch (Exception e) {
             // 审计日志失败不应影响业务，只记录错误

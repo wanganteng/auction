@@ -5,6 +5,7 @@ import com.auction.entity.SysUser;
 import com.auction.entity.UserNotification;
 import com.auction.security.CustomUserDetailsService;
 import com.auction.service.UserNotificationService;
+import com.auction.util.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +41,7 @@ public class NotificationController {
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "20") Integer pageSize) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             if (currentUser == null) {
                 return Result.error("用户未登录");
             }
@@ -60,7 +61,7 @@ public class NotificationController {
     @Operation(summary = "获取未读数量", description = "获取当前用户的未读通知数量")
     public Result<Integer> getUnreadCount() {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             if (currentUser == null) {
                 return Result.error("用户未登录");
             }
@@ -80,7 +81,7 @@ public class NotificationController {
     @Operation(summary = "标记已读", description = "标记指定通知为已读")
     public Result<String> markAsRead(@PathVariable Long id) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             if (currentUser == null) {
                 return Result.error("用户未登录");
             }
@@ -109,7 +110,7 @@ public class NotificationController {
     @Operation(summary = "全部已读", description = "标记当前用户所有通知为已读")
     public Result<String> markAllAsRead() {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             if (currentUser == null) {
                 return Result.error("用户未登录");
             }
@@ -129,7 +130,7 @@ public class NotificationController {
     @Operation(summary = "删除通知", description = "删除指定通知")
     public Result<String> deleteNotification(@PathVariable Long id) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             if (currentUser == null) {
                 return Result.error("用户未登录");
             }
@@ -148,23 +149,6 @@ public class NotificationController {
         } catch (Exception e) {
             log.error("删除通知失败: id={}, error={}", id, e.getMessage(), e);
             return Result.error("删除失败");
-        }
-    }
-
-    /**
-     * 获取当前用户
-     */
-    /**
-     * 获取当前用户
-     * @deprecated 使用 SecurityUtils.getCurrentUser() 代替
-     */
-    @Deprecated
-    private SysUser getCurrentUser() {
-        try {
-            return com.auction.util.SecurityUtils.getCurrentUser();
-        } catch (Exception e) {
-            log.error("获取当前用户失败: {}", e.getMessage());
-            return null;
         }
     }
 }

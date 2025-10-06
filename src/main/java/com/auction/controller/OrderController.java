@@ -41,7 +41,7 @@ public class OrderController {
     public Result<Map<String, Object>> createOrder(@RequestBody AuctionOrder order) {
         try {
             // 获取当前用户
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             order.setBuyerId(currentUser.getId());
 
             // 创建订单
@@ -68,7 +68,7 @@ public class OrderController {
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
         try {
-            SysUser currentUser = getCurrentUser();
+            SysUser currentUser = SecurityUtils.getCurrentUser();
             
             // 创建查询条件
             AuctionOrder order = new AuctionOrder();
@@ -172,14 +172,5 @@ public class OrderController {
             log.error("订单取消失败: ID={}, 错误: {}", id, e.getMessage(), e);
             return Result.error("订单取消失败: " + e.getMessage());
         }
-    }
-
-    /**
-     * 获取当前用户
-     * @deprecated 使用 SecurityUtils.getCurrentUser() 代替
-     */
-    @Deprecated
-    private SysUser getCurrentUser() {
-        return SecurityUtils.getCurrentUser();
     }
 }
