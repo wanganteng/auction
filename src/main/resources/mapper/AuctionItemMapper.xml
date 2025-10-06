@@ -28,7 +28,6 @@
         <result column="certificate" property="certificate" jdbcType="VARCHAR"/>
         <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
         <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
-        <result column="deleted" property="deleted" jdbcType="TINYINT"/>
         <result column="auction_status" property="auctionStatus" jdbcType="TINYINT"/>
     </resultMap>
 
@@ -38,7 +37,7 @@
         deposit_ratio, commission_ratio, is_authentic, is_free_shipping, is_returnable,
         status, uploader_id,
         images, detail_images, weight, dimensions, material, era, source, certificate,
-        create_time, update_time, deleted
+        create_time, update_time
     </sql>
 
     <!-- 插入拍品 -->
@@ -48,13 +47,13 @@
             deposit_ratio, commission_ratio, is_authentic, is_free_shipping, is_returnable,
             status, uploader_id,
             images, detail_images, weight, dimensions, material, era, source, certificate,
-            create_time, update_time, deleted
+            create_time, update_time
         ) VALUES (
             #{itemName}, #{description}, #{categoryId}, #{startingPrice}, #{reservePrice}, #{currentPrice}, #{estimatedPrice}, #{itemCode},
             #{depositRatio}, #{commissionRatio}, #{isAuthentic}, #{isFreeShipping}, #{isReturnable},
             #{status}, #{uploaderId},
             #{images}, #{detailImages}, #{weight}, #{dimensions}, #{material}, #{era}, #{source}, #{certificate},
-            #{createTime}, #{updateTime}, #{deleted}
+            #{createTime}, #{updateTime}
         )
     </insert>
 
@@ -86,9 +85,8 @@
             <if test="source != null">source = #{source},</if>
             <if test="certificate != null">certificate = #{certificate},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
-            <if test="deleted != null">deleted = #{deleted},</if>
         </set>
-        WHERE id = #{id} AND deleted = 0
+        WHERE id = #{id}
     </update>
 
     <!-- 查询可分配到拍卖会的拍品：上架且未被未开始/进行中的拍卖会占用 -->
@@ -111,7 +109,7 @@
             END
           ) AS auction_status
         FROM auction_item ai
-        WHERE ai.deleted = 0
+        WHERE 1=1
           AND ai.status = 1
           AND NOT EXISTS (
             SELECT 1
@@ -145,7 +143,6 @@
         WHERE ai.id IN (
             SELECT item_id FROM auction_session_item WHERE session_id = #{sessionId}
         )
-        AND ai.deleted = 0
         ORDER BY ai.create_time DESC
   </select>
 
@@ -153,7 +150,7 @@
     <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM auction_item
-        WHERE id = #{id} AND deleted = 0
+        WHERE id = #{id}
     </select>
 
     <!-- 查询拍品列表 -->
@@ -161,7 +158,7 @@
         SELECT <include refid="Base_Column_List"/>
         FROM auction_item
         <where>
-            deleted = 0
+            1=1
             <if test="itemName != null and itemName != ''">
                 AND item_name LIKE CONCAT('%', #{itemName}, '%')
             </if>
@@ -180,11 +177,9 @@
     </select>
 
     <!-- 根据ID删除拍品 -->
-    <update id="deleteById" parameterType="java.lang.Long">
-        UPDATE auction_item
-        SET deleted = 1, update_time = NOW()
-        WHERE id = #{id}
-    </update>
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM auction_item WHERE id = #{id}
+    </delete>
 
     <!-- 根据拍卖会ID更新拍品状态 -->
     <update id="updateBySessionId">
@@ -199,7 +194,7 @@
     <select id="selectByStatus" parameterType="java.lang.Integer" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM auction_item
-        WHERE status = #{status} AND deleted = 0
+        WHERE status = #{status}
         ORDER BY create_time DESC
     </select>
 
@@ -207,7 +202,7 @@
     <select id="selectAll" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM auction_item
-        WHERE deleted = 0
+        WHERE 1=1
         ORDER BY create_time DESC
     </select>
 
@@ -215,7 +210,7 @@
     <select id="selectByUserId" parameterType="java.lang.Long" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM auction_item
-        WHERE uploader_id = #{userId} AND deleted = 0
+        WHERE uploader_id = #{userId}
         ORDER BY create_time DESC
     </select>
 
@@ -245,9 +240,8 @@
             <if test="source != null">source = #{source},</if>
             <if test="certificate != null">certificate = #{certificate},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
-            <if test="deleted != null">deleted = #{deleted},</if>
         </set>
-        WHERE id = #{id} AND deleted = 0
+        WHERE id = #{id}
     </update>
 
 </mapper>

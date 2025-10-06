@@ -79,7 +79,6 @@ public class AuctionServiceImpl implements AuctionService {
             item.setStatus(1); // 1-待审核
             item.setCreateTime(LocalDateTime.now());
             item.setUpdateTime(LocalDateTime.now());
-            item.setDeleted(0);
             
             int result = auctionItemMapper.insert(item);
             if (result > 0) {

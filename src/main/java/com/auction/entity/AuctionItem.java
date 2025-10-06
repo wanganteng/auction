@@ -156,10 +156,6 @@ public class AuctionItem {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
 
-    /**
-     * 删除标志：0-未删除，1-已删除
-     */
-    private Integer deleted;
 
     /**
      * 上传人信息（非数据库字段）

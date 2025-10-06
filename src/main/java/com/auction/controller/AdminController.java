@@ -113,13 +113,11 @@ public class AdminController {
     public Result<Map<String, Object>> uploadItem(
             @ModelAttribute AuctionItem item,
             @RequestParam(value = "imageFiles", required = false) List<MultipartFile> imageFiles,
-            @RequestParam(value = "detailImageFiles", required = false) List<MultipartFile> detailImageFiles,
-            @RequestParam(value = "status", defaultValue = "1") Integer status) {
+            @RequestParam(value = "detailImageFiles", required = false) List<MultipartFile> detailImageFiles) {
         try {
             // 获取当前用户
             SysUser currentUser = SecurityUtils.getCurrentUser();
             item.setUploaderId(currentUser.getId());
-            item.setStatus(status); // 设置上架状态
 
             // 创建拍品
             Long itemId = auctionItemService.createItem(item, imageFiles, detailImageFiles);

@@ -4266,9 +4266,9 @@
                         formData.append('description', this.uploadForm.description);
                         formData.append('status', this.uploadForm.status);
                         
-                        // 添加图片文件
+                        // 添加图片文件（使用不同的字段名避免与AuctionItem的images字段冲突）
                         this.imageFiles.forEach((imageFile, index) => {
-                            formData.append(`images`, imageFile.file);
+                            formData.append(`imageFiles`, imageFile.file);
                         });
                         
                         const response = await axios.post('/api/admin/items/upload', formData, {
@@ -4583,7 +4583,7 @@
                         let hasNewImages = false;
                         this.editImageFiles.forEach((imageFile, index) => {
                             if (!imageFile.isExisting && imageFile.file) {
-                                formData.append('images', imageFile.file);
+                                formData.append('imageFiles', imageFile.file);
                                 hasNewImages = true;
                             }
                         });
