@@ -9,7 +9,6 @@ import com.auction.mapper.AuctionSessionMapper;
 import com.auction.service.RedisService;
 import com.auction.service.UserDepositAccountService;
 import com.auction.entity.UserDepositAccount;
-import com.auction.monitor.DepositFreezeMonitor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -47,9 +46,6 @@ public class AuctionBidService {
 
     @Autowired
     private UserDepositAccountService depositAccountService;
-
-    @Autowired
-    private DepositFreezeMonitor depositFreezeMonitor;
 
     @Autowired
     private BidIncrementService bidIncrementService;
@@ -332,14 +328,6 @@ public class AuctionBidService {
             
             // 冻结金额（元）
             BigDecimal freezeAmount = deltaFreeze;
-            
-            // 记录监控数据（如果监控器可用）
-            if (depositFreezeMonitor != null) {
-                depositFreezeMonitor.recordFreezeOperation(
-                    bid.getUserId(), bid.getItemId(), bid.getSessionId(),
-                    bid.getBidAmountYuan(), freezeAmount, oldRequiredDeposit, newRequiredDeposit
-                );
-            }
 
             // 安全检查：如果差额为0但新出价大于历史最高出价，因为计算目前计算保证才用向上取整，如果相邻两次加价价格较近则会出现这种情况
             if (deltaFreeze.compareTo(BigDecimal.ZERO) == 0 && newRequiredDeposit.compareTo(oldRequiredDeposit) > 0) {

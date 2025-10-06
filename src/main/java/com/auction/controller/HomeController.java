@@ -14,10 +14,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class HomeController {
     
     /**
-     * 根路径重定向到用户首页
-     * 注意：静态资源（如 .html 文件）会由 Spring Boot 自动处理，
-     * 不会经过这个控制器
-     * 
      * @return 重定向到用户首页
      */
     @GetMapping("/")

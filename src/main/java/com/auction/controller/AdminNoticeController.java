@@ -19,9 +19,7 @@ public class AdminNoticeController {
 
     @Autowired
     private NoticeCategoryMapper categoryMapper;
-    // 简化后不再使用条目表
 
-    // 分类 -----------------------
     @GetMapping("/categories")
     @Operation(summary = "分类列表")
     public Result<List<NoticeCategory>> categories() {
@@ -51,8 +49,6 @@ public class AdminNoticeController {
         categoryMapper.deleteById(id);
         return Result.success("ok");
     }
-
-    // 条目接口移除（分类直接保存 content_html）
 }
 
 
