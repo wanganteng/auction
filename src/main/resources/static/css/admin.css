@@ -1,118 +1,152 @@
-/* 管理员界面样式 */
+/* 
+ * 文件名: admin.css
+ * 功能: 拍卖系统管理员界面样式表
+ * 说明: 定义了管理后台的所有UI样式，包括布局、导航、卡片、表格等组件样式
+ */
 
-/* 全局样式 */
+/* ========================= 全局样式 ========================= */
+/* 重置所有元素的边距和内边距，使用border-box盒模型 */
 * {
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
+    box-sizing: border-box;  /* 让padding和border包含在元素宽度内 */
 }
 
+/* 页面主体样式：设置中文字体栈和浅灰色背景 */
 body {
     font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
-    background-color: #f5f5f5;
+    background-color: #f5f5f5;  /* 浅灰色背景 */
 }
 
-/* 顶部导航 */
+/* ========================= 顶部导航栏 ========================= */
+/* 
+ * 顶部导航栏：固定在页面顶部
+ * 特点：白色背景、阴影效果、固定定位、高层级z-index
+ */
 .header {
-    background: #fff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background: #fff;  /* 白色背景 */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);  /* 底部阴影 */
     height: 60px !important;
     line-height: 60px;
-    position: fixed;
+    position: fixed;  /* 固定定位，始终显示在顶部 */
     top: 0;
     left: 0;
     right: 0;
-    z-index: 1000;
+    z-index: 1000;  /* 高层级，确保在其他元素之上 */
 }
 
+/* 导航栏内容容器：使用Flexbox布局，左右分布 */
 .header-content {
     max-width: 100%;
     margin: 0;
     padding: 0 20px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    justify-content: space-between;  /* 左右两端对齐 */
+    align-items: center;  /* 垂直居中 */
     height: 100%;
 }
 
+/* 左侧区域：包含Logo和导航菜单 */
 .left-section {
     display: flex;
     align-items: center;
 }
 
+/* Logo样式：显示系统图标和名称 */
 .logo {
     display: flex;
     align-items: center;
     font-size: 20px;
     font-weight: bold;
-    color: #409eff;
+    color: #409eff;  /* Element Plus主题色 */
     margin-right: 30px;
 }
 
+/* Logo图标 */
 .logo i {
     font-size: 24px;
     margin-right: 8px;
 }
 
+/* 右侧区域：包含用户信息和操作 */
 .right-section {
     display: flex;
     align-items: center;
 }
 
+/* 用户名显示区域：鼠标悬停时高亮 */
 .user-name {
     display: flex;
     align-items: center;
-    cursor: pointer;
+    cursor: pointer;  /* 指针光标 */
     padding: 8px 12px;
     border-radius: 4px;
-    transition: background-color 0.3s;
+    transition: background-color 0.3s;  /* 背景色过渡动画 */
 }
 
+/* 用户名悬停效果 */
 .user-name:hover {
-    background-color: #f5f7fa;
+    background-color: #f5f7fa;  /* 浅灰背景 */
 }
 
+/* 用户图标 */
 .user-name i {
     margin-right: 5px;
 }
 
-/* 主容器 */
+/* ========================= 主容器布局 ========================= */
+/* 主容器：包含侧边栏和主内容区 */
 .main-container {
-    margin-top: 60px;
-    height: calc(100vh - 60px);
+    margin-top: 60px;  /* 为固定导航栏留出空间 */
+    height: calc(100vh - 60px);  /* 减去导航栏高度 */
 }
 
-/* 侧边栏 */
+/* ========================= 侧边栏 ========================= */
+/* 
+ * 侧边栏：左侧导航菜单
+ * 特点：白色背景、阴影效果、可滚动
+ */
 .admin-sidebar {
-    background: #fff;
-    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+    background: #fff;  /* 白色背景 */
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);  /* 右侧阴影 */
     height: 100%;
-    overflow-y: auto;
+    overflow-y: auto;  /* 垂直滚动 */
 }
 
+/* 侧边栏菜单：移除默认右侧边框 */
 .admin-sidebar .el-menu {
     border-right: none;
 }
 
+/* 侧边栏菜单项：统一高度 */
 .admin-sidebar .el-menu-item {
     height: 50px;
     line-height: 50px;
 }
 
+/* 子菜单项：缩进显示 */
 .admin-sidebar .el-sub-menu .el-menu-item {
     height: 45px;
     line-height: 45px;
-    padding-left: 50px !important;
+    padding-left: 50px !important;  /* 增加左侧内边距以显示层级关系 */
 }
 
-/* 主内容区域 */
+/* ========================= 主内容区域 ========================= */
+/* 
+ * 主内容区域：右侧主要内容显示区
+ * 特点：浅灰背景、内边距、可滚动
+ */
 .admin-main {
     padding: 20px;
     background: #f5f5f5;
-    overflow-y: auto;
+    overflow-y: auto;  /* 垂直滚动 */
 }
 
-/* 面包屑导航 */
+/* ========================= 面包屑导航 ========================= */
+/* 
+ * 面包屑导航：显示当前页面位置
+ * 特点：白色背景、圆角、阴影
+ */
 .breadcrumb {
     margin-bottom: 20px;
     background: #fff;
@@ -121,17 +155,20 @@ body {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+/* 面包屑链接样式 */
 .breadcrumb a {
-    color: #409eff;
+    color: #409eff;  /* 蓝色链接 */
     text-decoration: none;
     cursor: pointer;
 }
 
+/* 面包屑链接悬停效果 */
 .breadcrumb a:hover {
-    text-decoration: underline;
+    text-decoration: underline;  /* 悬停时显示下划线 */
 }
 
-/* 页面内容 */
+/* ========================= 页面内容 ========================= */
+/* 页面内容容器：白色背景卡片样式 */
 .page-content {
     background: #fff;
     border-radius: 4px;
@@ -139,227 +176,293 @@ body {
     padding: 20px;
 }
 
-/* 仪表板 */
+/* ========================= 仪表板样式 ========================= */
+/* 仪表板标题 */
 .dashboard h1 {
     font-size: 24px;
     color: #303133;
     margin-bottom: 20px;
 }
 
+/* ========================= 仪表板数据展示 ========================= */
+/* 统计数据行容器 */
 .stats-row {
     margin-bottom: 30px;
 }
 
+/* 
+ * 统计卡片：显示关键指标数据
+ * 功能：鼠标悬停时会有上浮和阴影效果
+ */
 .stat-card {
     position: relative;
-    overflow: hidden;
-    cursor: pointer;
-    transition: transform 0.3s, box-shadow 0.3s;
+    overflow: hidden;      /* 隐藏超出内容 */
+    cursor: pointer;       /* 鼠标变为手型 */
+    transition: transform 0.3s, box-shadow 0.3s;  /* 平滑过渡动画 */
 }
 
+/* 统计卡片悬停效果：轻微上浮并增强阴影 */
 .stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);  /* 向上移动2像素 */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);  /* 增强阴影效果 */
 }
 
+/* 统计卡片内容：确保在图标之上显示 */
 .stat-content {
     position: relative;
-    z-index: 2;
+    z-index: 2;  /* 层级2，在背景图标之上 */
 }
 
+/* 统计数值：大号粗体显示 */
 .stat-value {
     font-size: 32px;
     font-weight: bold;
-    color: #303133;
+    color: #303133;  /* 深灰色 */
     margin-bottom: 8px;
 }
 
+/* 统计标签：说明文字 */
 .stat-label {
     font-size: 14px;
-    color: #909399;
+    color: #909399;  /* 浅灰色 */
 }
 
+/* 统计图标：半透明背景装饰图标 */
 .stat-icon {
-    position: absolute;
+    position: absolute;  /* 绝对定位 */
     top: 20px;
     right: 20px;
     font-size: 48px;
-    color: #409eff;
-    opacity: 0.3;
+    color: #409eff;      /* 蓝色主题色 */
+    opacity: 0.3;        /* 30%透明度，作为装饰 */
 }
 
-/* 最近活动 */
+/* ========================= 活动记录区域 ========================= */
+/* 最近活动列表：显示系统最近的操作记录 */
 .recent-activities {
     margin-top: 20px;
 }
 
+/* 卡片头部：标题和操作按钮的容器 */
 .card-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    justify-content: space-between;  /* 左右两端对齐 */
+    align-items: center;  /* 垂直居中 */
 }
 
-/* 页面头部 */
+/* ========================= 页面通用组件 ========================= */
+/* 
+ * 页面头部：包含页面标题和操作按钮
+ * 使用Flexbox布局，左右分布
+ */
 .page-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
     padding-bottom: 15px;
-    border-bottom: 1px solid #ebeef5;
+    border-bottom: 1px solid #ebeef5;  /* 底部分隔线 */
 }
 
+/* 页面标题样式 */
 .page-header h1 {
     font-size: 24px;
     color: #303133;
     margin: 0;
 }
 
-/* 搜索卡片 */
+/* ========================= 卡片容器 ========================= */
+/* 搜索卡片：包含搜索表单的容器 */
 .search-card {
     margin-bottom: 20px;
 }
 
-/* 表格卡片 */
+/* 表格卡片：包含数据表格的容器 */
 .table-card {
     margin-bottom: 20px;
 }
 
-/* 分页 */
+/* ========================= 分页组件 ========================= */
+/* 分页容器：水平居中显示分页组件 */
 .pagination-container {
     display: flex;
-    justify-content: center;
+    justify-content: center;  /* 水平居中 */
     margin-top: 20px;
 }
 
-/* 空状态 */
+/* ========================= Element Plus组件自定义样式 ========================= */
+
+/* ----- 空状态组件 ----- */
+/* 空数据提示：当列表没有数据时显示 */
 .el-empty {
-    padding: 40px 0;
+    padding: 40px 0;  /* 上下留白40px */
 }
 
-/* 表格样式 */
+/* ----- 表格组件样式 ----- */
+/* 
+ * 表格容器：Element Plus的Table组件
+ * 添加圆角和隐藏溢出，使表格更美观
+ */
 .el-table {
-    border-radius: 4px;
-    overflow: hidden;
+    border-radius: 4px;   /* 圆角边框 */
+    overflow: hidden;     /* 隐藏超出部分，保持圆角效果 */
 }
 
+/* 表格表头样式：浅灰色背景，中等字重 */
 .el-table th {
-    background-color: #fafafa;
-    color: #606266;
-    font-weight: 500;
+    background-color: #fafafa;  /* 浅灰色背景 */
+    color: #606266;             /* 中灰色文字 */
+    font-weight: 500;           /* 中等字重 */
 }
 
+/* 表格单元格：调整内边距 */
 .el-table td {
     padding: 12px 0;
 }
 
-/* 按钮组 */
+/* ----- 按钮组件 ----- */
+/* 按钮组：多个按钮排列在一起 */
 .el-button-group {
-    display: inline-flex;
+    display: inline-flex;  /* 行内弹性布局 */
 }
 
-/* 标签样式 */
+/* ----- 标签组件 ----- */
+/* 标签样式：添加圆角 */
 .el-tag {
     border-radius: 4px;
 }
 
-/* 表单样式 */
+/* ----- 表单组件 ----- */
+/* 行内表单项：调整间距，让表单更紧凑 */
 .el-form--inline .el-form-item {
-    margin-right: 20px;
-    margin-bottom: 15px;
+    margin-right: 20px;   /* 右侧间距 */
+    margin-bottom: 15px;  /* 底部间距 */
 }
 
-/* 卡片样式 */
+/* ----- 卡片组件 ----- */
+/* 
+ * 卡片容器：Element Plus的Card组件
+ * 用于包裹内容区块，提供统一的容器样式
+ */
 .el-card {
-    border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;  /* 圆角边框 */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);  /* 轻微阴影 */
 }
 
+/* 卡片头部：浅灰色背景，底部分隔线 */
 .el-card__header {
-    background-color: #fafafa;
-    border-bottom: 1px solid #ebeef5;
+    background-color: #fafafa;  /* 浅灰色背景 */
+    border-bottom: 1px solid #ebeef5;  /* 底部分隔线 */
     padding: 15px 20px;
 }
 
+/* 卡片主体内容区域 */
 .el-card__body {
     padding: 20px;
 }
 
-/* 时间线样式 */
+/* ----- 时间线组件 ----- */
+/* 时间线：用于显示时间序列事件 */
 .el-timeline {
-    padding-left: 0;
+    padding-left: 0;  /* 移除默认左侧内边距 */
 }
 
+/* 时间线时间戳：显示事件发生时间 */
 .el-timeline-item__timestamp {
-    color: #909399;
-    font-size: 12px;
+    color: #909399;    /* 浅灰色 */
+    font-size: 12px;   /* 小号字体 */
 }
 
-/* 描述列表样式 */
+/* ----- 描述列表组件 ----- */
+/* 描述列表：用于显示详情信息的键值对 */
 .el-descriptions {
     margin-top: 10px;
 }
 
+/* 描述列表标签：键名的样式 */
 .el-descriptions__label {
-    font-weight: 500;
-    color: #606266;
+    font-weight: 500;  /* 中等字重 */
+    color: #606266;    /* 中灰色 */
 }
 
-/* 响应式设计 */
+/* ========================= 响应式设计 ========================= */
+
+/* ----- 平板设备适配（屏幕宽度 <= 768px） ----- */
+/* 
+ * 适配iPad等中等屏幕设备
+ * 主要调整：侧边栏改为全宽，布局改为纵向
+ */
 @media (max-width: 768px) {
+    /* 主容器改为纵向布局 */
     .main-container {
-        flex-direction: column;
+        flex-direction: column;  /* 从横向改为纵向 */
     }
     
+    /* 侧边栏：改为全宽显示，不再固定高度 */
     .admin-sidebar {
-        width: 100% !important;
-        height: auto;
-        position: relative;
+        width: 100% !important;  /* 全宽显示 */
+        height: auto;            /* 高度自适应 */
+        position: relative;      /* 相对定位，不再固定 */
     }
     
+    /* 主内容区域：减小内边距 */
     .admin-main {
         padding: 10px;
     }
     
+    /* 页面头部：改为纵向排列 */
     .page-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
+        flex-direction: column;   /* 纵向排列 */
+        align-items: flex-start;  /* 左对齐 */
+        gap: 10px;                /* 项目间距10px */
     }
     
+    /* 统计卡片：增加底部间距 */
     .stats-row .el-col {
         margin-bottom: 10px;
     }
     
+    /* 行内表单：减小间距 */
     .el-form--inline .el-form-item {
         margin-right: 10px;
         margin-bottom: 10px;
     }
 }
 
+/* ----- 手机设备适配（屏幕宽度 <= 480px） ----- */
+/* 
+ * 适配iPhone等小屏幕设备
+ * 主要调整：进一步减小尺寸和间距，优化触摸体验
+ */
 @media (max-width: 480px) {
+    /* 头部内容：减小内边距 */
     .header-content {
         padding: 0 10px;
     }
     
+    /* Logo：减小字号和间距 */
     .logo {
-        font-size: 16px;
-        margin-right: 15px;
+        font-size: 16px;      /* 小号字体 */
+        margin-right: 15px;   /* 减小右侧间距 */
     }
     
+    /* 主内容区域：最小内边距 */
     .admin-main {
         padding: 5px;
     }
     
+    /* 页面内容：减小内边距 */
     .page-content {
         padding: 10px;
     }
     
+    /* 统计数值：减小字号 */
     .stat-value {
-        font-size: 24px;
+        font-size: 24px;  /* 从32px减小到24px */
     }
     
+    /* 统计图标：减小尺寸 */
     .stat-icon {
-        font-size: 32px;
+        font-size: 32px;  /* 从48px减小到32px */
     }
 }

@@ -25,29 +25,67 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 保证金控制器
- * 处理保证金相关的操作
+ * ========================================
+ * 保证金控制器（DepositController）
+ * ========================================
+ * 功能说明：
+ * 1. 处理用户保证金相关的HTTP请求
+ * 2. 提供保证金账户查询、充值、提现等功能
+ * 3. 提供保证金交易记录查询
+ * 4. 集成安全验证，确保用户只能操作自己的账户
+ * 
+ * API接口路径：/api/deposit
+ * 
+ * 主要功能：
+ * - GET /account：获取当前用户的保证金账户信息
+ * - POST /deposit：充值保证金
+ * - POST /withdraw：提现保证金（需审核）
+ * - GET /transactions：查询保证金交易记录
+ * 
+ * 保证金说明：
+ * - 用户参与竞拍前需要充值保证金
+ * - 出价时自动冻结保证金
+ * - 拍卖结束后解冻保证金
+ * - 成交后扣除保证金用于支付
+ * 
+ * 安全机制：
+ * - 使用Spring Security获取当前登录用户
+ * - 用户只能查看和操作自己的保证金账户
+ * - 所有金额操作都有日志记录
  * 
  * @author auction-system
  * @version 1.0.0
  * @since 2024-01-01
  */
-@Slf4j
-@RestController
-@RequestMapping("/api/deposit")
-@Tag(name = "保证金管理", description = "保证金相关接口")
+@Slf4j              // Lombok注解：自动生成log对象
+@RestController     // Spring注解：RESTful控制器，返回JSON格式数据
+@RequestMapping("/api/deposit")  // 基础请求路径
+@Tag(name = "保证金管理", description = "保证金相关接口")  // Swagger文档标签
 public class DepositController {
 
-    @Autowired
-    private UserDepositAccountService depositAccountService;
+    /* ========================= 依赖注入 ========================= */
 
     @Autowired
-    private UserDepositTransactionService transactionService;
+    private UserDepositAccountService depositAccountService;  // 保证金账户服务
+
+    @Autowired
+    private UserDepositTransactionService transactionService;  // 保证金交易服务
 
     /**
      * 获取保证金账户信息
      * 
-     * @return 账户信息
+     * 功能说明：
+     * 1. 获取当前登录用户的保证金账户信息
+     * 2. 包括总余额、可用余额、冻结金额等
+     * 3. 如果账户不存在，自动创建
+     * 
+     * 返回信息：
+     * - 总余额：账户的总金额
+     * - 可用余额：可以使用的金额（总余额 - 冻结金额）
+     * - 冻结金额：参与竞拍时被冻结的金额
+     * - 账户状态：正常(1)、冻结(2)等
+     * 
+     * @return Result对象，包含账户信息
      */
     @GetMapping("/account")
     @Operation(summary = "获取保证金账户信息", description = "获取当前用户的保证金账户信息")

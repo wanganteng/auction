@@ -24,47 +24,112 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 拍卖WebSocket处理器
- * 处理拍卖相关的WebSocket连接和消息
+ * ========================================
+ * 拍卖WebSocket处理器（AuctionWebSocketHandler）
+ * ========================================
+ * 功能说明：
+ * 1. 处理拍卖相关的WebSocket实时通信
+ * 2. 实现双向通信，服务器可以主动推送消息给客户端
+ * 3. 管理所有WebSocket连接（按拍卖会和用户分组）
+ * 4. 处理实时出价消息的接收和广播
+ * 5. 支持JWT认证，确保连接安全
+ * 
+ * WebSocket说明：
+ * - WebSocket是一种在单个TCP连接上进行全双工通讯的协议
+ * - 与HTTP不同，WebSocket支持服务器主动推送消息
+ * - 适合实时性要求高的场景（聊天、直播、拍卖等）
+ * 
+ * 连接管理：
+ * - auctionSessions：按拍卖会ID分组存储连接
+ * - userSessions：按用户ID存储连接
+ * - 使用ConcurrentHashMap保证线程安全
+ * 
+ * 消息类型：
+ * 1. bid：用户出价消息
+ * 2. bidUpdate：出价更新广播
+ * 3. statistics：统计信息更新
+ * 4. ruleInfo：加价规则信息
+ * 
+ * 应用场景：
+ * - 用户A出价后，立即通知所有在线用户
+ * - 实时更新当前价格和出价记录
+ * - 显示实时统计（围观人数、出价次数）
  * 
  * @author auction-system
  * @version 1.0.0
  * @since 2024-01-01
  */
-@Slf4j
-@Component
+@Slf4j       // Lombok注解：自动生成log对象
+@Component   // Spring注解：注册为Spring组件
 public class AuctionWebSocketHandler implements WebSocketHandler {
 
+    /* ========================= 连接存储 ========================= */
+
     /**
-     * 存储所有WebSocket连接
-     * Key: 拍卖ID, Value: 该拍卖的所有连接
+     * 存储所有WebSocket连接（按拍卖会分组）
+     * 
+     * 数据结构：Map<拍卖会ID, Map<会话ID, WebSocket会话>>
+     * 
+     * 作用：
+     * - 当有人出价时，可以向同一拍卖会的所有用户广播
+     * - 实现同一拍卖会内的实时更新
+     * 
+     * 线程安全：
+     * - 使用ConcurrentHashMap保证多线程安全
      */
     private final Map<Long, Map<String, WebSocketSession>> auctionSessions = new ConcurrentHashMap<>();
 
     /**
-     * 存储用户连接
-     * Key: 用户ID, Value: WebSocket连接
+     * 存储用户连接（按用户ID索引）
+     * 
+     * 数据结构：Map<用户ID, WebSocket会话>
+     * 
+     * 作用：
+     * - 可以直接给指定用户发送消息
+     * - 例如：出价成功/失败的个人通知
+     * 
+     * 注意：
+     * - 一个用户同时只能有一个WebSocket连接
+     * - 新连接会覆盖旧连接
      */
     private final Map<Long, WebSocketSession> userSessions = new ConcurrentHashMap<>();
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    /* ========================= 依赖注入 ========================= */
 
     @Autowired
-    private AuctionBidService auctionBidService;
+    private ObjectMapper objectMapper;  // JSON序列化工具
 
     @Autowired
-    private RedisService redisService;
+    private AuctionBidService auctionBidService;  // 出价服务
 
     @Autowired
-    private SysUserService sysUserService;
+    private RedisService redisService;  // Redis服务（统计数据）
 
     @Autowired
-    private JwtTokenProvider tokenProvider;
+    private SysUserService sysUserService;  // 用户服务
 
     @Autowired
-    private BidIncrementService bidIncrementService;
+    private JwtTokenProvider tokenProvider;  // JWT Token提供者
 
+    @Autowired
+    private BidIncrementService bidIncrementService;  // 加价阶梯服务
+
+    /**
+     * WebSocket连接建立后的回调方法
+     * 
+     * 功能说明：
+     * 1. 当客户端成功连接WebSocket时触发
+     * 2. 从URL参数中提取JWT Token
+     * 3. 验证Token并解析用户身份
+     * 4. 将连接加入对应的拍卖会和用户连接池
+     * 5. 发送连接成功消息
+     * 
+     * 连接URL示例：
+     * ws://localhost:8080/ws/auction?token=xxx&auctionId=123
+     * 
+     * @param session WebSocket会话对象
+     * @throws Exception 连接建立失败时抛出异常
+     */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         log.info("WebSocket连接已建立: {}", session.getId());

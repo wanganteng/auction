@@ -18,35 +18,71 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 拍品服务类
+ * ========================================
+ * 拍品服务类（AuctionItemService）
+ * ========================================
+ * 功能说明：
+ * 1. 处理拍品的业务逻辑（CRUD操作）
+ * 2. 管理拍品的创建、更新、删除
+ * 3. 处理拍品图片的上传和管理
+ * 4. 验证拍品数据的完整性和有效性
+ * 5. 解析和处理JSON格式的图片列表
+ * 
+ * 主要功能：
+ * - createItem：创建新拍品，自动上传图片并设置默认值
+ * - updateItem：更新拍品信息，支持更新图片
+ * - deleteItem：删除拍品，同时删除关联的图片文件
+ * - getItemById：根据ID查询单个拍品
+ * - getItemList：查询拍品列表
+ * - updateItemStatus：更新拍品状态（上架/下架）
+ * 
+ * 技术特点：
+ * - 使用@Transactional注解确保数据一致性
+ * - 集成MinIO对象存储服务管理图片
+ * - 使用Jackson处理JSON格式的图片列表
+ * - 完善的异常处理和日志记录
  * 
  * @author auction-system
  * @version 1.0.0
  * @since 2024-01-01
  */
-@Slf4j
-@Service
+@Slf4j     // Lombok注解：自动生成log对象，用于日志记录
+@Service   // Spring注解：标记为Service层组件，由Spring容器管理
 public class AuctionItemService {
 
+    /* ========================= 依赖注入 ========================= */
+    
     @Autowired
-    private AuctionItemMapper auctionItemMapper;
+    private AuctionItemMapper auctionItemMapper;  // 拍品数据访问对象
 
     @Autowired
-    private MinioService minioService;
+    private MinioService minioService;  // MinIO对象存储服务，用于管理图片
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private ObjectMapper objectMapper;  // Jackson对象，用于JSON序列化/反序列化
 
     @Autowired
-    private SysConfigService sysConfigService;
+    private SysConfigService sysConfigService;  // 系统配置服务
 
     @Autowired
-    private CommonImageService commonImageService;
+    private CommonImageService commonImageService;  // 通用图片服务
 
     /**
      * 创建拍品
+     * 
+     * 功能说明：
+     * 1. 上传拍品图片到MinIO
+     * 2. 将图片URL列表序列化为JSON存储
+     * 3. 设置拍品的默认值
+     * 4. 验证拍品必须至少有一张图片
+     * 5. 保存拍品到数据库
+     * 
+     * @param item 拍品对象，包含基本信息
+     * @param imageFiles 拍品图片文件列表
+     * @return 创建成功的拍品ID
+     * @throws RuntimeException 创建失败时抛出异常
      */
-    @Transactional
+    @Transactional  // 事务注解：确保方法内所有数据库操作要么全部成功，要么全部回滚
     public Long createItem(AuctionItem item, List<MultipartFile> imageFiles) {
         try {
             // 设置默认值
@@ -91,6 +127,16 @@ public class AuctionItemService {
 
     /**
      * 更新拍品（不更新图片）
+     * 
+     * 功能说明：
+     * 1. 更新拍品的基本信息（名称、描述、价格等）
+     * 2. 不上传新图片，保留原有图片
+     * 3. 验证拍品必须至少有一张图片
+     * 4. 自动更新修改时间
+     * 
+     * @param item 包含更新信息的拍品对象
+     * @return true-更新成功，false-更新失败
+     * @throws RuntimeException 更新失败时抛出异常
      */
     @Transactional
     public boolean updateItem(AuctionItem item) {
@@ -119,6 +165,17 @@ public class AuctionItemService {
 
     /**
      * 更新拍品（包含图片）
+     * 
+     * 功能说明：
+     * 1. 更新拍品的基本信息
+     * 2. 上传新的拍品图片
+     * 3. 替换原有图片URL列表
+     * 4. 自动设置第一张图片为详情封面图
+     * 
+     * @param item 包含更新信息的拍品对象
+     * @param imageFiles 新的图片文件列表
+     * @return true-更新成功，false-更新失败
+     * @throws RuntimeException 更新失败时抛出异常
      */
     @Transactional
     public boolean updateItem(AuctionItem item, List<MultipartFile> imageFiles) {
@@ -155,6 +212,14 @@ public class AuctionItemService {
 
     /**
      * 根据ID查询拍品
+     * 
+     * 功能说明：
+     * 1. 从数据库查询拍品详细信息
+     * 2. 解析JSON格式的图片列表为List对象
+     * 3. 方便前端直接使用
+     * 
+     * @param id 拍品ID
+     * @return 拍品对象，不存在时返回null
      */
     public AuctionItem getItemById(Long id) {
         try {
@@ -172,6 +237,14 @@ public class AuctionItemService {
 
     /**
      * 查询拍品列表
+     * 
+     * 功能说明：
+     * 1. 根据条件查询拍品列表
+     * 2. 支持多条件组合查询（名称、分类、状态等）
+     * 3. 自动解析每个拍品的图片列表
+     * 
+     * @param item 查询条件对象，非空字段作为查询条件
+     * @return 拍品列表，如果查询失败返回空列表
      */
     public List<AuctionItem> getItemList(AuctionItem item) {
         try {
@@ -187,6 +260,19 @@ public class AuctionItemService {
 
     /**
      * 删除拍品
+     * 
+     * 功能说明：
+     * 1. 从数据库删除拍品记录
+     * 2. 从MinIO删除拍品的所有图片文件
+     * 3. 使用事务确保数据一致性
+     * 
+     * 注意事项：
+     * - 删除是物理删除，不可恢复
+     * - 如果拍品已在拍卖会中，建议先从拍卖会移除
+     * 
+     * @param id 要删除的拍品ID
+     * @return true-删除成功，false-删除失败
+     * @throws RuntimeException 删除失败时抛出异常
      */
     @Transactional
     public boolean deleteItem(Long id) {

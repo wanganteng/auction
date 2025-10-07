@@ -22,39 +22,90 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 拍卖出价服务类
+ * ========================================
+ * 拍卖出价服务类（AuctionBidService）
+ * ========================================
+ * 功能说明：
+ * 1. 处理用户的竞拍出价业务逻辑
+ * 2. 验证出价的合法性（价格、保证金、加价规则等）
+ * 3. 管理保证金的冻结和解冻
+ * 4. 更新拍品的当前价格
+ * 5. 实现防狙击拍卖（延时拍卖）功能
+ * 6. 查询出价记录和历史
+ * 
+ * 核心流程（placeBid方法）：
+ * 1. 验证出价合法性（价格、状态、保证金）
+ * 2. 计算历史最高出价所需保证金
+ * 3. 插入出价记录到数据库
+ * 4. 更新拍品当前价格
+ * 5. 冻结保证金差额（只冻结新增部分）
+ * 6. 检查是否触发延时拍卖
+ * 
+ * 保证金冻结策略：
+ * - 差额冻结：只冻结当前出价与历史最高出价的保证金差额
+ * - 例如：用户A出价1000元（需保证金100元），再出价1500元（需保证金150元）
+ *   第二次出价只冻结50元，总共冻结150元
  * 
  * @author auction-system
  * @version 1.0.0
  * @since 2024-01-01
  */
-@Slf4j
-@Service
+@Slf4j     // Lombok注解：自动生成log对象
+@Service   // Spring注解：标记为Service层组件
 public class AuctionBidService {
 
-    @Autowired
-    private AuctionBidMapper auctionBidMapper;
+    /* ========================= 依赖注入 ========================= */
 
     @Autowired
-    private AuctionItemMapper auctionItemMapper;
+    private AuctionBidMapper auctionBidMapper;  // 出价数据访问对象
 
     @Autowired
-    private AuctionSessionMapper auctionSessionMapper;
+    private AuctionItemMapper auctionItemMapper;  // 拍品数据访问对象
 
     @Autowired
-    private RedisService redisService;
+    private AuctionSessionMapper auctionSessionMapper;  // 拍卖会数据访问对象
 
     @Autowired
-    private UserDepositAccountService depositAccountService;
+    private RedisService redisService;  // Redis服务，用于缓存和计数
 
     @Autowired
-    private BidIncrementService bidIncrementService;
+    private UserDepositAccountService depositAccountService;  // 用户保证金账户服务
+
+    @Autowired
+    private BidIncrementService bidIncrementService;  // 加价阶梯服务
 
 
     /**
-     * 出价
+     * 出价（核心方法）
+     * 
+     * 功能说明：
+     * 1. 验证出价是否符合规则（价格、加价幅度、保证金等）
+     * 2. 保存出价记录到数据库
+     * 3. 更新拍品的当前最高价
+     * 4. 冻结用户保证金（差额冻结策略）
+     * 5. 检查是否触发防狙击拍卖（延时拍卖）
+     * 
+     * 验证规则：
+     * - 拍品必须处于上架状态
+     * - 出价必须高于当前价
+     * - 出价必须符合加价阶梯规则
+     * - 用户保证金必须充足
+     * 
+     * 保证金处理：
+     * - 计算历史最高出价所需保证金
+     * - 只冻结差额部分
+     * - 避免重复冻结
+     * 
+     * 防狙击拍卖：
+     * - 如果启用，在结束前阈值时间内出价会触发延时
+     * - 每次延时固定秒数
+     * - 最多延时指定次数
+     * 
+     * @param bid 出价对象，包含用户ID、拍品ID、出价金额等
+     * @return 创建成功的出价记录ID
+     * @throws RuntimeException 出价失败时抛出异常
      */
-    @Transactional
+    @Transactional  // 事务注解：确保所有操作原子性
     public Long placeBid(AuctionBid bid) {
         try {
             // 验证出价（包含差额冻结所需校验）
@@ -114,6 +165,13 @@ public class AuctionBidService {
 
     /**
      * 查询出价记录
+     * 
+     * 功能说明：
+     * 根据条件查询出价记录列表
+     * 支持按用户、拍品、拍卖会、状态等条件筛选
+     * 
+     * @param bid 查询条件对象，非空字段作为查询条件
+     * @return 出价记录列表，查询失败返回空列表
      */
     public List<AuctionBid> getBidList(AuctionBid bid) {
         try {
@@ -126,6 +184,13 @@ public class AuctionBidService {
 
     /**
      * 查询拍品出价记录
+     * 
+     * 功能说明：
+     * 查询指定拍品的所有有效出价记录
+     * 按出价时间倒序排列
+     * 
+     * @param itemId 拍品ID
+     * @return 出价记录列表，查询失败返回空列表
      */
     public List<AuctionBid> getItemBidList(Long itemId) {
         try {
@@ -141,6 +206,13 @@ public class AuctionBidService {
 
     /**
      * 获取拍品最高出价
+     * 
+     * 功能说明：
+     * 查询指定拍品的当前最高出价记录
+     * 用于判断谁是当前领先者
+     * 
+     * @param itemId 拍品ID
+     * @return 最高出价记录，如果没有出价记录返回null
      */
     public AuctionBid getHighestBid(Long itemId) {
         try {
@@ -152,7 +224,21 @@ public class AuctionBidService {
     }
 
     /**
-     * 验证出价
+     * 验证出价（私有方法）
+     * 
+     * 功能说明：
+     * 对出价进行全面验证，确保符合所有规则
+     * 
+     * 验证项目：
+     * 1. 拍品是否存在
+     * 2. 拍品是否处于上架状态
+     * 3. 出价是否高于当前价
+     * 4. 出价是否符合加价阶梯规则
+     * 5. 出价是否不低于起拍价
+     * 6. 用户保证金是否充足（差额冻结策略）
+     * 
+     * @param bid 要验证的出价对象
+     * @throws RuntimeException 验证不通过时抛出异常，包含具体错误信息
      */
     private void validateBid(AuctionBid bid) {
         // 获取拍品信息
@@ -247,8 +333,21 @@ public class AuctionBidService {
     /**
      * 计算历史最高出价所需的保证金（不包含当前出价）
      * 
-     * @param bid 当前出价
-     * @return 历史最高出价所需保证金（元）
+     * 功能说明：
+     * 查询用户在该拍品（同一拍卖会）的历史最高有效出价
+     * 计算该出价所需的保证金金额
+     * 用于差额冻结策略：只冻结新增部分
+     * 
+     * 计算公式：
+     * 历史最高出价 × 拍卖会保证金比例（向上取整到元）
+     * 
+     * 示例：
+     * - 用户历史最高出价：1000元
+     * - 保证金比例：10%
+     * - 所需保证金：100元
+     * 
+     * @param bid 当前出价对象
+     * @return 历史最高出价所需保证金（元），如果无历史出价返回0
      */
     private BigDecimal calculateHistoricalDepositRequirement(AuctionBid bid) {
         try {
@@ -297,10 +396,27 @@ public class AuctionBidService {
     }
 
     /**
-     * 冻结保证金金额
+     * 冻结保证金金额（差额冻结策略）
      * 
-     * @param bid 出价记录
+     * 功能说明：
+     * 1. 计算当前出价所需的总保证金
+     * 2. 计算与历史最高出价的保证金差额
+     * 3. 只冻结差额部分（新增部分）
+     * 4. 调用保证金账户服务执行冻结操作
+     * 
+     * 计算示例：
+     * - 用户历史最高出价1000元，所需保证金100元（已冻结）
+     * - 用户当前出价1500元，所需保证金150元
+     * - 差额：150 - 100 = 50元（本次冻结50元）
+     * 
+     * 安全保障：
+     * - 差额为负数时自动设为0，避免错误解冻
+     * - 再次验证可用余额是否充足
+     * - 记录详细的冻结日志用于审计
+     * 
+     * @param bid 出价记录对象
      * @param oldRequiredDeposit 历史最高出价所需保证金（元）
+     * @throws RuntimeException 冻结失败时抛出异常
      */
     private void freezeDepositAmount(AuctionBid bid, BigDecimal oldRequiredDeposit) {
         try {
@@ -373,7 +489,13 @@ public class AuctionBidService {
     }
 
     /**
-     * 更新拍品当前价格
+     * 更新拍品当前价格（私有方法）
+     * 
+     * 功能说明：
+     * 在用户成功出价后，更新拍品的当前最高价
+     * 这个价格会实时显示给所有用户
+     * 
+     * @param bid 出价记录对象
      */
     private void updateItemCurrentPrice(AuctionBid bid) {
         try {

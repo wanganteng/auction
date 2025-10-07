@@ -1,14 +1,31 @@
 <!DOCTYPE html>
+<!-- 
+    ========================================
+    文件名: notifications.html
+    功能: 拍卖系统用户端 - 我的通知页面
+    说明: 
+    1. 显示用户的所有系统通知
+    2. 支持按通知类型筛选（竞拍通知、订单通知、系统通知等）
+    3. 未读通知有特殊标记（蓝色圆点和浅蓝背景）
+    4. 支持标记已读和全部已读功能
+    5. 支持删除通知
+    6. 不同类型通知有不同的图标和颜色
+    ========================================
+-->
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <!-- 设置视口，确保在移动设备上正确显示 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的通知 - 拍卖系统</title>
     
-    <!-- Element UI CSS -->
+    <!-- 引入Element Plus UI组件库的CSS样式 -->
     <link rel="stylesheet" href="/css/element-plus.css">
     
+    <!-- ========================= 自定义样式开始 ========================= -->
     <style>
+        /* ----- 全局样式 ----- */
+        /* 页面主体：无边距，浅灰色背景 */
         body {
             margin: 0;
             padding: 0;
@@ -16,13 +33,14 @@
             background-color: #f5f5f5;
         }
         
-        /* 顶部导航 */
+        /* ----- 顶部导航栏 ----- */
+        /* 导航栏：固定在顶部，白色背景 */
         .header {
             background: white;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            position: sticky;
+            position: sticky;  /* 粘性定位，滚动时保持在顶部 */
             top: 0;
-            z-index: 1000;
+            z-index: 1000;  /* 高层级 */
         }
         
         .header-content {
@@ -60,94 +78,163 @@
             gap: 15px;
         }
         
-        /* 主内容区 */
+        /* ----- 主内容区域样式 ----- */
+        /*
+         * 主内容容器
+         * 功能：包含页面主要内容
+         * 布局：最大宽度1200px，居中显示
+         */
         .main-content {
-            max-width: 1200px;
-            margin: 20px auto;
-            padding: 0 20px;
+            max-width: 1200px;   /* 最大宽度 */
+            margin: 20px auto;   /* 上下20px，左右居中 */
+            padding: 0 20px;     /* 左右内边距 */
         }
         
+        /* ----- 页面头部样式 ----- */
+        /*
+         * 页面头部卡片
+         * 功能：显示页面标题和操作按钮
+         * 布局：Flexbox左右分布
+         */
         .page-header {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background: white;                           /* 白色背景 */
+            padding: 20px;                               /* 内边距 */
+            border-radius: 8px;                          /* 圆角 */
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);   /* 阴影 */
+            margin-bottom: 20px;                         /* 底部间距 */
+            display: flex;                               /* Flexbox布局 */
+            justify-content: space-between;              /* 左右两端对齐 */
+            align-items: center;                         /* 垂直居中 */
         }
         
+        /*
+         * 页面标题
+         * 样式：大号粗体深灰色
+         */
         .page-title {
-            font-size: 24px;
-            font-weight: bold;
-            color: #303133;
-            margin: 0;
+            font-size: 24px;      /* 字号24px */
+            font-weight: bold;    /* 粗体 */
+            color: #303133;       /* 深灰色 */
+            margin: 0;            /* 无边距 */
         }
         
+        /* ----- 通知列表样式 ----- */
+        /*
+         * 通知列表卡片
+         * 功能：包含所有通知项的白色卡片
+         */
         .notification-card {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            background: white;                           /* 白色背景 */
+            border-radius: 8px;                          /* 圆角 */
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);   /* 阴影 */
         }
         
+        /*
+         * 通知项
+         * 功能：单个通知的容器
+         * 特点：
+         * - 底部边框分隔
+         * - 可点击（cursor: pointer）
+         * - 悬停时背景变色
+         * - 0.3秒过渡动画
+         */
         .notification-item {
-            padding: 20px;
-            border-bottom: 1px solid #EBEEF5;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            position: relative;
+            padding: 20px;                       /* 内边距 */
+            border-bottom: 1px solid #EBEEF5;    /* 底部分隔线 */
+            cursor: pointer;                     /* 鼠标变为手型 */
+            transition: background-color 0.3s;   /* 背景色过渡动画 */
+            position: relative;                  /* 相对定位（用于::before伪元素） */
         }
         
+        /*
+         * 最后一个通知项：移除底部边框
+         */
         .notification-item:last-child {
             border-bottom: none;
         }
         
+        /*
+         * 通知项悬停效果
+         * 效果：背景变为浅灰色
+         */
         .notification-item:hover {
-            background-color: #F5F7FA;
+            background-color: #F5F7FA;  /* 浅灰色背景 */
         }
         
+        /*
+         * 未读通知样式
+         * 特点：浅蓝色背景，有蓝色圆点标记
+         */
         .notification-item.unread {
-            background-color: #F0F9FF;
+            background-color: #F0F9FF;  /* 浅蓝色背景 */
         }
         
+        /*
+         * 未读通知标记：蓝色圆点
+         * 实现：使用::before伪元素
+         * 位置：左侧垂直居中
+         */
         .notification-item.unread::before {
-            content: '';
-            position: absolute;
-            left: 8px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 8px;
-            height: 8px;
-            background-color: #409EFF;
-            border-radius: 50%;
+            content: '';                          /* 空内容 */
+            position: absolute;                   /* 绝对定位 */
+            left: 8px;                            /* 距左边8px */
+            top: 50%;                             /* 距顶部50% */
+            transform: translateY(-50%);          /* 垂直居中 */
+            width: 8px;                           /* 宽度8px */
+            height: 8px;                          /* 高度8px */
+            background-color: #409EFF;            /* 蓝色 */
+            border-radius: 50%;                   /* 圆形 */
         }
         
+        /*
+         * 通知头部
+         * 功能：包含通知类型图标和时间
+         * 布局：Flexbox左右分布
+         */
         .notification-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 10px;
+            display: flex;                   /* Flexbox布局 */
+            justify-content: space-between;  /* 左右两端对齐 */
+            align-items: flex-start;         /* 顶部对齐 */
+            margin-bottom: 10px;             /* 底部间距 */
         }
         
+        /* ----- 通知类型图标样式 ----- */
+        /*
+         * 通知类型图标
+         * 功能：显示通知类型的图标
+         * 样式：圆形，40x40px，不同类型不同颜色
+         */
         .notification-type-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            margin-right: 12px;
+            display: inline-flex;              /* 行内Flex布局 */
+            align-items: center;               /* 垂直居中 */
+            justify-content: center;           /* 水平居中 */
+            width: 40px;                       /* 宽度40px */
+            height: 40px;                      /* 高度40px */
+            border-radius: 50%;                /* 圆形 */
+            margin-right: 12px;                /* 右侧间距 */
         }
         
-        .notification-type-1 { background-color: #FEF0F0; color: #F56C6C; }
-        .notification-type-2 { background-color: #F0F9FF; color: #409EFF; }
-        .notification-type-3 { background-color: #F0F9FF; color: #409EFF; }
-        .notification-type-4 { background-color: #FDF6EC; color: #E6A23C; }
-        .notification-type-5 { background-color: #F4F4F5; color: #909399; }
+        /*
+         * 不同类型通知的颜色
+         * type-1：竞拍通知（红色）
+         * type-2：订单通知（蓝色）
+         * type-3：系统通知（蓝色）
+         * type-4：保证金通知（橙色）
+         * type-5：其他通知（灰色）
+         */
+        .notification-type-1 { background-color: #FEF0F0; color: #F56C6C; }  /* 红色 */
+        .notification-type-2 { background-color: #F0F9FF; color: #409EFF; }  /* 蓝色 */
+        .notification-type-3 { background-color: #F0F9FF; color: #409EFF; }  /* 蓝色 */
+        .notification-type-4 { background-color: #FDF6EC; color: #E6A23C; }  /* 橙色 */
+        .notification-type-5 { background-color: #F4F4F5; color: #909399; }  /* 灰色 */
         
+        /*
+         * 通知内容包装器
+         * 功能：包含通知标题和内容
+         * 布局：占据剩余空间
+         */
         .notification-content-wrapper {
-            flex: 1;
+            flex: 1;  /* 占据剩余空间 */
         }
         
         .notification-title {

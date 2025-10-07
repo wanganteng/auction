@@ -1,73 +1,126 @@
 <!DOCTYPE html>
+<!-- 
+    ========================================
+    文件名: test-token.html
+    功能: JWT Token管理测试页面
+    说明: 
+    1. 用于测试JWT Token的生成、验证、刷新功能
+    2. 测试登录、登出、API调用等流程
+    3. 验证Token过期自动刷新机制
+    4. 开发调试工具，生产环境应删除
+    
+    测试功能：
+    - 登录测试：测试用户登录并获取Token
+    - Token信息：显示当前的Access Token和Refresh Token
+    - API测试：测试携带Token调用API
+    - Token刷新：测试使用Refresh Token刷新Access Token
+    - 登出测试：测试登出并清除Token
+    ========================================
+-->
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>混合模式 Token 管理测试</title>
+    <!-- 引入Axios HTTP客户端库 -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
 <body>
     <h1>混合模式 Token 管理测试</h1>
     
     <div id="app">
+        <!-- ===== 登录测试区域 ===== -->
         <div>
             <h2>登录测试</h2>
             <button onclick="testLogin()">测试登录</button>
-            <div id="loginResult"></div>
+            <div id="loginResult"></div>  <!-- 显示登录结果 -->
         </div>
         
+        <!-- ===== Token信息显示区域 ===== -->
         <div>
             <h2>Token 信息</h2>
-            <div id="tokenInfo"></div>
+            <div id="tokenInfo"></div>  <!-- 显示当前的Token信息 -->
         </div>
         
+        <!-- ===== API调用测试区域 ===== -->
         <div>
             <h2>API 测试</h2>
             <button onclick="testApi()">测试 API 调用</button>
-            <div id="apiResult"></div>
+            <div id="apiResult"></div>  <!-- 显示API调用结果 -->
         </div>
         
+        <!-- ===== Token刷新测试区域 ===== -->
         <div>
             <h2>Token 刷新测试</h2>
             <button onclick="testRefresh()">测试 Token 刷新</button>
-            <div id="refreshResult"></div>
+            <div id="refreshResult"></div>  <!-- 显示刷新结果 -->
         </div>
         
+        <!-- ===== 登出测试区域 ===== -->
         <div>
             <h2>登出测试</h2>
             <button onclick="testLogout()">测试登出</button>
-            <div id="logoutResult"></div>
+            <div id="logoutResult"></div>  <!-- 显示登出结果 -->
         </div>
     </div>
 
+    <!-- ========================= JavaScript逻辑 ========================= -->
     <script>
-        // 设置 axios 拦截器
+        /* ===== 配置axios拦截器 ===== */
+        /**
+         * 请求拦截器：自动添加Authorization头
+         * 
+         * 功能说明：
+         * 在每个HTTP请求发送前，自动从localStorage读取accessToken
+         * 并添加到请求头的Authorization字段
+         * 
+         * 格式：Authorization: Bearer {token}
+         */
         axios.interceptors.request.use(config => {
+            // 从localStorage获取Access Token
             const token = localStorage.getItem('accessToken');
             if (token) {
+                // 添加Authorization请求头
                 config.headers.Authorization = `Bearer ${token}`;
             }
             return config;
         });
 
+        /**
+         * 响应拦截器：处理401错误并自动刷新Token
+         * 
+         * 功能说明：
+         * 当收到401未授权错误时，自动使用Refresh Token刷新Access Token
+         * 然后重新发起原请求
+         * 
+         * 处理流程：
+         * 1. 检查响应状态码是否为401
+         * 2. 如果是401，尝试使用Refresh Token刷新Access Token
+         * 3. 刷新成功：保存新Token，重新发起原请求
+         * 4. 刷新失败：清除所有Token，提示用户重新登录
+         */
         axios.interceptors.response.use(
-            response => response,
+            response => response,  // 响应成功直接返回
             async error => {
+                // 检查是否为401未授权错误
                 if (error.response && error.response.status === 401) {
                     console.log('收到 401 错误，尝试刷新 Token...');
+                    // 从localStorage获取Refresh Token
                     const refreshToken = localStorage.getItem('refreshToken');
                     if (refreshToken) {
                         try {
+                            // 发送刷新Token请求
                             const response = await axios.post('/api/auth/refresh', {
                                 refreshToken: refreshToken
                             });
                             
                             if (response.data.code === 200) {
                                 console.log('Token 刷新成功');
+                                // 保存新的Access Token
                                 const newAccessToken = response.data.data.accessToken;
                                 localStorage.setItem('accessToken', newAccessToken);
                                 
-                                // 重新发起原请求
+                                // 重新发起原来失败的请求（带上新Token）
                                 error.config.headers.Authorization = `Bearer ${newAccessToken}`;
                                 return axios.request(error.config);
                             }
@@ -86,11 +139,30 @@
             }
         );
 
+        /**
+         * updateTokenInfo函数：更新页面上的Token信息显示
+         * 
+         * 功能说明：
+         * 从localStorage读取Token信息，并在页面上显示
+         * 
+         * 显示内容：
+         * - Access Token：前50个字符+...
+         * - Refresh Token：前50个字符+...
+         * - User Info：用户信息JSON字符串
+         * 
+         * 调用时机：
+         * - 页面加载时
+         * - 登录成功后
+         * - Token刷新后
+         * - 登出后
+         */
         function updateTokenInfo() {
+            // 从localStorage读取Token信息
             const accessToken = localStorage.getItem('accessToken');
             const refreshToken = localStorage.getItem('refreshToken');
             const userInfo = localStorage.getItem('userInfo');
             
+            // 更新页面显示（只显示Token的前50个字符，避免太长）
             document.getElementById('tokenInfo').innerHTML = `
                 <p><strong>Access Token:</strong> ${accessToken ? accessToken.substring(0, 50) + '...' : '无'}</p>
                 <p><strong>Refresh Token:</strong> ${refreshToken ? refreshToken.substring(0, 50) + '...' : '无'}</p>
@@ -98,19 +170,41 @@
             `;
         }
 
+        /**
+         * testLogin函数：测试登录功能
+         * 
+         * 功能说明：
+         * 使用测试账号（admin/admin123）登录系统
+         * 
+         * 测试流程：
+         * 1. 发送POST请求到登录API
+         * 2. 接收Access Token和Refresh Token
+         * 3. 保存Token到localStorage
+         * 4. 显示登录结果（成功/失败）
+         * 5. 更新页面上的Token信息显示
+         * 
+         * 测试账号：
+         * - 用户名：admin
+         * - 密码：admin123
+         * 
+         * 异步操作：使用async/await语法
+         */
         async function testLogin() {
             try {
+                // 发送登录请求
                 const response = await axios.post('/api/auth/login', {
                     username: 'admin',
                     password: 'admin123'
                 });
                 
                 if (response.data.code === 200) {
+                    // 登录成功：提取Token和用户信息
                     const data = response.data.data;
                     localStorage.setItem('accessToken', data.accessToken);
                     localStorage.setItem('refreshToken', data.refreshToken);
                     localStorage.setItem('userInfo', JSON.stringify(data.user));
                     
+                    // 显示成功结果（绿色）
                     document.getElementById('loginResult').innerHTML = `
                         <div style="color: green;">
                             <p>登录成功！</p>
@@ -120,22 +214,44 @@
                         </div>
                     `;
                     
+                    // 更新Token信息显示
                     updateTokenInfo();
                 } else {
+                    // 登录失败：显示错误信息（红色）
                     document.getElementById('loginResult').innerHTML = `
                         <div style="color: red;">登录失败: ${response.data.message}</div>
                     `;
                 }
             } catch (error) {
+                // 请求异常：显示错误信息
                 document.getElementById('loginResult').innerHTML = `
                     <div style="color: red;">登录错误: ${error.message}</div>
                 `;
             }
         }
 
+        /**
+         * testApi函数：测试API调用
+         * 
+         * 功能说明：
+         * 测试携带Token调用受保护的API接口
+         * 
+         * 测试API：GET /api/admin/dashboard/overview
+         * 
+         * 测试目的：
+         * 1. 验证Token是否有效
+         * 2. 验证请求拦截器是否正常添加Authorization头
+         * 3. 验证后端是否正确验证Token
+         * 
+         * 预期结果：
+         * - 有效Token：返回仪表板数据
+         * - 无效Token：返回401错误并自动刷新
+         */
         async function testApi() {
             try {
+                // 调用需要认证的API
                 const response = await axios.get('/api/admin/dashboard/overview');
+                // 显示成功结果（绿色，包含返回的数据）
                 document.getElementById('apiResult').innerHTML = `
                     <div style="color: green;">
                         <p>API 调用成功！</p>
@@ -143,30 +259,55 @@
                     </div>
                 `;
             } catch (error) {
+                // 显示失败结果（红色）
                 document.getElementById('apiResult').innerHTML = `
                     <div style="color: red;">API 调用失败: ${error.message}</div>
                 `;
             }
         }
 
+        /**
+         * testRefresh函数：测试Token刷新功能
+         * 
+         * 功能说明：
+         * 手动测试使用Refresh Token刷新Access Token的流程
+         * 
+         * 测试流程：
+         * 1. 从localStorage获取Refresh Token
+         * 2. 发送刷新请求到后端API
+         * 3. 接收新的Access Token
+         * 4. 保存新Token到localStorage
+         * 5. 更新页面显示
+         * 
+         * API：POST /api/auth/refresh
+         * 
+         * 测试场景：
+         * - Access Token过期时，使用此功能获取新Token
+         * - 验证Refresh Token的有效性
+         */
         async function testRefresh() {
             try {
+                // 从localStorage获取Refresh Token
                 const refreshToken = localStorage.getItem('refreshToken');
                 if (!refreshToken) {
+                    // 如果没有Refresh Token，显示提示
                     document.getElementById('refreshResult').innerHTML = `
                         <div style="color: red;">没有 Refresh Token</div>
                     `;
                     return;
                 }
 
+                // 发送刷新请求
                 const response = await axios.post('/api/auth/refresh', {
                     refreshToken: refreshToken
                 });
                 
                 if (response.data.code === 200) {
+                    // 刷新成功：保存新的Access Token
                     const newAccessToken = response.data.data.accessToken;
                     localStorage.setItem('accessToken', newAccessToken);
                     
+                    // 显示成功结果（绿色）
                     document.getElementById('refreshResult').innerHTML = `
                         <div style="color: green;">
                             <p>Token 刷新成功！</p>
@@ -174,41 +315,70 @@
                         </div>
                     `;
                     
+                    // 更新Token信息显示
                     updateTokenInfo();
                 } else {
+                    // 刷新失败：显示错误信息
                     document.getElementById('refreshResult').innerHTML = `
                         <div style="color: red;">Token 刷新失败: ${response.data.message}</div>
                     `;
                 }
             } catch (error) {
+                // 请求异常：显示错误信息
                 document.getElementById('refreshResult').innerHTML = `
                     <div style="color: red;">Token 刷新错误: ${error.message}</div>
                 `;
             }
         }
 
+        /**
+         * testLogout函数：测试登出功能
+         * 
+         * 功能说明：
+         * 测试用户登出并清除Token的流程
+         * 
+         * 测试流程：
+         * 1. 发送登出请求到后端API
+         * 2. 清除localStorage中的所有Token和用户信息
+         * 3. 显示登出结果
+         * 4. 更新页面上的Token信息显示
+         * 
+         * API：POST /api/auth/logout
+         * 
+         * 清除的数据：
+         * - accessToken
+         * - refreshToken
+         * - userInfo
+         */
         async function testLogout() {
             try {
+                // 发送登出请求
                 await axios.post('/api/auth/logout');
                 
+                // 清除所有Token和用户信息
                 localStorage.removeItem('accessToken');
                 localStorage.removeItem('refreshToken');
                 localStorage.removeItem('userInfo');
                 
+                // 显示成功结果（绿色）
                 document.getElementById('logoutResult').innerHTML = `
                     <div style="color: green;">登出成功！</div>
                 `;
                 
+                // 更新Token信息显示（应该都显示"无"）
                 updateTokenInfo();
             } catch (error) {
+                // 显示失败结果（红色）
                 document.getElementById('logoutResult').innerHTML = `
                     <div style="color: red;">登出错误: ${error.message}</div>
                 `;
             }
         }
 
-        // 页面加载时更新 Token 信息
+        /* ===== 页面加载时执行 ===== */
+        // 页面加载时自动更新Token信息显示
         updateTokenInfo();
     </script>
+    <!-- ========================= JavaScript结束 ========================= -->
 </body>
 </html>

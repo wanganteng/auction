@@ -1,108 +1,144 @@
 <!DOCTYPE html>
+<!-- 
+    ========================================
+    文件名: items.html
+    功能: 拍卖系统管理后台 - 拍品管理页面
+    说明: 
+    1. 管理员可以查看、添加、编辑、删除拍品
+    2. 支持拍品的审核功能（通过/拒绝）
+    3. 提供搜索和筛选功能（按名称、状态、分类）
+    4. 使用Element Plus UI组件库和Vue 3框架
+    5. 集成图片上传功能
+    ========================================
+-->
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <!-- 设置视口，让页面在移动设备上正确显示 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>拍品管理 - 拍卖系统</title>
     
-    <!-- Element UI CSS -->
+    <!-- 引入Element Plus UI组件库的CSS样式 -->
     <link rel="stylesheet" href="/css/element-plus.css">
-    <!-- 自定义样式 -->
+    
+    <!-- ========================= 自定义样式开始 ========================= -->
     <style>
+        /* ----- 全局样式 ----- */
+        /* 页面主体：无边距，浅灰色背景，使用中文友好字体 */
         body {
             margin: 0;
             padding: 0;
             font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
-            background-color: #f5f5f5;
+            background-color: #f5f5f5; /* 浅灰色背景 */
         }
         
+        /* ----- 页面头部样式 ----- */
+        /* 头部区域：紫色渐变背景，白色文字，居中显示 */
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* 从浅紫色到深紫色的渐变 */
             color: white;
             padding: 20px 0;
             text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); /* 底部阴影增加层次感 */
         }
         
+        /* 头部标题样式 */
         .header h1 {
             margin: 0;
             font-size: 28px;
-            font-weight: 300;
+            font-weight: 300; /* 较细的字体，看起来更现代 */
         }
         
+        /* ----- 主容器样式 ----- */
+        /* 主容器：限制最大宽度，居中显示 */
         .container {
-            max-width: 1200px;
-            margin: 20px auto;
+            max-width: 1200px; /* 最大宽度1200像素 */
+            margin: 20px auto; /* 上下20px边距，左右自动居中 */
             padding: 0 20px;
         }
         
+        /* ----- 工具栏样式 ----- */
+        /* 工具栏：包含搜索框和操作按钮的区域 */
         .toolbar {
             background: white;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 8px; /* 圆角边框 */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); /* 阴影效果 */
             margin-bottom: 20px;
         }
         
+        /* ----- 内容区域样式 ----- */
+        /* 内容区域：显示拍品列表的主要区域 */
         .content {
             background: white;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            overflow: hidden;
+            overflow: hidden; /* 隐藏超出部分，保持圆角效果 */
         }
         
+        /* ----- 拍品卡片样式 ----- */
+        /* 拍品卡片：每个拍品的容器 */
         .item-card {
-            border: 1px solid #e4e7ed;
+            border: 1px solid #e4e7ed; /* 浅灰色边框 */
             border-radius: 8px;
             padding: 20px;
             margin-bottom: 20px;
-            transition: all 0.3s;
+            transition: all 0.3s; /* 所有属性变化都有0.3秒的过渡效果 */
         }
         
+        /* 拍品卡片悬停效果：鼠标悬停时显示阴影并轻微上移 */
         .item-card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); /* 增强阴影 */
+            transform: translateY(-2px); /* 向上移动2像素 */
         }
         
+        /* 拍品图片样式：固定尺寸，圆角，保持比例裁剪 */
         .item-image {
             width: 120px;
             height: 120px;
-            object-fit: cover;
+            object-fit: cover; /* 保持图片比例，裁剪多余部分 */
             border-radius: 8px;
             margin-right: 20px;
         }
         
+        /* 拍品信息区域：占据剩余空间 */
         .item-info {
-            flex: 1;
+            flex: 1; /* 弹性布局，占据剩余空间 */
         }
         
+        /* 拍品标题样式 */
         .item-title {
             font-size: 18px;
-            font-weight: 600;
-            color: #303133;
+            font-weight: 600; /* 粗体 */
+            color: #303133; /* 深灰色 */
             margin-bottom: 8px;
         }
         
+        /* 拍品描述样式 */
         .item-desc {
-            color: #606266;
+            color: #606266; /* 中灰色 */
             font-size: 14px;
-            line-height: 1.5;
+            line-height: 1.5; /* 行高1.5倍，增加可读性 */
             margin-bottom: 12px;
         }
         
+        /* 拍品元数据样式：显示价格、分类等信息 */
         .item-meta {
             display: flex;
-            gap: 20px;
+            gap: 20px; /* 项目之间间距20px */
             font-size: 14px;
-            color: #909399;
+            color: #909399; /* 浅灰色 */
         }
         
+        /* 拍品操作按钮区域 */
         .item-actions {
             display: flex;
-            gap: 10px;
+            gap: 10px; /* 按钮之间间距10px */
             margin-top: 15px;
         }
         
+        /* ----- 状态标签样式 ----- */
+        /* 状态标签基础样式 */
         .status-tag {
             padding: 4px 8px;
             border-radius: 4px;
@@ -110,39 +146,68 @@
             font-weight: 500;
         }
         
-        .status-draft { background: #f4f4f5; color: #909399; }
-        .status-pending { background: #fff7e6; color: #e6a23c; }
-        .status-approved { background: #f0f9ff; color: #409eff; }
-        .status-rejected { background: #fef0f0; color: #f56c6c; }
-        .status-auctioning { background: #f0f9ff; color: #409eff; }
-        .status-sold { background: #f0f9ff; color: #67c23a; }
-        .status-unsold { background: #f4f4f5; color: #909399; }
+        /* 不同状态的颜色 */
+        .status-draft { background: #f4f4f5; color: #909399; }        /* 草稿：灰色 */
+        .status-pending { background: #fff7e6; color: #e6a23c; }      /* 待审核：橙色 */
+        .status-approved { background: #f0f9ff; color: #409eff; }     /* 已通过：蓝色 */
+        .status-rejected { background: #fef0f0; color: #f56c6c; }     /* 已拒绝：红色 */
+        .status-auctioning { background: #f0f9ff; color: #409eff; }   /* 拍卖中：蓝色 */
+        .status-sold { background: #f0f9ff; color: #67c23a; }         /* 已成交：绿色 */
+        .status-unsold { background: #f4f4f5; color: #909399; }       /* 流拍：灰色 */
     </style>
+    <!-- ========================= 自定义样式结束 ========================= -->
 </head>
 <body>
+    <!-- ========================= Vue应用容器 ========================= -->
     <div id="app">
-        <!-- 头部 -->
+        <!-- ===== 页面头部 ===== -->
+        <!-- 显示页面标题的头部区域 -->
         <div class="header">
             <h1>拍品管理</h1>
         </div>
         
-        <!-- 主容器 -->
+        <!-- ===== 主容器区域 ===== -->
+        <!-- 包含工具栏、拍品列表等所有主要内容 -->
         <div class="container">
-            <!-- 工具栏 -->
+            <!-- ===== 工具栏区域 ===== -->
+            <!-- 
+                工具栏功能说明：
+                1. 搜索框：按拍品名称搜索
+                2. 状态筛选：按拍品状态筛选（草稿、待审核、已通过等）
+                3. 分类筛选：按拍品分类筛选（书画、陶瓷、玉器等）
+                4. 操作按钮：搜索、重置、添加拍品
+            -->
             <div class="toolbar">
+                <!-- 使用Element Plus的Grid布局，gutter设置列间距为20px -->
                 <el-row :gutter="20">
+                    <!-- 搜索框：占6列（总共24列） -->
                     <el-col :span="6">
+                        <!-- 输入框组件，支持清除和回车搜索 -->
                         <el-input
                             v-model="searchForm.itemName"
                             placeholder="搜索拍品名称"
                             clearable
                             @keyup.enter="searchItems">
+                            <!-- 前缀图标插槽：显示搜索图标 -->
                             <template #prefix>
                                 <el-icon><Search /></el-icon>
                             </template>
                         </el-input>
                     </el-col>
+                    
+                    <!-- 状态筛选下拉框：占4列 -->
                     <el-col :span="4">
+                        <!-- 
+                            下拉选择框：筛选不同状态的拍品
+                            状态说明：
+                            0 - 草稿：拍品刚创建，未提交审核
+                            1 - 待审核：已提交，等待管理员审核
+                            2 - 已通过：审核通过，可以加入拍卖会
+                            3 - 已拒绝：审核未通过
+                            4 - 拍卖中：正在进行拍卖
+                            5 - 已成交：拍卖结束且有人中标
+                            6 - 流拍：拍卖结束但无人出价或未达底价
+                        -->
                         <el-select v-model="searchForm.status" placeholder="状态筛选" clearable>
                             <el-option label="草稿" value="0"></el-option>
                             <el-option label="待审核" value="1"></el-option>
@@ -153,7 +218,19 @@
                             <el-option label="流拍" value="6"></el-option>
                         </el-select>
                     </el-col>
+                    
+                    <!-- 分类筛选下拉框：占4列 -->
                     <el-col :span="4">
+                        <!-- 
+                            分类下拉框：按拍品类别筛选
+                            支持的分类：
+                            1 - 书画：字画、书法作品
+                            2 - 陶瓷：瓷器、陶器
+                            3 - 玉器：玉石制品
+                            4 - 珠宝：珠宝首饰
+                            5 - 家具：古典家具
+                            6 - 杂项：其他类别
+                        -->
                         <el-select v-model="searchForm.category" placeholder="分类筛选" clearable>
                             <el-option label="书画" value="1"></el-option>
                             <el-option label="陶瓷" value="2"></el-option>
@@ -163,15 +240,20 @@
                             <el-option label="杂项" value="6"></el-option>
                         </el-select>
                     </el-col>
+                    
+                    <!-- 操作按钮组：占6列 -->
                     <el-col :span="6">
+                        <!-- 搜索按钮：触发搜索操作 -->
                         <el-button type="primary" @click="searchItems">
                             <el-icon><Search /></el-icon>
                             搜索
                         </el-button>
+                        <!-- 重置按钮：清空所有筛选条件 -->
                         <el-button @click="resetSearch">
                             <el-icon><Refresh /></el-icon>
                             重置
                         </el-button>
+                        <!-- 添加按钮：打开添加拍品对话框 -->
                         <el-button type="success" @click="showAddDialog">
                             <el-icon><Plus /></el-icon>
                             添加拍品
@@ -180,12 +262,29 @@
                 </el-row>
             </div>
             
-            <!-- 内容区域 -->
+            <!-- ===== 拍品列表表格区域 ===== -->
+            <!-- 
+                数据表格功能说明：
+                1. 显示所有拍品的基本信息
+                2. 支持加载动画（v-loading）
+                3. 每列可以自定义显示内容
+                4. 操作列固定在右侧（fixed="right"）
+            -->
             <div class="content">
+                <!-- Element Plus表格组件 -->
                 <el-table :data="items" v-loading="loading" style="width: 100%">
+                    <!-- ID列：显示拍品的唯一标识 -->
                     <el-table-column prop="id" label="ID" width="80"></el-table-column>
+                    
+                    <!-- 图片列：显示拍品图片，支持点击预览 -->
                     <el-table-column label="图片" width="120">
                         <template #default="scope">
+                            <!-- 
+                                图片组件：
+                                - 如果没有图片则显示默认图片
+                                - fit="cover"：保持比例裁剪
+                                - preview-src-list：点击可预览大图
+                            -->
                             <el-image
                                 :src="scope.row.imageUrl || '/images/default-item.jpg'"
                                 :preview-src-list="[scope.row.imageUrl || '/images/default-item.jpg']"
@@ -194,43 +293,64 @@
                             </el-image>
                         </template>
                     </el-table-column>
+                    
+                    <!-- 拍品名称列：显示名称和描述 -->
                     <el-table-column prop="itemName" label="拍品名称" min-width="200">
                         <template #default="scope">
+                            <!-- 拍品标题：粗体显示 -->
                             <div class="item-title">{{ scope.row.itemName }}</div>
+                            <!-- 拍品描述：小字灰色显示 -->
                             <div class="item-desc">{{ scope.row.description }}</div>
                         </template>
                     </el-table-column>
+                    
+                    <!-- 分类列：调用getCategoryName方法转换分类ID为中文名称 -->
                     <el-table-column prop="category" label="分类" width="100">
                         <template #default="scope">
                             {{ getCategoryName(scope.row.category) }}
                         </template>
                     </el-table-column>
+                    
+                    <!-- 起拍价列：金额除以100转换为元，保留2位小数 -->
                     <el-table-column prop="startingPrice" label="起拍价" width="120">
                         <template #default="scope">
+                            <!-- 数据库存储的是分，显示时转为元 -->
                             ¥{{ (scope.row.startingPrice / 100).toFixed(2) }}
                         </template>
                     </el-table-column>
+                    
+                    <!-- 当前价列：如果拍品正在拍卖中，显示当前最高出价 -->
                     <el-table-column prop="currentPrice" label="当前价" width="120">
                         <template #default="scope">
                             ¥{{ (scope.row.currentPrice / 100).toFixed(2) }}
                         </template>
                     </el-table-column>
+                    
+                    <!-- 状态列：使用彩色标签显示拍品状态 -->
                     <el-table-column prop="status" label="状态" width="100">
                         <template #default="scope">
+                            <!-- 根据状态值显示不同颜色的标签 -->
                             <el-tag :type="getStatusType(scope.row.status)" class="status-tag">
                                 {{ getStatusText(scope.row.status) }}
                             </el-tag>
                         </template>
                     </el-table-column>
+                    
+                    <!-- 创建时间列：格式化显示时间 -->
                     <el-table-column prop="createTime" label="创建时间" width="180">
                         <template #default="scope">
                             {{ formatDateTime(scope.row.createTime) }}
                         </template>
                     </el-table-column>
+                    
+                    <!-- 操作列：固定在右侧，包含各种操作按钮 -->
                     <el-table-column label="操作" width="200" fixed="right">
                         <template #default="scope">
+                            <!-- 查看按钮：查看拍品详情 -->
                             <el-button size="small" @click="viewItem(scope.row)">查看</el-button>
+                            <!-- 编辑按钮：编辑拍品信息 -->
                             <el-button size="small" type="primary" @click="editItem(scope.row)">编辑</el-button>
+                            <!-- 通过按钮：只有待审核状态(status==1)才显示 -->
                             <el-button 
                                 size="small" 
                                 type="success" 
@@ -238,6 +358,7 @@
                                 @click="approveItem(scope.row)">
                                 通过
                             </el-button>
+                            <!-- 拒绝按钮：只有待审核状态(status==1)才显示 -->
                             <el-button 
                                 size="small" 
                                 type="danger" 
@@ -245,6 +366,7 @@
                                 @click="rejectItem(scope.row)">
                                 拒绝
                             </el-button>
+                            <!-- 删除按钮：删除拍品 -->
                             <el-button 
                                 size="small" 
                                 type="danger" 
@@ -255,7 +377,14 @@
                     </el-table-column>
                 </el-table>
                 
-                <!-- 分页 -->
+                <!-- ===== 分页组件 ===== -->
+                <!-- 
+                    分页功能说明：
+                    1. 显示总记录数
+                    2. 可以选择每页显示数量（10/20/50/100）
+                    3. 可以跳转到指定页
+                    4. 上一页/下一页按钮
+                -->
                 <div style="padding: 20px; text-align: center;">
                     <el-pagination
                         v-model:current-page="page"
@@ -270,21 +399,40 @@
             </div>
         </div>
         
-        <!-- 添加/编辑拍品对话框 -->
+        <!-- ===== 添加/编辑拍品对话框 ===== -->
+        <!-- 
+            对话框功能说明：
+            1. 用于添加新拍品或编辑现有拍品
+            2. 包含拍品的所有基本信息
+            3. 支持图片上传
+            4. 表单验证确保数据完整性
+            5. close-on-click-modal="false"：点击遮罩层不关闭对话框
+        -->
         <el-dialog 
             :title="dialogTitle" 
             v-model="dialogVisible" 
             width="800px"
             :close-on-click-modal="false">
+            <!-- 
+                表单组件：
+                - model：绑定表单数据对象
+                - rules：绑定表单验证规则
+                - ref：表单引用，用于验证
+                - label-width：标签宽度100px
+            -->
             <el-form :model="itemForm" :rules="itemRules" ref="itemFormRef" label-width="100px">
+                <!-- 第一行：拍品名称和分类 -->
                 <el-row :gutter="20">
+                    <!-- 拍品名称输入框：占12列（一半宽度） -->
                     <el-col :span="12">
                         <el-form-item label="拍品名称" prop="itemName">
                             <el-input v-model="itemForm.itemName" placeholder="请输入拍品名称"></el-input>
                         </el-form-item>
                     </el-col>
+                    <!-- 分类选择器：占12列（一半宽度） -->
                     <el-col :span="12">
                         <el-form-item label="分类" prop="category">
+                            <!-- 下拉选择框：选择拍品所属分类 -->
                             <el-select v-model="itemForm.category" placeholder="请选择分类" style="width: 100%">
                                 <el-option label="书画" value="1"></el-option>
                                 <el-option label="陶瓷" value="2"></el-option>
@@ -297,6 +445,7 @@
                     </el-col>
                 </el-row>
                 
+                <!-- 拍品描述：多行文本域，4行高 -->
                 <el-form-item label="拍品描述" prop="description">
                     <el-input 
                         v-model="itemForm.description" 
@@ -306,9 +455,12 @@
                     </el-input>
                 </el-form-item>
                 
+                <!-- 价格信息行：起拍价、估价、保留价 -->
                 <el-row :gutter="20">
+                    <!-- 起拍价：拍卖的初始价格 -->
                     <el-col :span="8">
                         <el-form-item label="起拍价" prop="startingPrice">
+                            <!-- 数字输入框：最小值0，保留2位小数 -->
                             <el-input-number 
                                 v-model="itemForm.startingPrice" 
                                 :min="0" 
@@ -318,6 +470,7 @@
                             </el-input-number>
                         </el-form-item>
                     </el-col>
+                    <!-- 估价：拍品的专业估值 -->
                     <el-col :span="8">
                         <el-form-item label="估价" prop="estimatedPrice">
                             <el-input-number 
@@ -329,6 +482,7 @@
                             </el-input-number>
                         </el-form-item>
                     </el-col>
+                    <!-- 保留价：低于此价格不成交 -->
                     <el-col :span="8">
                         <el-form-item label="保留价" prop="reservePrice">
                             <el-input-number 
@@ -342,7 +496,19 @@
                     </el-col>
                 </el-row>
                 
+                <!-- 图片上传组件 -->
                 <el-form-item label="拍品图片">
+                    <!-- 
+                        文件上传组件：
+                        - action：上传接口地址
+                        - headers：请求头（包含认证信息）
+                        - file-list：已上传的文件列表
+                        - on-success：上传成功回调
+                        - on-remove：删除文件回调
+                        - before-upload：上传前验证
+                        - list-type="picture-card"：卡片式图片列表
+                        - limit：最多上传5张图片
+                    -->
                     <el-upload
                         class="upload-demo"
                         :action="uploadUrl"
@@ -353,65 +519,79 @@
                         :before-upload="beforeUpload"
                         list-type="picture-card"
                         :limit="5">
+                        <!-- 上传按钮：加号图标 -->
                         <el-icon><Plus /></el-icon>
                     </el-upload>
                 </el-form-item>
             </el-form>
             
+            <!-- 对话框底部按钮 -->
             <template #footer>
+                <!-- 取消按钮：关闭对话框 -->
                 <el-button @click="dialogVisible = false">取消</el-button>
+                <!-- 提交按钮：根据isEdit变量显示"更新"或"创建" -->
                 <el-button type="primary" @click="submitItem" :loading="submitting">
                     {{ isEdit ? '更新' : '创建' }}
                 </el-button>
             </template>
         </el-dialog>
     </div>
+    <!-- ========================= Vue应用容器结束 ========================= -->
 
-    <!-- Element UI JS -->
-    <script src="/js/vue.js"></script>
-    <script src="/js/element-plus.js"></script>
-    <script src="/js/axios.js"></script>
+    <!-- ========================= JavaScript库引入 ========================= -->
+    <script src="/js/vue.js"></script>           <!-- Vue 3 核心库 -->
+    <script src="/js/element-plus.js"></script>  <!-- Element Plus UI组件库 -->
+    <script src="/js/axios.js"></script>         <!-- Axios HTTP客户端 -->
     
+    <!-- ========================= Vue应用逻辑 ========================= -->
     <script>
+        // 从Vue中解构createApp函数
         const { createApp } = Vue;
+        // 从ElementPlus中解构消息提示组件
         const { ElMessage, ElMessageBox } = ElementPlus;
 
+        // 创建Vue应用实例
         createApp({
+            /**
+             * data函数：定义组件的响应式数据
+             * 所有在这里定义的数据都会被Vue追踪，数据变化时自动更新视图
+             */
             data() {
                 return {
-                    // 数据
-                    items: [],
-                    loading: false,
-                    page: 1,
-                    pageSize: 10,
-                    total: 0,
+                    /* ===== 拍品列表数据 ===== */
+                    items: [],          // 拍品列表数组
+                    loading: false,     // 加载状态，控制loading动画显示
+                    page: 1,            // 当前页码
+                    pageSize: 10,       // 每页显示数量
+                    total: 0,           // 总记录数
                     
-                    // 搜索表单
+                    /* ===== 搜索表单数据 ===== */
                     searchForm: {
-                        itemName: '',
-                        status: '',
-                        category: ''
+                        itemName: '',   // 搜索：拍品名称
+                        status: '',     // 筛选：拍品状态
+                        category: ''    // 筛选：拍品分类
                     },
                     
-                    // 对话框
-                    dialogVisible: false,
-                    dialogTitle: '添加拍品',
-                    isEdit: false,
-                    submitting: false,
+                    /* ===== 对话框控制 ===== */
+                    dialogVisible: false,       // 对话框显示/隐藏
+                    dialogTitle: '添加拍品',    // 对话框标题
+                    isEdit: false,              // 是否为编辑模式（false=添加，true=编辑）
+                    submitting: false,          // 提交中状态，防止重复提交
                     
-                    // 拍品表单
+                    /* ===== 拍品表单数据 ===== */
                     itemForm: {
-                        id: null,
-                        itemName: '',
-                        category: '',
-                        description: '',
-                        startingPrice: 0,
-                        estimatedPrice: 0,
-                        reservePrice: 0,
-                        imageUrl: ''
+                        id: null,               // 拍品ID（编辑时使用）
+                        itemName: '',           // 拍品名称
+                        category: '',           // 拍品分类
+                        description: '',        // 拍品描述
+                        startingPrice: 0,       // 起拍价（元）
+                        estimatedPrice: 0,      // 估价（元）
+                        reservePrice: 0,        // 保留价（元）
+                        imageUrl: ''            // 图片URL
                     },
                     
-                    // 表单验证规则
+                    /* ===== 表单验证规则 ===== */
+                    // 定义每个字段的验证规则
                     itemRules: {
                         itemName: [
                             { required: true, message: '请输入拍品名称', trigger: 'blur' }
@@ -427,35 +607,55 @@
                         ]
                     },
                     
-                    // 文件上传
-                    fileList: [],
-                    uploadUrl: '/api/file/upload',
-                    uploadHeaders: {}
+                    /* ===== 文件上传相关 ===== */
+                    fileList: [],                   // 已上传的文件列表
+                    uploadUrl: '/api/file/upload',  // 上传接口地址
+                    uploadHeaders: {}               // 上传请求头
                 }
             },
             
+            /**
+             * mounted生命周期钩子：组件挂载后执行
+             * 在页面加载完成后自动调用，用于初始化操作
+             */
             mounted() {
-                this.setupAxiosInterceptors();
-                this.loadItems();
+                this.setupAxiosInterceptors();  // 设置axios拦截器
+                this.loadItems();                // 加载拍品列表
             },
             
+            /**
+             * methods：定义组件的所有方法
+             */
             methods: {
-                // 设置axios拦截器
+                /**
+                 * setupAxiosInterceptors方法：设置axios拦截器
+                 * 功能：
+                 * 1. 请求拦截器：自动在每个请求头中添加认证token
+                 * 2. 响应拦截器：处理401未授权错误，自动跳转到登录页
+                 */
                 setupAxiosInterceptors() {
+                    // 请求拦截器：在发送请求前执行
                     axios.interceptors.request.use(config => {
+                        // 从localStorage获取管理员token
                         const token = localStorage.getItem('adminToken');
                         if (token) {
+                            // 添加Authorization头
                             config.headers.Authorization = `Bearer ${token}`;
                         }
                         return config;
                     });
                     
+                    // 响应拦截器：在收到响应后执行
                     axios.interceptors.response.use(
-                        response => response,
+                        response => response,  // 成功时直接返回响应
                         error => {
+                            // 检查是否为401未授权错误
                             if (error.response && error.response.status === 401) {
+                                // 清除过期的token
                                 localStorage.removeItem('adminToken');
+                                // 提示用户
                                 ElMessage.error('登录已过期，请重新登录');
+                                // 跳转到登录页
                                 window.location.href = '/auction/login';
                             }
                             return Promise.reject(error);
@@ -463,54 +663,82 @@
                     );
                 },
                 
-                // 加载拍品列表
+                /**
+                 * loadItems方法：从服务器加载拍品列表
+                 * 功能：
+                 * 1. 发送GET请求到后端API
+                 * 2. 传递分页参数和搜索条件
+                 * 3. 更新items数组和总数
+                 * 4. 显示/隐藏loading动画
+                 */
                 async loadItems() {
-                    this.loading = true;
+                    this.loading = true;  // 显示加载动画
                     try {
+                        // 构建请求参数
                         const params = {
                             page: this.page,
                             pageSize: this.pageSize,
-                            ...this.searchForm
+                            ...this.searchForm  // 展开搜索表单参数
                         };
                         
+                        // 发送GET请求
                         const response = await axios.get('/api/admin/items', { params });
+                        // 更新拍品列表（如果返回null则使用空数组）
                         this.items = response.data.data.records || [];
+                        // 更新总记录数
                         this.total = response.data.data.total || 0;
                     } catch (error) {
+                        // 请求失败时的处理
                         console.error('加载拍品列表失败:', error);
                         ElMessage.error('加载拍品列表失败');
                     } finally {
+                        // 无论成功或失败，都要关闭loading动画
                         this.loading = false;
                     }
                 },
                 
-                // 搜索拍品
+                /**
+                 * searchItems方法：执行搜索
+                 * 功能：重置到第1页，然后重新加载数据
+                 */
                 searchItems() {
-                    this.page = 1;
-                    this.loadItems();
+                    this.page = 1;       // 重置到第1页
+                    this.loadItems();    // 重新加载数据
                 },
                 
-                // 重置搜索
+                /**
+                 * resetSearch方法：重置搜索条件
+                 * 功能：清空所有搜索条件，重新加载所有数据
+                 */
                 resetSearch() {
+                    // 重置搜索表单为初始值
                     this.searchForm = {
                         itemName: '',
                         status: '',
                         category: ''
                     };
-                    this.page = 1;
-                    this.loadItems();
+                    this.page = 1;       // 重置到第1页
+                    this.loadItems();    // 重新加载数据
                 },
                 
-                // 显示添加对话框
+                /**
+                 * showAddDialog方法：显示添加拍品对话框
+                 * 功能：打开空白表单，用于添加新拍品
+                 */
                 showAddDialog() {
-                    this.dialogTitle = '添加拍品';
-                    this.isEdit = false;
-                    this.dialogVisible = true;
-                    this.resetForm();
+                    this.dialogTitle = '添加拍品';     // 设置对话框标题
+                    this.isEdit = false;               // 设置为添加模式
+                    this.dialogVisible = true;         // 显示对话框
+                    this.resetForm();                  // 重置表单
                 },
                 
-                // 查看拍品
+                /**
+                 * viewItem方法：查看拍品详情
+                 * 功能：弹出对话框显示拍品的详细信息
+                 * @param {Object} item - 拍品对象
+                 */
                 viewItem(item) {
+                    // 使用MessageBox.alert显示拍品详情
                     ElMessageBox.alert(`
                         <div style="text-align: left;">
                             <p><strong>拍品名称：</strong>${item.itemName}</p>
@@ -521,69 +749,97 @@
                             <p><strong>状态：</strong>${this.getStatusText(item.status)}</p>
                         </div>
                     `, '拍品详情', {
-                        dangerouslyUseHTMLString: true,
+                        dangerouslyUseHTMLString: true,  // 允许使用HTML字符串
                         confirmButtonText: '确定'
                     });
                 },
                 
-                // 编辑拍品
+                /**
+                 * editItem方法：编辑拍品
+                 * 功能：打开编辑对话框，填充拍品的现有数据
+                 * @param {Object} item - 要编辑的拍品对象
+                 */
                 editItem(item) {
-                    this.dialogTitle = '编辑拍品';
-                    this.isEdit = true;
-                    this.dialogVisible = true;
+                    this.dialogTitle = '编辑拍品';  // 设置对话框标题
+                    this.isEdit = true;             // 设置为编辑模式
+                    this.dialogVisible = true;      // 显示对话框
                     
+                    // 填充表单数据（注意价格要从分转换为元）
                     this.itemForm = {
                         id: item.id,
                         itemName: item.itemName,
-                        category: item.category.toString(),
+                        category: item.category.toString(),  // 转为字符串以匹配select的value
                         description: item.description,
-                        startingPrice: item.startingPrice / 100,
+                        startingPrice: item.startingPrice / 100,        // 分转元
                         estimatedPrice: (item.estimatedPrice || 0) / 100,
                         reservePrice: (item.reservePrice || 0) / 100,
                         imageUrl: item.imageUrl || ''
                     };
                     
+                    // 设置文件列表（用于显示已上传的图片）
                     this.fileList = item.imageUrl ? [{
                         name: 'image.jpg',
                         url: item.imageUrl
                     }] : [];
                 },
                 
-                // 提交拍品
+                /**
+                 * submitItem方法：提交拍品（添加或更新）
+                 * 功能：
+                 * 1. 验证表单数据
+                 * 2. 将价格从元转换为分（后端以分为单位存储）
+                 * 3. 根据isEdit决定是创建还是更新
+                 * 4. 请求成功后关闭对话框并刷新列表
+                 */
                 async submitItem() {
                     try {
+                        // 验证表单，不通过会抛出异常
                         await this.$refs.itemFormRef.validate();
                         
+                        // 设置提交中状态，防止重复提交
                         this.submitting = true;
                         
+                        // 构建提交数据（价格从元转换为分）
                         const formData = {
                             ...this.itemForm,
+                            // Math.round四舍五入转为整数分
                             startingPrice: Math.round(this.itemForm.startingPrice * 100),
                             estimatedPrice: Math.round((this.itemForm.estimatedPrice || 0) * 100),
                             reservePrice: Math.round((this.itemForm.reservePrice || 0) * 100)
                         };
                         
+                        // 根据编辑模式选择不同的API
                         if (this.isEdit) {
+                            // 更新模式：发送PUT请求
                             await axios.put(`/api/admin/items/${formData.id}`, formData);
                             ElMessage.success('拍品更新成功');
                         } else {
+                            // 添加模式：发送POST请求
                             await axios.post('/api/admin/items', formData);
                             ElMessage.success('拍品创建成功');
                         }
                         
+                        // 操作成功后关闭对话框
                         this.dialogVisible = false;
+                        // 重新加载列表以显示最新数据
                         this.loadItems();
                         
                     } catch (error) {
+                        // 处理错误（包括验证失败和请求失败）
                         console.error('提交拍品失败:', error);
                         ElMessage.error('提交拍品失败');
                     } finally {
+                        // 无论成功或失败，都要关闭提交状态
                         this.submitting = false;
                     }
                 },
                 
-                // 重置表单
+                /**
+                 * resetForm方法：重置表单数据
+                 * 功能：将表单所有字段恢复为初始值
+                 */
                 resetForm() {
+                    // 重置为初始值
                     this.itemForm = {
                         id: null,
                         itemName: '',
@@ -594,20 +850,30 @@
                         reservePrice: 0,
                         imageUrl: ''
                     };
-                    this.fileList = [];
+                    this.fileList = [];  // 清空文件列表
+                    // 调用Element Plus的resetFields方法（如果表单存在）
                     this.$refs.itemFormRef?.resetFields();
                 },
                 
-                // 通过拍品
+                /**
+                 * approveItem方法：通过拍品审核
+                 * 功能：管理员审核通过待审核的拍品
+                 * @param {Object} item - 要通过的拍品对象
+                 */
                 async approveItem(item) {
                     try {
+                        // 弹出确认对话框，等待用户确认
                         await ElMessageBox.confirm('确定要通过这个拍品吗？', '确认操作');
                         
+                        // 发送PUT请求到审核通过接口
                         await axios.put(`/api/admin/items/${item.id}/approve`);
+                        // 显示成功消息
                         ElMessage.success('拍品已通过');
+                        // 重新加载列表以显示最新状态
                         this.loadItems();
                         
                     } catch (error) {
+                        // 如果用户点击取消，error会是'cancel'，不显示错误
                         if (error !== 'cancel') {
                             console.error('通过拍品失败:', error);
                             ElMessage.error('操作失败');
@@ -615,16 +881,22 @@
                     }
                 },
                 
-                // 拒绝拍品
+                /**
+                 * rejectItem方法：拒绝拍品审核
+                 * 功能：管理员拒绝待审核的拍品，需要填写拒绝原因
+                 * @param {Object} item - 要拒绝的拍品对象
+                 */
                 async rejectItem(item) {
                     try {
+                        // 弹出输入框，要求填写拒绝原因
                         await ElMessageBox.prompt('请输入拒绝原因', '拒绝拍品', {
                             confirmButtonText: '确定',
                             cancelButtonText: '取消',
-                            inputPattern: /.+/,
+                            inputPattern: /.+/,  // 正则表达式：至少输入一个字符
                             inputErrorMessage: '请输入拒绝原因'
                         });
                         
+                        // 发送PUT请求到拒绝接口
                         await axios.put(`/api/admin/items/${item.id}/reject`, {
                             reason: '拒绝原因'
                         });
@@ -632,6 +904,7 @@
                         this.loadItems();
                         
                     } catch (error) {
+                        // 用户取消操作时不显示错误
                         if (error !== 'cancel') {
                             console.error('拒绝拍品失败:', error);
                             ElMessage.error('操作失败');
@@ -639,18 +912,25 @@
                     }
                 },
                 
-                // 删除拍品
+                /**
+                 * deleteItem方法：删除拍品
+                 * 功能：删除拍品（软删除，不会真正从数据库中删除）
+                 * @param {Object} item - 要删除的拍品对象
+                 */
                 async deleteItem(item) {
                     try {
+                        // 弹出警告确认框
                         await ElMessageBox.confirm('确定要删除这个拍品吗？删除后不可恢复！', '确认删除', {
-                            type: 'warning'
+                            type: 'warning'  // 警告类型，显示黄色图标
                         });
                         
+                        // 发送DELETE请求
                         await axios.delete(`/api/admin/items/${item.id}`);
                         ElMessage.success('拍品已删除');
                         this.loadItems();
                         
                     } catch (error) {
+                        // 用户取消操作时不显示错误
                         if (error !== 'cancel') {
                             console.error('删除拍品失败:', error);
                             ElMessage.error('删除失败');
@@ -658,9 +938,16 @@
                     }
                 },
                 
-                // 文件上传成功
+                /**
+                 * handleUploadSuccess方法：文件上传成功回调
+                 * 功能：处理图片上传成功后的响应
+                 * @param {Object} response - 服务器返回的响应对象
+                 * @param {Object} file - 上传的文件对象
+                 */
                 handleUploadSuccess(response, file) {
+                    // 检查响应状态码
                     if (response.code === 200) {
+                        // 保存图片URL到表单
                         this.itemForm.imageUrl = response.data.url;
                         ElMessage.success('图片上传成功');
                     } else {
@@ -668,46 +955,86 @@
                     }
                 },
                 
-                // 文件移除
+                /**
+                 * handleRemove方法：文件移除回调
+                 * 功能：用户删除已上传的图片时触发
+                 */
                 handleRemove() {
+                    // 清空图片URL
                     this.itemForm.imageUrl = '';
                 },
                 
-                // 上传前检查
+                /**
+                 * beforeUpload方法：上传前的文件验证
+                 * 功能：
+                 * 1. 验证文件类型是否为图片
+                 * 2. 验证文件大小是否小于2MB
+                 * @param {Object} file - 要上传的文件对象
+                 * @returns {Boolean} - 返回true允许上传，false拒绝上传
+                 */
                 beforeUpload(file) {
+                    // 检查文件类型是否以'image/'开头
                     const isImage = file.type.startsWith('image/');
+                    // 检查文件大小是否小于2MB（转换单位：字节 -> KB -> MB）
                     const isLt2M = file.size / 1024 / 1024 < 2;
                     
+                    // 验证失败时显示错误提示
                     if (!isImage) {
                         ElMessage.error('只能上传图片文件!');
                     }
                     if (!isLt2M) {
                         ElMessage.error('图片大小不能超过 2MB!');
                     }
+                    // 只有两个条件都满足才允许上传
                     return isImage && isLt2M;
                 },
                 
-                // 分页处理
+                /**
+                 * handleSizeChange方法：每页显示数量变化时触发
+                 * 功能：用户改变每页显示数量时，重新加载数据
+                 * @param {Number} val - 新的每页显示数量
+                 */
                 handleSizeChange(val) {
-                    this.pageSize = val;
-                    this.loadItems();
+                    this.pageSize = val;  // 更新每页显示数量
+                    this.loadItems();     // 重新加载数据
                 },
                 
+                /**
+                 * handleCurrentChange方法：当前页码变化时触发
+                 * 功能：用户切换页码时，加载对应页的数据
+                 * @param {Number} val - 新的页码
+                 */
                 handleCurrentChange(val) {
-                    this.page = val;
-                    this.loadItems();
+                    this.page = val;      // 更新当前页码
+                    this.loadItems();     // 重新加载数据
                 },
                 
-                // 工具方法
+                /* ===== 工具方法 ===== */
+                
+                /**
+                 * getCategoryName方法：分类ID转中文名称
+                 * 功能：将数字分类ID转换为对应的中文名称
+                 * @param {Number} category - 分类ID
+                 * @returns {String} - 中文分类名称
+                 */
                 getCategoryName(category) {
+                    // 分类映射表
                     const categories = {
                         1: '书画', 2: '陶瓷', 3: '玉器', 
                         4: '珠宝', 5: '家具', 6: '杂项'
                     };
+                    // 返回对应的分类名，如果不存在返回'未知'
                     return categories[category] || '未知';
                 },
                 
+                /**
+                 * getStatusText方法：状态ID转中文文本
+                 * 功能：将数字状态ID转换为对应的中文状态文本
+                 * @param {Number} status - 状态ID
+                 * @returns {String} - 中文状态文本
+                 */
                 getStatusText(status) {
+                    // 状态映射表
                     const statusMap = {
                         0: '草稿', 1: '待审核', 2: '已通过', 
                         3: '已拒绝', 4: '拍卖中', 5: '已成交', 6: '流拍'
@@ -715,20 +1042,40 @@
                     return statusMap[status] || '未知';
                 },
                 
+                /**
+                 * getStatusType方法：获取状态对应的标签颜色类型
+                 * 功能：为Element Plus的Tag组件返回合适的type值
+                 * @param {Number} status - 状态ID
+                 * @returns {String} - Element Plus标签类型（success/warning/danger等）
+                 */
                 getStatusType(status) {
+                    // 状态颜色映射表
                     const typeMap = {
-                        0: 'info', 1: 'warning', 2: 'success',
-                        3: 'danger', 4: 'primary', 5: 'success', 6: 'info'
+                        0: 'info',     // 草稿：灰色
+                        1: 'warning',  // 待审核：橙色
+                        2: 'success',  // 已通过：绿色
+                        3: 'danger',   // 已拒绝：红色
+                        4: 'primary',  // 拍卖中：蓝色
+                        5: 'success',  // 已成交：绿色
+                        6: 'info'      // 流拍：灰色
                     };
                     return typeMap[status] || 'info';
                 },
                 
+                /**
+                 * formatDateTime方法：格式化日期时间
+                 * 功能：将ISO日期时间字符串转换为本地化的可读格式
+                 * @param {String} dateTime - ISO格式的日期时间字符串
+                 * @returns {String} - 格式化后的日期时间（如：2024/01/01 12:00:00）
+                 */
                 formatDateTime(dateTime) {
-                    if (!dateTime) return '';
+                    if (!dateTime) return '';  // 如果为空，返回空字符串
+                    // 使用JavaScript的toLocaleString方法转换为本地格式
                     return new Date(dateTime).toLocaleString('zh-CN');
                 }
             }
-        }).use(ElementPlus).mount('#app');
+        }).use(ElementPlus).mount('#app');  // 使用Element Plus插件并挂载到#app元素
     </script>
+    <!-- ========================= JavaScript结束 ========================= -->
 </body>
 </html>

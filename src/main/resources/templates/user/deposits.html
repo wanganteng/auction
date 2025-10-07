@@ -679,13 +679,37 @@
                     window.location.href = '/auction/user/notifications';
                 },
                 
-                // 加载账户信息
+                /**
+                 * loadAccountInfo方法：加载保证金账户信息
+                 * 
+                 * 功能说明：
+                 * 从后端获取用户的保证金账户信息
+                 * 包括可用余额和冻结金额
+                 * 
+                 * API：GET /api/deposit/account
+                 * 
+                 * 响应数据：
+                 * - availableAmount：可用余额（元）
+                 * - frozenAmount：冻结金额（元）
+                 * - totalAmount：总金额（元）
+                 * 
+                 * 显示位置：
+                 * - 页面顶部的账户概览卡片
+                 * - 蓝色卡片显示可用余额
+                 * - 红色卡片显示冻结金额
+                 * 
+                 * 调用时机：
+                 * 1. 页面加载时
+                 * 2. 充值/提现成功后
+                 * 3. 参与竞拍后（刷新冻结金额）
+                 */
                 loadAccountInfo() {
                     axios.get('/api/deposit/account')
                         .then(response => {
                             if (response.data.code === 200) {
                                 const data = response.data.data;
                                 // 接口返回的金额单位是元，直接使用
+                                // Number()转换确保是数字类型，|| 0 确保不为null
                                 this.accountBalance = Number(data.availableAmount || 0);
                                 this.frozenAmount = Number(data.frozenAmount || 0);
                             }
@@ -695,13 +719,49 @@
                         });
                 },
                 
-                // 加载交易记录
+                /**
+                 * loadTransactions方法：加载交易记录列表
+                 * 
+                 * 功能说明：
+                 * 从后端获取用户的保证金交易流水记录
+                 * 包括充值、提现、冻结、解冻、扣除等所有交易
+                 * 
+                 * API：GET /api/deposit/transactions
+                 * 
+                 * 响应数据：
+                 * - list：交易记录数组
+                 * 每条记录包含：
+                 *   - transactionNo：交易流水号
+                 *   - transactionType：交易类型（1-充值，2-提现，3-冻结...）
+                 *   - amount：交易金额（元）
+                 *   - balanceBefore：交易前余额
+                 *   - balanceAfter：交易后余额
+                 *   - status：交易状态（0-待审核，1-成功，2-失败）
+                 *   - description：交易描述
+                 *   - createTime：交易时间
+                 * 
+                 * 显示位置：
+                 * - 页面下方的交易记录表格
+                 * - 按时间倒序排列（最新的在前）
+                 * 
+                 * 加载流程：
+                 * 1. 显示loading动画
+                 * 2. 发送GET请求
+                 * 3. 解析响应数据，更新transactions数组
+                 * 4. 关闭loading动画
+                 * 
+                 * 调用时机：
+                 * 1. 页面加载时
+                 * 2. 充值/提现成功后
+                 * 3. 用户手动刷新
+                 */
                 loadTransactions() {
-                    this.loading = true;
+                    this.loading = true;  // 显示loading动画
                     axios.get('/api/deposit/transactions')
                         .then(response => {
                             if (response.data.code === 200) {
                                 const payload = response.data.data || {};
+                                // 确保transactions是数组类型
                                 this.transactions = Array.isArray(payload.list) ? payload.list : [];
                             } else {
                                 ElMessage.error('加载交易记录失败');
@@ -712,40 +772,91 @@
                             ElMessage.error('加载交易记录失败');
                         })
                         .finally(() => {
+                            // 无论成功失败，都关闭loading动画
                             this.loading = false;
                         });
                 },
                 
-                // 显示充值表单
+                /**
+                 * showDepositDialog方法：显示充值表单
+                 * 
+                 * 功能说明：
+                 * 用户点击"充值"按钮时，显示充值表单对话框
+                 * 
+                 * 操作：
+                 * 1. 显示充值表单
+                 * 2. 隐藏提现表单（确保同时只显示一个）
+                 */
                 showDepositDialog() {
                     this.showDepositForm = true;
                     this.showWithdrawForm = false;
                 },
                 
-                // 显示提现表单
+                /**
+                 * showWithdrawDialog方法：显示提现表单
+                 * 
+                 * 功能说明：
+                 * 用户点击"提现"按钮时，显示提现表单对话框
+                 * 
+                 * 操作：
+                 * 1. 显示提现表单
+                 * 2. 隐藏充值表单（确保同时只显示一个）
+                 */
                 showWithdrawDialog() {
                     this.showWithdrawForm = true;
                     this.showDepositForm = false;
                 },
                 
-                // 设置充值金额
+                /**
+                 * setDepositAmount方法：设置充值金额
+                 * 
+                 * 功能说明：
+                 * 用户点击快捷金额按钮时，自动填充充值金额
+                 * 
+                 * 快捷金额：100、500、1000、5000等
+                 * 
+                 * @param {Number} amount - 充值金额（元）
+                 */
                 setDepositAmount(amount) {
                     this.depositForm.amount = amount;
                 },
                 
-                // 提交充值
+                /**
+                 * submitDeposit方法：提交充值申请
+                 * 
+                 * 功能说明：
+                 * 处理用户充值保证金的操作
+                 * 
+                 * 执行流程：
+                 * 1. 验证表单数据（金额、支付方式）
+                 * 2. 发送充值请求到后端API
+                 * 3. 显示加载状态，防止重复提交
+                 * 4. 请求成功后：
+                 *    - 显示成功提示
+                 *    - 关闭表单
+                 *    - 刷新账户信息
+                 *    - 刷新交易记录
+                 * 5. 请求失败后：显示错误提示
+                 * 
+                 * 注意事项：
+                 * - 充值需要管理员审核
+                 * - 金额必须大于0
+                 * - 需要选择支付方式
+                 */
                 submitDeposit() {
+                    // 验证表单数据
                     this.$refs.depositFormRef.validate((valid) => {
                         if (valid) {
-                            this.depositing = true;
+                            this.depositing = true;  // 显示加载状态
                             
+                            // 发送POST请求到充值API
                             axios.post('/api/deposit/deposit', this.depositForm)
                                 .then(response => {
                                     if (response.data.code === 200) {
                                         ElMessage.success('充值申请已提交');
-                                        this.cancelDeposit();
-                                        this.loadAccountInfo();
-                                        this.loadTransactions();
+                                        this.cancelDeposit();        // 关闭表单
+                                        this.loadAccountInfo();      // 刷新账户信息
+                                        this.loadTransactions();     // 刷新交易记录
                                     } else {
                                         ElMessage.error(response.data.message || '充值失败');
                                     }
@@ -755,25 +866,46 @@
                                     ElMessage.error('充值失败，请稍后重试');
                                 })
                                 .finally(() => {
-                                    this.depositing = false;
+                                    this.depositing = false;  // 关闭加载状态
                                 });
                         }
                     });
                 },
                 
-                // 提交提现
+                /**
+                 * submitWithdraw方法：提交提现申请
+                 * 
+                 * 功能说明：
+                 * 处理用户提现保证金的操作
+                 * 
+                 * 执行流程：
+                 * 1. 验证表单数据（金额、提现方式、账户信息）
+                 * 2. 发送提现请求到后端API
+                 * 3. 显示加载状态
+                 * 4. 请求成功后：
+                 *    - 显示成功提示
+                 *    - 关闭表单
+                 *    - 刷新账户信息和交易记录
+                 * 
+                 * 注意事项：
+                 * - 提现需要管理员审核
+                 * - 金额不能超过可用余额
+                 * - 需要提供提现账户信息
+                 */
                 submitWithdraw() {
+                    // 验证表单
                     this.$refs.withdrawFormRef.validate((valid) => {
                         if (valid) {
-                            this.withdrawing = true;
+                            this.withdrawing = true;  // 显示加载状态
                             
+                            // 发送POST请求到提现API
                             axios.post('/api/deposit/withdraw', this.withdrawForm)
                                 .then(response => {
                                     if (response.data.code === 200) {
                                         ElMessage.success('提现申请已提交');
-                                        this.cancelWithdraw();
-                                        this.loadAccountInfo();
-                                        this.loadTransactions();
+                                        this.cancelWithdraw();       // 关闭表单
+                                        this.loadAccountInfo();      // 刷新账户信息
+                                        this.loadTransactions();     // 刷新交易记录
                                     } else {
                                         ElMessage.error(response.data.message || '提现失败');
                                     }
@@ -783,18 +915,28 @@
                                     ElMessage.error('提现失败，请稍后重试');
                                 })
                                 .finally(() => {
-                                    this.withdrawing = false;
+                                    this.withdrawing = false;  // 关闭加载状态
                                 });
                         }
                     });
                 },
                 
-                // 取消充值
+                /**
+                 * cancelDeposit方法：取消充值操作
+                 * 
+                 * 功能说明：
+                 * 用户点击"取消"按钮时，关闭充值表单并重置数据
+                 * 
+                 * 重置操作：
+                 * 1. 隐藏充值表单
+                 * 2. 清空表单数据
+                 */
                 cancelDeposit() {
-                    this.showDepositForm = false;
+                    this.showDepositForm = false;  // 隐藏充值表单
+                    // 重置表单数据为初始值
                     this.depositForm = {
-                        amount: null,
-                        paymentMethod: ''
+                        amount: null,         // 充值金额
+                        paymentMethod: ''     // 支付方式
                     };
                 },
                 

@@ -1,4 +1,13 @@
 <!DOCTYPE html>
+<!-- 
+    文件名: login.html
+    功能: 拍卖系统登录页面
+    说明: 
+    1. 提供用户登录功能，包括管理员和普通用户登录
+    2. 根据用户类型自动跳转到对应页面（管理员跳转到管理后台，普通用户跳转到用户界面）
+    3. 使用Vue 3和Element Plus构建界面
+    4. 集成JWT令牌认证
+-->
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
@@ -7,106 +16,127 @@
     
     <!-- Element UI CSS - 使用本地资源 -->
     <link rel="stylesheet" href="/css/element-plus.css">
-    <!-- 自定义样式 -->
+    
+    <!-- ========================= 自定义样式开始 ========================= -->
     <style>
+        /* ----- 全局样式 ----- */
+        /* 页面主体样式：设置无边距，使用中文字体栈，渐变紫色背景 */
         body {
             margin: 0;
             padding: 0;
             font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* 紫色渐变背景 */
+            min-height: 100vh; /* 最小高度为整个视口 */
         }
         
+        /* ----- 顶部导航区域 ----- */
+        /* 顶部导航栏：半透明白色背景，带有模糊效果和阴影 */
         .header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.95); /* 半透明白色 */
+            backdrop-filter: blur(10px); /* 背景模糊效果 */
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1); /* 阴影效果 */
             padding: 0 20px;
         }
         
+        /* 导航栏内容容器：使用Flexbox布局，左右分布 */
         .header-content {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 1200px;
-            margin: 0 auto;
+            justify-content: space-between; /* 左右两端对齐 */
+            align-items: center; /* 垂直居中 */
+            max-width: 1200px; /* 最大宽度限制 */
+            margin: 0 auto; /* 水平居中 */
             height: 60px;
         }
         
+        /* Logo区域：使用Flexbox垂直居中图标和文字 */
         .logo {
             display: flex;
             align-items: center;
             font-size: 24px;
             font-weight: bold;
-            color: #409EFF;
+            color: #409EFF; /* 蓝色主题色 */
         }
         
+        /* Logo图标样式 */
         .logo i {
             margin-right: 10px;
             font-size: 28px;
         }
         
+        /* 导航链接容器：横向排列，间距20px */
         .nav-links {
             display: flex;
             gap: 20px;
         }
         
+        /* ----- 主内容区域 ----- */
+        /* 主内容区域：使用Flexbox实现内容垂直和水平居中 */
         .main-content {
             padding: 40px 20px;
             display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: calc(100vh - 60px);
+            justify-content: center; /* 水平居中 */
+            align-items: center; /* 垂直居中 */
+            min-height: calc(100vh - 60px); /* 减去导航栏高度后的剩余高度 */
         }
         
+        /* 登录容器：限制最大宽度为400px */
         .login-container {
             width: 100%;
             max-width: 400px;
         }
         
+        /* 登录卡片：圆角边框和阴影效果 */
         .login-card {
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         }
         
+        /* 卡片头部：居中对齐 */
         .card-header {
             text-align: center;
             padding: 20px 0;
         }
         
+        /* 卡片标题样式 */
         .card-header h2 {
             margin: 0 0 10px 0;
-            color: #303133;
+            color: #303133; /* 深灰色 */
             font-size: 28px;
         }
         
+        /* 卡片副标题样式 */
         .card-header p {
             margin: 0;
-            color: #909399;
+            color: #909399; /* 灰色 */
             font-size: 14px;
         }
         
+        /* 登录表单容器 */
         .login-form {
             padding: 20px;
         }
         
+        /* 登录选项区域：左右分布（记住我和注册链接） */
         .login-options {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         
+        /* 登录按钮：全宽显示，较大高度和字号 */
         .login-btn {
             width: 100%;
             height: 45px;
             font-size: 16px;
         }
         
+        /* 登录页脚区域 */
         .login-footer {
             margin-top: 20px;
         }
         
+        /* 版权信息：居中显示，半透明白色文字 */
         .copyright {
             text-align: center;
             margin-top: 30px;
@@ -114,65 +144,79 @@
             font-size: 14px;
         }
         
+        /* ----- 信息提示区域 ----- */
+        /* 用户类型信息提示框：浅蓝色背景 */
         .user-type-info {
-            background: #f0f9ff;
+            background: #f0f9ff; /* 浅蓝色背景 */
             border: 1px solid #bae6fd;
             border-radius: 8px;
             padding: 15px;
             margin-bottom: 20px;
         }
         
+        /* 用户类型信息标题 */
         .user-type-info h4 {
             margin: 0 0 10px 0;
-            color: #0369a1;
+            color: #0369a1; /* 深蓝色 */
             font-size: 16px;
         }
         
+        /* 用户类型信息文本 */
         .user-type-info p {
             margin: 5px 0;
             color: #0c4a6e;
             font-size: 14px;
         }
         
+        /* ----- 测试账号区域 ----- */
+        /* 测试账号提示框：黄色背景 */
         .test-accounts {
-            background: #fef3c7;
+            background: #fef3c7; /* 浅黄色背景 */
             border: 1px solid #fbbf24;
             border-radius: 8px;
             padding: 15px;
             margin-top: 20px;
         }
         
+        /* 测试账号标题 */
         .test-accounts h4 {
             margin: 0 0 10px 0;
-            color: #92400e;
+            color: #92400e; /* 深棕色 */
             font-size: 16px;
         }
         
+        /* 测试账号单项：左右分布显示账号和角色 */
         .test-accounts .account-item {
             display: flex;
-            justify-content: space-between;
+            justify-content: space-between; /* 账号和角色分别靠左右两端 */
             margin: 8px 0;
             padding: 8px;
-            background: white;
+            background: white; /* 白色背景突出显示 */
             border-radius: 4px;
             font-size: 14px;
         }
         
+        /* 角色标签样式：橙色加粗 */
         .test-accounts .account-item .role {
             color: #f59e0b;
             font-weight: bold;
         }
     </style>
+    <!-- ========================= 自定义样式结束 ========================= -->
 </head>
 <body>
+    <!-- ========================= Vue应用容器开始 ========================= -->
     <div id="app">
-        <!-- 顶部导航 -->
+        <!-- ===== 顶部导航栏区域 ===== -->
+        <!-- 使用Element Plus的Header组件 -->
         <el-header class="header">
             <div class="header-content">
+                <!-- Logo区域：显示系统图标和名称 -->
                 <div class="logo">
-                    <i class="el-icon-gavel"></i>
+                    <i class="el-icon-gavel"></i> <!-- 拍卖锤图标 -->
                     <span>拍卖系统</span>
                 </div>
+                <!-- 导航链接区域：提供快速跳转到其他页面的链接 -->
                 <div class="nav-links">
                     <el-link href="/auction/user/" type="primary">用户首页</el-link>
                     <el-link href="/auction/admin/" type="primary">管理后台</el-link>
@@ -180,10 +224,13 @@
             </div>
         </el-header>
 
-        <!-- 主要内容 -->
+        <!-- ===== 主内容区域 ===== -->
+        <!-- 使用Element Plus的Main组件 -->
         <el-main class="main-content">
             <div class="login-container">
+                <!-- 登录卡片：使用Element Plus的Card组件，shadow="always"表示始终显示阴影 -->
                 <el-card class="login-card" shadow="always">
+                    <!-- 卡片头部插槽：显示登录标题 -->
                     <template #header>
                         <div class="card-header">
                             <h2>系统登录</h2>
@@ -191,7 +238,8 @@
                         </div>
                     </template>
                     
-                    <!-- 用户类型说明 -->
+                    <!-- ===== 用户类型说明区域 ===== -->
+                    <!-- 提示用户系统会根据身份自动跳转到相应页面 -->
                     <div class="user-type-info">
                         <h4>💡 智能登录</h4>
                         <p>• 管理员登录后自动跳转到管理后台</p>
@@ -199,6 +247,13 @@
                         <p>• 系统会根据您的身份自动识别权限</p>
                     </div>
                     
+                    <!-- ===== 登录表单 ===== -->
+                    <!-- 
+                        ref: 表单引用，用于验证
+                        :model: 绑定表单数据对象
+                        :rules: 绑定表单验证规则
+                        label-width: 表单标签宽度
+                    -->
                     <el-form 
                         ref="loginForm" 
                         :model="loginForm" 
@@ -206,6 +261,7 @@
                         label-width="80px"
                         class="login-form">
                         
+                        <!-- 用户名输入框 -->
                         <el-form-item label="用户名" prop="username">
                             <el-input 
                                 v-model="loginForm.username" 
@@ -214,9 +270,11 @@
                                 size="large"
                                 clearable
                                 @keyup.enter="handleLogin">
+                                <!-- @keyup.enter: 按下回车键时触发登录 -->
                             </el-input>
                         </el-form-item>
                         
+                        <!-- 密码输入框 -->
                         <el-form-item label="密码" prop="password">
                             <el-input 
                                 v-model="loginForm.password" 
@@ -226,9 +284,11 @@
                                 size="large"
                                 show-password
                                 @keyup.enter="handleLogin">
+                                <!-- show-password: 显示密码可见性切换按钮 -->
                             </el-input>
                         </el-form-item>
                         
+                        <!-- 登录选项：记住我和注册链接 -->
                         <el-form-item>
                             <div class="login-options">
                                 <el-checkbox v-model="loginForm.rememberMe">记住我</el-checkbox>
@@ -236,6 +296,7 @@
                             </div>
                         </el-form-item>
                         
+                        <!-- 登录按钮 -->
                         <el-form-item>
                             <el-button 
                                 type="primary" 
@@ -244,11 +305,13 @@
                                 size="large"
                                 class="login-btn">
                                 登录
+                                <!-- :loading 属性：登录中时显示加载动画 -->
                             </el-button>
                         </el-form-item>
                     </el-form>
                     
-                    <!-- 测试账号信息 -->
+                    <!-- ===== 测试账号信息区域 ===== -->
+                    <!-- 方便测试人员快速登录的测试账号列表 -->
                     <div class="test-accounts">
                         <h4>🧪 测试账号</h4>
                         <div class="account-item">
@@ -266,108 +329,158 @@
                     </div>
                 </el-card>
                 
+                <!-- 版权信息 -->
                 <div class="copyright">
                     <p>&copy; 2024 拍卖系统. 保留所有权利.</p>
                 </div>
             </div>
         </el-main>
     </div>
+    <!-- ========================= Vue应用容器结束 ========================= -->
 
+    <!-- ========================= JavaScript库引入 ========================= -->
     <!-- Element UI JS - 使用本地资源 -->
-    <script src="/js/vue.js"></script>
-    <script src="/js/element-plus.js"></script>
-    <script src="/js/axios.js"></script>
+    <script src="/js/vue.js"></script>           <!-- Vue 3 核心库 -->
+    <script src="/js/element-plus.js"></script>  <!-- Element Plus UI组件库 -->
+    <script src="/js/axios.js"></script>         <!-- Axios HTTP客户端库 -->
     
+    <!-- ========================= Vue应用主逻辑 ========================= -->
     <script>
+        // 从Vue中解构出createApp函数，用于创建Vue应用实例
         const { createApp } = Vue;
+        // 从ElementPlus中解构出消息提示组件
         const { ElMessage, ElMessageBox } = ElementPlus;
 
+        // 创建Vue应用实例
         createApp({
+            /**
+             * data函数：定义组件的响应式数据
+             * @returns {Object} 包含所有响应式数据的对象
+             */
             data() {
                 return {
+                    // 登录加载状态：控制登录按钮的loading动画
                     loading: false,
+                    
+                    // 登录表单数据对象
                     loginForm: {
-                        username: '',
-                        password: '',
-                        rememberMe: false
+                        username: '',      // 用户名
+                        password: '',      // 密码
+                        rememberMe: false  // 是否记住我
                     },
+                    
+                    // 登录表单验证规则
                     loginRules: {
+                        // 用户名验证规则
                         username: [
-                            { required: true, message: '请输入用户名', trigger: 'blur' },
-                            { min: 3, max: 20, message: '用户名长度在 3 到 20 个字符', trigger: 'blur' }
+                            { required: true, message: '请输入用户名', trigger: 'blur' },  // 必填验证
+                            { min: 3, max: 20, message: '用户名长度在 3 到 20 个字符', trigger: 'blur' }  // 长度验证
                         ],
+                        // 密码验证规则
                         password: [
-                            { required: true, message: '请输入密码', trigger: 'blur' },
-                            { min: 6, max: 20, message: '密码长度在 6 到 20 个字符', trigger: 'blur' }
+                            { required: true, message: '请输入密码', trigger: 'blur' },  // 必填验证
+                            { min: 6, max: 20, message: '密码长度在 6 到 20 个字符', trigger: 'blur' }  // 长度验证
                         ]
                     }
                 }
             },
+            
+            /**
+             * mounted生命周期钩子：组件挂载完成后执行
+             * 用于初始化axios拦截器
+             */
             mounted() {
-                // 登录页也设置一次全局请求拦截器，避免后续页面缺少头
+                // 设置全局axios请求拦截器
+                // 作用：在每个请求发送前自动添加Authorization头
                 axios.interceptors.request.use(config => {
                     const token = sessionStorage.getItem('authToken');
                     if (token) config.headers.Authorization = `Bearer ${token}`;
                     return config;
                 });
             },
+            
+            /**
+             * methods：定义组件的方法
+             */
             methods: {
+                /**
+                 * handleLogin方法：处理用户登录
+                 * 流程：
+                 * 1. 验证表单
+                 * 2. 发送登录请求
+                 * 3. 保存token和用户信息
+                 * 4. 根据用户类型跳转到相应页面
+                 */
                 handleLogin() {
+                    // 调用表单验证方法
                     this.$refs.loginForm.validate((valid) => {
                         if (valid) {
+                            // 设置加载状态，按钮显示loading动画
                             this.loading = true;
                             
+                            // 打印调试信息
                             console.log('开始登录请求...');
+                            
+                            // 发送登录POST请求到后端API
                             axios.post('/api/auth/login', this.loginForm)
                                 .then(response => {
+                                    // 打印响应信息用于调试
                                     console.log('登录响应:', response);
                                     console.log('响应状态码:', response.status);
                                     console.log('响应数据:', response.data);
                                     
+                                    // 判断登录是否成功（后端返回code为200表示成功）
                                     if (response.data.code === 200) {
+                                        // 显示成功提示消息
                                         ElMessage.success('登录成功');
                                         
-                                        // 获取token和跳转地址
-                                        const accessToken = response.data.data.accessToken;
-                                        const refreshToken = response.data.data.refreshToken;
-                                        const redirectUrl = response.data.data.redirectUrl || '/auction/user/';
-                                        const userType = response.data.data.user.userType;
+                                        // 从响应中提取关键数据
+                                        const accessToken = response.data.data.accessToken;    // 访问令牌
+                                        const refreshToken = response.data.data.refreshToken;  // 刷新令牌
+                                        const redirectUrl = response.data.data.redirectUrl || '/auction/user/';  // 跳转URL
+                                        const userType = response.data.data.user.userType;     // 用户类型
                                         
+                                        // 打印关键信息用于调试
                                         console.log('获取AccessToken:', accessToken);
                                         console.log('获取RefreshToken:', refreshToken);
                                         console.log('跳转地址:', redirectUrl);
                                         console.log('用户类型:', userType);
                                         
-                                        // 保存token到localStorage（混合模式）
+                                        // 保存token和用户信息到localStorage（持久化存储）
                                         localStorage.setItem('accessToken', accessToken);
                                         localStorage.setItem('refreshToken', refreshToken);
                                         localStorage.setItem('userInfo', JSON.stringify(response.data.data.user));
                                         
-                                        // 设置全局axios默认请求头
+                                        // 设置全局axios默认请求头，后续所有请求都会自动带上token
                                         axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
                                         
                                         // 根据用户类型跳转到相应页面
+                                        // 管理员跳转到管理后台，普通用户跳转到用户界面
                                         console.log('准备跳转到:', redirectUrl);
                                         window.location.href = redirectUrl;
                                     } else {
+                                        // 登录失败，显示后端返回的错误消息
                                         console.error('登录失败:', response.data.message);
                                         ElMessage.error(response.data.message || '登录失败');
                                     }
                                 })
                                 .catch(error => {
+                                    // 请求发生错误（网络错误、服务器错误等）
                                     console.error('登录请求错误:', error);
                                     console.error('错误详情:', error.response);
                                     ElMessage.error('登录失败，请稍后重试');
                                 })
                                 .finally(() => {
+                                    // 无论成功或失败，最后都要关闭loading状态
                                     this.loading = false;
                                 });
                         }
                     });
                 }
             }
-        }).use(ElementPlus).mount('#app');
+        }).use(ElementPlus).mount('#app');  // 使用Element Plus插件并挂载到#app元素
     </script>
+    <!-- ========================= JavaScript结束 ========================= -->
     
 </body>
 </html>

@@ -7,172 +7,319 @@
     
     <!-- Element UI CSS - 使用本地资源 -->
     <link rel="stylesheet" href="/css/element-plus.css">
-    <!-- 自定义样式 -->
+    <!-- ========================= 自定义样式开始 ========================= -->
     <style>
+        /* ----- 全局样式 ----- */
+        /* 
+         * 页面主体样式
+         * 说明：设置页面无边距，浅灰色背景，使用中文友好字体栈
+         */
         body {
-            margin: 0;
-            padding: 0;
+            margin: 0;               /* 移除默认边距 */
+            padding: 0;              /* 移除默认内边距 */
+            /* 中文字体栈：优先使用系统自带的中文字体，确保中文显示美观 */
             font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
-            background-color: #f5f5f5;
+            background-color: #f5f5f5;  /* 浅灰色背景，减少视觉疲劳 */
         }
         
+        /* ----- 顶部导航栏样式 ----- */
+        /*
+         * 顶部导航栏
+         * 功能：固定在页面顶部的导航条
+         * 特点：
+         * - position: sticky 粘性定位，滚动时保持在顶部
+         * - z-index: 1000 高层级，确保在其他元素之上
+         * - box-shadow 底部阴影，增加立体感
+         */
         .header {
-            background: white;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            padding: 0 20px;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
+            background: white;                           /* 白色背景 */
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);   /* 底部阴影：水平0，垂直2px，模糊8px，10%透明度的黑色 */
+            padding: 0 20px;                             /* 左右内边距20px */
+            position: sticky;                            /* 粘性定位：滚动时固定在顶部 */
+            top: 0;                                      /* 距离顶部0px */
+            z-index: 1000;                               /* 层级1000，确保在其他元素之上 */
         }
         
+        /*
+         * 导航栏内容容器
+         * 功能：包含Logo、导航链接、用户信息的容器
+         * 布局：使用Flexbox实现左右分布
+         */
         .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 1200px;
-            margin: 0 auto;
-            height: 60px;
+            display: flex;                    /* Flexbox布局 */
+            justify-content: space-between;   /* 子元素左右两端对齐 */
+            align-items: center;              /* 子元素垂直居中 */
+            max-width: 1200px;                /* 最大宽度1200px，超大屏幕时不会过宽 */
+            margin: 0 auto;                   /* 水平居中 */
+            height: 60px;                     /* 固定高度60px */
         }
         
+        /*
+         * Logo样式
+         * 功能：显示系统图标和名称
+         * 布局：图标和文字横向排列
+         */
         .logo {
-            display: flex;
-            align-items: center;
-            font-size: 24px;
-            font-weight: bold;
-            color: #409EFF;
+            display: flex;           /* Flexbox布局 */
+            align-items: center;     /* 垂直居中对齐 */
+            font-size: 24px;         /* 字号24px */
+            font-weight: bold;       /* 粗体 */
+            color: #409EFF;          /* Element Plus主题蓝色 */
         }
         
+        /*
+         * Logo图标样式
+         * 说明：拍卖锤图标，显示在文字左侧
+         */
         .logo i {
-            margin-right: 10px;
-            font-size: 28px;
+            margin-right: 10px;  /* 右侧间距10px，与文字分开 */
+            font-size: 28px;     /* 图标比文字稍大 */
         }
         
+        /*
+         * 导航链接容器
+         * 功能：包含多个导航链接（拍卖会、订单、保证金等）
+         * 布局：横向排列，间距20px
+         */
         .nav-links {
-            display: flex;
-            gap: 20px;
+            display: flex;   /* Flexbox布局 */
+            gap: 20px;       /* 子元素间距20px */
         }
         
+        /*
+         * 用户信息区域
+         * 功能：显示用户头像、昵称、通知图标、退出按钮
+         * 布局：横向排列，间距15px
+         */
         .user-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
+            display: flex;       /* Flexbox布局 */
+            align-items: center; /* 垂直居中对齐 */
+            gap: 15px;           /* 子元素间距15px */
         }
         
+        /* ----- 主内容区域样式 ----- */
+        /*
+         * 主内容容器
+         * 功能：包含页面的主要内容
+         * 布局：限制最大宽度，居中显示，左右留白
+         */
         .main-content {
-            max-width: 1200px;
-            margin: 20px auto;
-            padding: 0 20px;
+            max-width: 1200px;   /* 最大宽度1200px */
+            margin: 20px auto;   /* 上下20px边距，左右自动居中 */
+            padding: 0 20px;     /* 左右内边距20px */
         }
         
+        /* ----- 页面头部卡片样式 ----- */
+        /*
+         * 页面头部卡片
+         * 功能：显示页面标题和描述的卡片区域
+         * 特点：白色背景，圆角，阴影效果
+         */
         .page-header {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
+            background: white;                           /* 白色背景 */
+            padding: 20px;                               /* 内边距20px */
+            border-radius: 8px;                          /* 圆角8px */
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);   /* 阴影效果 */
+            margin-bottom: 20px;                         /* 底部间距20px */
         }
         
+        /*
+         * 页面标题样式
+         * 说明：大号粗体，深灰色
+         */
         .page-title {
-            font-size: 24px;
-            font-weight: bold;
-            color: #303133;
-            margin: 0;
+            font-size: 24px;      /* 字号24px */
+            font-weight: bold;    /* 粗体 */
+            color: #303133;       /* 深灰色 */
+            margin: 0;            /* 移除默认边距 */
         }
         
+        /*
+         * 页面描述文字
+         * 说明：标题下方的说明文字，中灰色
+         */
         .page-description {
-            color: #606266;
-            margin: 10px 0 0 0;
+            color: #606266;       /* 中灰色 */
+            margin: 10px 0 0 0;   /* 顶部间距10px */
         }
         
+        /* ----- 筛选区域样式 ----- */
+        /*
+         * 筛选区域卡片
+         * 功能：包含搜索框和筛选条件的区域
+         * 布局：白色卡片，与页面头部样式一致
+         */
         .filter-section {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
+            background: white;                           /* 白色背景 */
+            padding: 20px;                               /* 内边距20px */
+            border-radius: 8px;                          /* 圆角8px */
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);   /* 阴影效果 */
+            margin-bottom: 20px;                         /* 底部间距20px */
         }
         
+        /* ----- 拍卖会网格布局样式 ----- */
+        /*
+         * 拍卖会网格容器
+         * 功能：使用CSS Grid布局显示拍卖会卡片
+         * 布局特点：
+         * - grid-template-columns: repeat(auto-fill, minmax(350px, 1fr))
+         *   自动填充列，每列最小350px，最大1fr（等分剩余空间）
+         * - gap: 20px 卡片之间的间距
+         * - 响应式：屏幕宽度变化时自动调整列数
+         */
         .sessions-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 20px;
+            display: grid;                                              /* Grid网格布局 */
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));  /* 自适应列数：每列最小350px */
+            gap: 20px;                                                  /* 网格间距20px */
         }
         
+        /* ----- 拍卖会卡片样式 ----- */
+        /*
+         * 拍卖会卡片
+         * 功能：显示单个拍卖会信息的卡片
+         * 特点：
+         * - 白色背景，圆角12px
+         * - 阴影效果增加立体感
+         * - 鼠标悬停时上浮效果
+         * - cursor: pointer 鼠标变为手型，提示可点击
+         * - transition 平滑过渡动画
+         */
         .session-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            transition: all 0.3s;
-            cursor: pointer;
+            background: white;                           /* 白色背景 */
+            border-radius: 12px;                         /* 圆角12px */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);  /* 阴影：垂直4px，模糊12px */
+            overflow: hidden;                            /* 隐藏超出部分，保持圆角效果 */
+            transition: all 0.3s;                        /* 所有属性变化0.3秒平滑过渡 */
+            cursor: pointer;                             /* 鼠标变为手型，提示可点击 */
         }
         
+        /*
+         * 拍卖会卡片悬停效果
+         * 功能：鼠标悬停时的视觉反馈
+         * 效果：
+         * - 向上移动4px（translateY）
+         * - 阴影增强（更大的模糊半径和偏移）
+         */
         .session-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            transform: translateY(-4px);                 /* 向上移动4px */
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); /* 增强阴影效果 */
         }
         
+        /* ----- 拍卖会卡片内部元素样式 ----- */
+        /*
+         * 拍卖会封面图片
+         * 功能：显示拍卖会的封面图片
+         * 特点：
+         * - width: 100% 占满卡片宽度
+         * - height: 200px 固定高度
+         * - object-fit: cover 保持比例裁剪，不变形
+         */
         .session-image {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
+            width: 100%;         /* 宽度100%，占满容器 */
+            height: 200px;       /* 固定高度200px */
+            object-fit: cover;   /* 图片保持比例填充，超出部分裁剪 */
         }
         
+        /*
+         * 拍卖会内容区域
+         * 功能：包含标题、描述、信息、统计数据的容器
+         * 布局：内边距20px，留白舒适
+         */
         .session-content {
-            padding: 20px;
+            padding: 20px;  /* 内边距20px */
         }
         
+        /*
+         * 拍卖会标题
+         * 功能：显示拍卖会名称
+         * 样式：粗体，深灰色，行高1.4提高可读性
+         */
         .session-title {
-            font-size: 18px;
-            font-weight: bold;
-            color: #303133;
-            margin: 0 0 10px 0;
-            line-height: 1.4;
+            font-size: 18px;      /* 字号18px */
+            font-weight: bold;    /* 粗体 */
+            color: #303133;       /* 深灰色 */
+            margin: 0 0 10px 0;   /* 底部间距10px */
+            line-height: 1.4;     /* 行高1.4倍，多行文字更易读 */
         }
         
+        /*
+         * 拍卖会描述
+         * 功能：显示拍卖会的简短描述
+         * 特点：
+         * - 最多显示2行，超出显示省略号
+         * - display: -webkit-box 配合line-clamp实现多行截断
+         * - -webkit-line-clamp: 2 限制最多2行
+         */
         .session-description {
-            color: #606266;
-            font-size: 14px;
-            margin: 0 0 15px 0;
-            line-height: 1.5;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+            color: #606266;                   /* 中灰色 */
+            font-size: 14px;                  /* 字号14px */
+            margin: 0 0 15px 0;               /* 底部间距15px */
+            line-height: 1.5;                 /* 行高1.5倍 */
+            display: -webkit-box;             /* WebKit盒子布局 */
+            -webkit-line-clamp: 2;            /* 限制显示2行 */
+            -webkit-box-orient: vertical;     /* 垂直方向 */
+            overflow: hidden;                 /* 隐藏超出部分 */
         }
         
+        /*
+         * 拍卖会信息行
+         * 功能：显示拍卖类型和状态的容器
+         * 布局：Flexbox左右分布
+         */
         .session-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
+            display: flex;                   /* Flexbox布局 */
+            justify-content: space-between;  /* 左右两端对齐 */
+            align-items: center;             /* 垂直居中 */
+            margin-bottom: 15px;             /* 底部间距15px */
         }
         
+        /*
+         * 拍卖类型标签基础样式
+         * 功能：显示拍卖类型（线上/线下/混合）
+         * 样式：圆角，内边距，小号字体
+         */
         .session-type {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
+            padding: 4px 8px;      /* 内边距：上下4px，左右8px */
+            border-radius: 4px;    /* 圆角4px */
+            font-size: 12px;       /* 小号字体12px */
+            font-weight: bold;     /* 粗体 */
         }
         
+        /*
+         * 线上拍卖类型样式
+         * 颜色：浅蓝色背景，深蓝色文字
+         */
         .session-type.online {
-            background: #e1f5fe;
-            color: #0277bd;
+            background: #e1f5fe;  /* 浅蓝色背景 */
+            color: #0277bd;       /* 深蓝色文字 */
         }
         
+        /*
+         * 线下拍卖类型样式
+         * 颜色：浅紫色背景，深紫色文字
+         */
         .session-type.offline {
-            background: #f3e5f5;
-            color: #7b1fa2;
+            background: #f3e5f5;  /* 浅紫色背景 */
+            color: #7b1fa2;       /* 深紫色文字 */
         }
         
+        /*
+         * 混合拍卖类型样式
+         * 颜色：浅绿色背景，深绿色文字
+         */
         .session-type.hybrid {
-            background: #e8f5e8;
-            color: #2e7d32;
+            background: #e8f5e8;  /* 浅绿色背景 */
+            color: #2e7d32;       /* 深绿色文字 */
         }
         
+        /*
+         * 拍卖时间文字
+         * 功能：显示拍卖开始/结束时间
+         * 样式：浅灰色，小号字体
+         */
         .session-time {
-            color: #909399;
-            font-size: 12px;
+            color: #909399;   /* 浅灰色 */
+            font-size: 12px;  /* 小号字体12px */
         }
         
         .session-stats {
@@ -422,37 +569,74 @@
         const { ElMessage, ElMessageBox } = ElementPlus;
 
         createApp({
+            /**
+             * data函数：定义组件的响应式数据
+             * 
+             * 功能说明：
+             * 所有在这里定义的数据都会被Vue追踪，数据变化时自动更新页面
+             * 
+             * @returns {Object} 包含所有响应式数据的对象
+             */
             data() {
                 return {
-                    loading: false,
-                    isLoggedIn: false,
-                    userInfo: {},
-                    unreadNotifications: 0,
-                    searchKeyword: '',
-                    statusFilter: '',
-                    typeFilter: '',
-                    sessions: [],
-                    currentPage: 1,
-                    pageSize: 12,
-                    totalCount: 0
+                    /* ===== 页面状态 ===== */
+                    loading: false,              // 加载状态：控制加载动画的显示/隐藏
+                    isLoggedIn: false,           // 登录状态：用户是否已登录
+                    userInfo: {},                // 用户信息：当前登录用户的详细信息（从localStorage读取）
+                    unreadNotifications: 0,      // 未读通知数：显示在通知图标旁边
+                    
+                    /* ===== 搜索和筛选 ===== */
+                    searchKeyword: '',           // 搜索关键词：按拍卖会名称搜索
+                    statusFilter: '',            // 状态筛选：筛选不同状态的拍卖会（进行中、已结束等）
+                    typeFilter: '',              // 类型筛选：筛选不同类型的拍卖会（书画、陶瓷等）
+                    
+                    /* ===== 拍卖会数据 ===== */
+                    sessions: [],                // 拍卖会列表：从后端加载的拍卖会数组
+                    currentPage: 1,              // 当前页码：分页功能的当前页
+                    pageSize: 12,                // 每页数量：每页显示12个拍卖会
+                    totalCount: 0                // 总记录数：用于计算总页数
                 }
             },
+            
+            /**
+             * computed：计算属性
+             * 
+             * 功能说明：
+             * 计算属性会根据依赖的数据自动更新
+             * 有缓存机制，只有依赖数据变化时才重新计算
+             */
             computed: {
+                /**
+                 * filteredSessions：过滤后的拍卖会列表
+                 * 
+                 * 功能说明：
+                 * 根据搜索关键词、状态筛选、类型筛选对拍卖会列表进行过滤
+                 * 
+                 * 过滤逻辑：
+                 * 1. 搜索关键词：匹配拍卖会名称（不区分大小写）
+                 * 2. 状态筛选：筛选指定状态的拍卖会
+                 * 3. 类型筛选：筛选指定类型的拍卖会
+                 * 
+                 * @returns {Array} 过滤后的拍卖会数组
+                 */
                 filteredSessions() {
                     let filtered = this.sessions;
                     
+                    // 按名称搜索（转小写后包含匹配）
                     if (this.searchKeyword) {
                         filtered = filtered.filter(session => 
                             session.sessionName.toLowerCase().includes(this.searchKeyword.toLowerCase())
                         );
                     }
                     
+                    // 按状态筛选
                     if (this.statusFilter) {
                         filtered = filtered.filter(session => 
                             this.getSessionStatus(session) === this.statusFilter
                         );
                     }
                     
+                    // 按类型筛选
                     if (this.typeFilter) {
                         filtered = filtered.filter(session => 
                             session.sessionType === this.typeFilter
@@ -461,17 +645,41 @@
                     
                     return filtered;
                 },
+                
+                /**
+                 * totalPages：总页数
+                 * 
+                 * 功能说明：
+                 * 根据总记录数和每页数量计算总页数
+                 * 
+                 * 计算公式：向上取整(总记录数 / 每页数量)
+                 * 
+                 * @returns {Number} 总页数
+                 */
                 totalPages() {
                     return Math.ceil(this.totalCount / this.pageSize);
                 }
             },
+            
+            /**
+             * mounted生命周期钩子：组件挂载后执行
+             * 
+             * 功能说明：
+             * 页面加载完成后自动执行，用于初始化页面数据
+             * 
+             * 执行流程：
+             * 1. 设置axios拦截器（自动添加Token）
+             * 2. 检查用户登录状态
+             * 3. 如果已登录，加载拍卖会列表和未读通知数
+             * 4. 启动定时器，每30秒刷新未读通知数
+             */
             mounted() {
                 this.setupAxiosInterceptors();
                 this.checkLoginStatus();
                 if (this.isLoggedIn) {
                     this.loadSessions();
                     this.loadUnreadNotifications();
-                    // 每30秒刷新一次未读通知数
+                    // 每30秒刷新一次未读通知数（实时更新通知红点）
                     setInterval(() => {
                         if (this.isLoggedIn) {
                             this.loadUnreadNotifications();
@@ -479,42 +687,70 @@
                     }, 30000);
                 }
             },
+            
+            /**
+             * methods：定义组件的所有方法
+             */
             methods: {
-                // 设置axios拦截器（混合模式）
+                /**
+                 * setupAxiosInterceptors方法：设置axios拦截器
+                 * 
+                 * 功能说明：
+                 * 配置axios的请求和响应拦截器，实现：
+                 * 1. 自动在每个请求头添加JWT Token
+                 * 2. 自动处理Token过期（401错误）
+                 * 3. 自动刷新Token（使用Refresh Token）
+                 * 4. Token刷新失败时自动跳转登录页
+                 * 
+                 * 拦截器工作流程：
+                 * 【请求拦截器】
+                 * - 发送请求前，从localStorage读取accessToken
+                 * - 在请求头添加Authorization: Bearer {token}
+                 * 
+                 * 【响应拦截器】
+                 * - 收到401错误时，尝试使用refreshToken刷新accessToken
+                 * - 刷新成功：更新localStorage，重新发起原请求
+                 * - 刷新失败：清除所有token，跳转到登录页
+                 */
                 setupAxiosInterceptors() {
-                    // 请求拦截器 - 自动添加Authorization头
+                    /* ===== 请求拦截器：发送请求前执行 ===== */
                     axios.interceptors.request.use(
                         config => {
+                            // 从localStorage获取Access Token
                             const token = localStorage.getItem('accessToken');
                             if (token) {
+                                // 添加Authorization请求头（Bearer Token格式）
                                 config.headers.Authorization = `Bearer ${token}`;
                             }
                             return config;
                         },
                         error => {
+                            // 请求错误时直接拒绝
                             return Promise.reject(error);
                         }
                     );
                     
-                    // 响应拦截器 - 处理401错误和Token刷新
+                    /* ===== 响应拦截器：收到响应后执行 ===== */
                     axios.interceptors.response.use(
-                        response => response,
+                        response => response,  // 响应成功直接返回
                         async error => {
+                            // 检查是否为401未授权错误（Token过期）
                             if (error.response && error.response.status === 401) {
-                                // 尝试刷新Token
+                                // 尝试使用Refresh Token刷新Access Token
                                 const refreshToken = localStorage.getItem('refreshToken');
                                 if (refreshToken) {
                                     try {
+                                        // 发送刷新Token请求
                                         const response = await axios.post('/api/auth/refresh', {
                                             refreshToken: refreshToken
                                         });
                                         
                                         if (response.data.code === 200) {
-                                            // 更新Access Token
+                                            // 刷新成功：保存新的Access Token
                                             const newAccessToken = response.data.data.accessToken;
                                             localStorage.setItem('accessToken', newAccessToken);
                                             
-                                            // 重新发起原请求
+                                            // 重新发起原来失败的请求（带上新Token）
                                             error.config.headers.Authorization = `Bearer ${newAccessToken}`;
                                             return axios.request(error.config);
                                         }
@@ -523,13 +759,14 @@
                                     }
                                 }
                                 
-                                // 刷新失败，清除所有token并跳转登录
+                                // Token刷新失败，清除所有登录信息
                                 localStorage.removeItem('accessToken');
                                 localStorage.removeItem('refreshToken');
                                 localStorage.removeItem('userInfo');
                                 this.isLoggedIn = false;
                                 this.userInfo = {};
                                 ElMessage.error('登录已过期，请重新登录');
+                                // 跳转到登录页
                                 window.location.href = '/auction/login';
                             }
                             return Promise.reject(error);
@@ -537,33 +774,70 @@
                     );
                 },
                 
-                // 检查登录状态（混合模式）
+                /**
+                 * checkLoginStatus方法：检查用户登录状态
+                 * 
+                 * 功能说明：
+                 * 从localStorage读取登录信息，判断用户是否已登录
+                 * 
+                 * 验证逻辑：
+                 * 1. 检查accessToken和refreshToken是否存在
+                 * 2. 如果存在，设置isLoggedIn=true，读取用户信息
+                 * 3. 如果不存在，跳转到登录页
+                 * 
+                 * localStorage存储的数据：
+                 * - accessToken：访问令牌（1小时有效）
+                 * - refreshToken：刷新令牌（7天有效）
+                 * - userInfo：用户信息JSON字符串
+                 */
                 checkLoginStatus() {
                     const accessToken = localStorage.getItem('accessToken');
                     const refreshToken = localStorage.getItem('refreshToken');
                     const userInfoStr = localStorage.getItem('userInfo');
                     
                     if (accessToken && refreshToken) {
+                        // 已登录：设置状态并解析用户信息
                         this.isLoggedIn = true;
                         if (userInfoStr) {
+                            // 解析JSON字符串为对象
                             this.userInfo = JSON.parse(userInfoStr);
                         } else {
+                            // 如果没有用户信息，使用默认值
                             this.userInfo = {
                                 username: 'buyer1',
                                 nickname: '买家1'
                             };
                         }
                     } else {
-                        // 未登录，跳转到登录页
+                        // 未登录：跳转到登录页
                         this.isLoggedIn = false;
                         ElMessage.warning('请先登录');
                         window.location.href = '/auction/login';
                     }
                 },
                 
-                // 加载拍卖会列表
+                /**
+                 * loadSessions方法：加载拍卖会列表
+                 * 
+                 * 功能说明：
+                 * 从后端API获取拍卖会列表数据
+                 * 
+                 * 请求参数：
+                 * - page：当前页码
+                 * - size：每页数量
+                 * 
+                 * 响应数据：
+                 * - data.data：拍卖会数组
+                 * - data.total：总记录数
+                 * 
+                 * 加载流程：
+                 * 1. 显示loading动画
+                 * 2. 发送GET请求到/api/user/sessions
+                 * 3. 解析响应数据，更新sessions和totalCount
+                 * 4. 请求完成后关闭loading动画
+                 */
                 loadSessions() {
-                    this.loading = true;
+                    this.loading = true;  // 显示loading动画
                     axios.get('/api/user/sessions', {
                         params: {
                             page: this.currentPage,
@@ -571,10 +845,12 @@
                         }
                     })
                     .then(response => {
+                        // 检查响应状态码
                         if (response.data.code === 200) {
                             const payload = response.data.data || {};
-                            // 后端包装为 { data: { data: [...], total: n } }
+                            // 更新拍卖会列表
                             this.sessions = payload.data || [];
+                            // 更新总记录数
                             this.totalCount = payload.total || 0;
                         } else {
                             ElMessage.error('加载拍卖会列表失败');
@@ -585,34 +861,79 @@
                         ElMessage.error('加载拍卖会列表失败');
                     })
                     .finally(() => {
+                        // 无论成功失败，都关闭loading动画
                         this.loading = false;
                     });
                 },
                 
-                // 搜索
+                /**
+                 * handleSearch方法：处理搜索
+                 * 
+                 * 功能说明：
+                 * 搜索逻辑已在computed.filteredSessions中实现
+                 * 用户输入搜索关键词时，计算属性会自动过滤列表
+                 * 这个方法保留用于将来扩展（如搜索按钮点击事件）
+                 */
                 handleSearch() {
-                    // 搜索逻辑在 computed 中处理
+                    // 搜索逻辑在 computed.filteredSessions 中处理
                 },
                 
-                // 筛选
+                /**
+                 * handleFilter方法：处理筛选
+                 * 
+                 * 功能说明：
+                 * 筛选逻辑已在computed.filteredSessions中实现
+                 * 用户选择状态或类型筛选时，计算属性会自动过滤列表
+                 * 这个方法保留用于将来扩展
+                 */
                 handleFilter() {
-                    // 筛选逻辑在 computed 中处理
+                    // 筛选逻辑在 computed.filteredSessions 中处理
                 },
                 
-                // 重置筛选
+                /**
+                 * resetFilter方法：重置所有筛选条件
+                 * 
+                 * 功能说明：
+                 * 清空搜索框和所有筛选条件，显示完整列表
+                 * 
+                 * 重置的字段：
+                 * - searchKeyword：搜索关键词
+                 * - statusFilter：状态筛选
+                 * - typeFilter：类型筛选
+                 */
                 resetFilter() {
                     this.searchKeyword = '';
                     this.statusFilter = '';
                     this.typeFilter = '';
                 },
                 
-                // 分页
+                /**
+                 * handlePageChange方法：处理分页切换
+                 * 
+                 * 功能说明：
+                 * 用户点击分页组件切换页码时触发
+                 * 
+                 * @param {Number} page - 新的页码
+                 */
                 handlePageChange(page) {
                     this.currentPage = page;
                     this.loadSessions();
                 },
                 
-                // 获取拍卖会状态
+                /**
+                 * getSessionStatus方法：获取拍卖会状态
+                 * 
+                 * 功能说明：
+                 * 根据时间动态计算拍卖会的当前状态
+                 * 
+                 * 状态判断：
+                 * - upcoming：当前时间 < 开始时间
+                 * - ongoing：开始时间 <= 当前时间 <= 结束时间  
+                 * - ended：当前时间 > 结束时间
+                 * 
+                 * @param {Object} session - 拍卖会对象
+                 * @returns {String} 状态字符串
+                 */
                 getSessionStatus(session) {
                     const now = new Date();
                     const startTime = new Date(session.startTime);
@@ -627,7 +948,15 @@
                     }
                 },
                 
-                // 获取状态文本
+                /**
+                 * getStatusText方法：获取状态中文文本
+                 * 
+                 * 功能说明：
+                 * 将状态代码转换为中文显示
+                 * 
+                 * @param {Object} session - 拍卖会对象
+                 * @returns {String} 中文状态
+                 */
                 getStatusText(session) {
                     const status = this.getSessionStatus(session);
                     const statusMap = {
@@ -638,32 +967,62 @@
                     return statusMap[status];
                 },
                 
-                // 获取类型文本
+                /**
+                 * getTypeText方法：获取类型中文文本
+                 * 
+                 * @param {Number} type - 拍卖类型ID
+                 * @returns {String} 中文类型文本
+                 */
                 getTypeText(type) {
                     return '线上拍卖';
                 },
                 
-                // 格式化时间
+                /**
+                 * formatTime方法：格式化时间显示
+                 * 
+                 * 功能说明：
+                 * 将ISO时间转换为本地化格式
+                 * 
+                 * @param {String} time - ISO格式时间
+                 * @returns {String} 本地化时间字符串
+                 */
                 formatTime(time) {
                     return new Date(time).toLocaleString('zh-CN');
                 },
                 
-                // 跳转到拍卖会详情
+                /**
+                 * goToSession方法：跳转到拍卖会详情页
+                 * 
+                 * @param {Number} sessionId - 拍卖会ID
+                 */
                 goToSession(sessionId) {
                     window.location.href = `/auction/user/sessions/${sessionId}`;
                 },
                 
-                // 跳转到竞拍页面
+                /**
+                 * goToBidding方法：跳转到竞拍页面
+                 * 
+                 * @param {Number} sessionId - 拍卖会ID
+                 */
                 goToBidding(sessionId) {
                     window.location.href = `/auction/user/sessions/${sessionId}/bidding`;
                 },
                 
-                // 跳转到登录页面
+                /**
+                 * goToLogin方法：跳转到登录页
+                 */
                 goToLogin() {
                     window.location.href = '/auction/login';
                 },
                 
-                // 退出登录
+                /**
+                 * loadUnreadNotifications方法：加载未读通知数
+                 * 
+                 * 功能说明：
+                 * 获取用户的未读通知数量，显示在通知图标旁
+                 * 
+                 * API：GET /api/notifications/unread-count
+                 */
                 async loadUnreadNotifications() {
                     try {
                         const response = await axios.get('/api/notifications/unread-count');
