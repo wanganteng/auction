@@ -50,7 +50,10 @@
     <div id="app">
         <el-header class="header">
             <div class="header-content">
-                <div class="logo"><i class="el-icon-gavel"></i><span>拍卖系统</span></div>
+                <div class="logo">
+                    <i class="el-icon-gavel"></i>
+                    <span>拍卖系统</span>
+                </div>
                 <div class="nav-links">
                     <el-link :underline="false" disabled style="font-weight: bold; color: #409EFF; cursor: not-allowed;">拍卖会</el-link>
                     <el-link href="/auction/user/orders" :underline="false">我的订单</el-link>
@@ -58,15 +61,15 @@
                     <el-link href="/auction/user/addresses" :underline="false">收货地址</el-link>
                     <el-link href="/auction/user/notifications" :underline="false">我的通知</el-link>
                 </div>
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <el-button v-if="!isLoggedIn" @click="goToLogin" type="primary" size="small">登录</el-button>
-                    <template v-else>
-                        <el-badge :value="unreadNotifications" :hidden="unreadNotifications === 0">
-                            <el-button icon="el-icon-bell" circle @click="goToNotifications"></el-button>
-                        </el-badge>
-                        <span style="color: #606266;">欢迎，{{ userInfo.nickname || userInfo.username }}</span>
-                        <el-button @click="logout" type="danger" size="small">退出登录</el-button>
-                    </template>
+                <div class="user-info" v-if="isLoggedIn">
+                    <el-badge :value="unreadNotifications" :hidden="unreadNotifications === 0" style="margin-right: 15px;">
+                        <el-button icon="el-icon-bell" circle @click="goToNotifications"></el-button>
+                    </el-badge>
+                    <span>欢迎，{{ userInfo.nickname || userInfo.username }}</span>
+                    <el-button @click="logout" type="danger" size="small">退出登录</el-button>
+                </div>
+                <div class="user-info" v-else>
+                    <el-button @click="goToLogin" type="primary" size="small">登录</el-button>
                 </div>
             </div>
         </el-header>

@@ -207,13 +207,12 @@
 <body>
     <div id="app">
         <!-- 顶部导航 -->
-        <div class="header">
+        <el-header class="header">
             <div class="header-content">
-                <div class="logo" @click="goToHome">
-                    <i class="el-icon-trophy"></i>
-                    艺术品拍卖
+                <div class="logo">
+                    <i class="el-icon-gavel"></i>
+                    <span>拍卖系统</span>
                 </div>
-                
                 <div class="nav-links">
                     <el-link href="/auction/user/sessions" :underline="false">拍卖会</el-link>
                     <el-link href="/auction/user/orders" :underline="false">我的订单</el-link>
@@ -221,7 +220,6 @@
                     <el-link href="/auction/user/addresses" :underline="false">收货地址</el-link>
                     <el-link :underline="false" disabled style="font-weight: bold; color: #409EFF; cursor: not-allowed;">我的通知</el-link>
                 </div>
-                
                 <div class="user-info" v-if="isLoggedIn">
                     <el-badge :value="unreadCount" :hidden="unreadCount === 0" style="margin-right: 15px;">
                         <el-button icon="el-icon-bell" circle @click="goToNotifications"></el-button>
@@ -230,10 +228,10 @@
                     <el-button @click="logout" type="danger" size="small">退出登录</el-button>
                 </div>
                 <div class="user-info" v-else>
-                    <el-button type="primary" @click="goToLogin" size="small">登录</el-button>
+                    <el-button @click="goToLogin" type="primary" size="small">登录</el-button>
                 </div>
             </div>
-        </div>
+        </el-header>
 
         <!-- 主内容 -->
         <div class="main-content">
